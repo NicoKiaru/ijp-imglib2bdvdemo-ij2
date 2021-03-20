@@ -1,7 +1,17 @@
 package ch.epfl.biop.ij2command;
 
+import bdv.tools.brightness.ConverterSetup;
+import bdv.util.BdvFunctions;
+import bdv.util.BdvStackSource;
 import net.imagej.ImageJ;
 
+import net.imglib2.FinalInterval;
+import net.imglib2.FinalRealInterval;
+import net.imglib2.Interval;
+import net.imglib2.position.FunctionRealRandomAccessible;
+import net.imglib2.type.numeric.ARGBType;
+import net.imglib2.type.numeric.real.DoubleType;
+import net.imglib2.type.numeric.real.FloatType;
 import org.scijava.ItemIO;
 import org.scijava.command.Command;
 import org.scijava.platform.PlatformService;
@@ -20,36 +30,25 @@ import java.net.URL;
  * </p>
  */
 
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Dummy Command")
-public class DummyCommand implements Command {
-
-    @Parameter
-    UIService uiService;
-
-    @Parameter
-    PlatformService ps;
-
-    @Parameter
-    int number1;
-
-    @Parameter
-    int number2;
-
-    @Parameter(label = "What is your nickname?")
-    String name;
-
-    @Parameter(type = ItemIO.OUTPUT)
-    int the_answer_to_everything;
+@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Imglib2 Bdv>Procedural 2D image")
+public class Procedural2DImage implements Command {
 
     @Override
     public void run() {
-        uiService.show("Hello from the BIOP! Happy new year "+name+" !");
-        try {
-            ps.open(new URL("https://biop.epfl.ch"));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        the_answer_to_everything = 42;
+
+        int nDimensions = 2;
+
+        FunctionRealRandomAccessible<DoubleType> wave =
+                new FunctionRealRandomAccessible<>(nDimensions, (position, pixel) -> {
+
+                    double px = position.getDoublePosition(0);
+                    double py = position.getDoublePosition(1);
+
+                    pixel.set(Math.cos(px)*Math.sin(py));
+
+                }, () -> new DoubleType());
+
+        BdvHelper.display2D(wave, 255, 120, 0, -1, 1,"Wave",null);
     }
 
     /**
@@ -65,6 +64,6 @@ public class DummyCommand implements Command {
         final ImageJ ij = new ImageJ();
         ij.ui().showUI();
 
-        ij.command().run(DummyCommand.class, true);
+        ij.command().run(Procedural2DImage.class, true);
     }
 }
