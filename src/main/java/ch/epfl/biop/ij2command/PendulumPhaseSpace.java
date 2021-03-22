@@ -4,15 +4,14 @@ import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.scijava.ui.swing.ScijavaSwingUI;
 import net.imagej.ImageJ;
-import net.imagej.display.ColorTables;
 import net.imglib2.converter.Converter;
 import net.imglib2.display.ColorTable;
+import net.imglib2.display.ColorTable8;
 import net.imglib2.position.FunctionRealRandomAccessible;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.real.DoubleType;
 import org.scijava.Context;
 import org.scijava.command.Command;
-import org.scijava.command.CommandService;
 import org.scijava.convert.ConvertService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
@@ -26,9 +25,6 @@ public class PendulumPhaseSpace implements Command {
 
     @Parameter
     ConvertService cs;
-
-    @Parameter
-    CommandService commandService;
 
     @Parameter
     Context context;
@@ -69,9 +65,10 @@ public class PendulumPhaseSpace implements Command {
 
         SourceAndConverter energySource = bdvh.getViewerPanel().state().getSources().get(2);
 
+        // Change LUT of the energy source
         bdvh.getViewerPanel().state().removeSource(energySource);
 
-        ColorTable table = ColorTables.SPECTRUM;//.ICE;
+        ColorTable table = BdvHelper.levels(10, 255);//ColorTables.SPECTRUM;//.ICE;
 
         Converter bdvLut = cs.convert(table, Converter.class);
 
@@ -82,9 +79,7 @@ public class PendulumPhaseSpace implements Command {
 
         SourceAndConverterServices.getSourceAndConverterDisplayService().show(bdvh, coloredEnergy);
 
-        /*commandService.run(ShiftConverterSetup.class, true,
-                );*/
-
+        // Puts a command into the bdv panel, which sets the energy level in the phase space
         bdvh.getCardPanel().addCard("Set energy level",
                 ScijavaSwingUI.getPanel(context, ShiftConverterSetup.class,
                         "converter",
@@ -95,10 +90,7 @@ public class PendulumPhaseSpace implements Command {
                         2),
                 true);
 
-
-        bdvh.getSplitPanel().setCollapsed(false);
-        bdvh.getSplitPanel().setDividerLocation(0.7);
-
+        // Adjust view
         AffineTransform3D view  = new AffineTransform3D();
 
         view.scale( ((double) bdvh.getViewerPanel().getWidth()) / 10.0 );
@@ -107,6 +99,9 @@ public class PendulumPhaseSpace implements Command {
 
         bdvh.getViewerPanel().state().setViewerTransform(view);
 
+        // Removes default cards for clarity
+        bdvh.getSplitPanel().setCollapsed(false);
+        bdvh.getSplitPanel().setDividerLocation(0.7);
         //bdvh.getCardPanel().removeCard(DEFAULT_SOURCES_CARD); // Cannot do this : errors
         bdvh.getCardPanel().removeCard(DEFAULT_SOURCEGROUPS_CARD);
         bdvh.getCardPanel().removeCard(DEFAULT_VIEWERMODES_CARD);
@@ -121,4 +116,5 @@ public class PendulumPhaseSpace implements Command {
 
         ij.command().run(PendulumPhaseSpace.class, true);
     }
+
 }

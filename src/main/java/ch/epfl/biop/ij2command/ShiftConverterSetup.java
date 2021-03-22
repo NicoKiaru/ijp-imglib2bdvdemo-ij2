@@ -12,7 +12,7 @@ public class ShiftConverterSetup extends InteractiveCommand {
     @Parameter
     ConverterSetup converter;
 
-    @Parameter(style = "slider", min = "-1", max = "4", stepSize = "0.05")
+    @Parameter//(style = "slider", min = "-1", max = "8", stepSize = "0.05")
     double level = 0;
 
     @Parameter
