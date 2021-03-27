@@ -6,7 +6,6 @@ import ch.epfl.biop.scijava.ui.swing.ScijavaSwingUI;
 import net.imagej.ImageJ;
 import net.imglib2.converter.Converter;
 import net.imglib2.display.ColorTable;
-import net.imglib2.display.ColorTable8;
 import net.imglib2.position.FunctionRealRandomAccessible;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.real.DoubleType;
@@ -41,21 +40,21 @@ public class PendulumPhaseSpace implements Command {
                     double theta = position.getDoublePosition(0);
                     double w = position.getDoublePosition(1);
                     value.set(w);
-                }, () -> new DoubleType() );
+                }, DoubleType::new);
 
         FunctionRealRandomAccessible<DoubleType> dwdt =
                 new FunctionRealRandomAccessible<>(2, (position, value) -> {
                     double theta = position.getDoublePosition(0);
                     double w = position.getDoublePosition(1);
                     value.set(-Math.sin(theta));
-                }, () -> new DoubleType() );
+                }, DoubleType::new);
 
         FunctionRealRandomAccessible<DoubleType> energy =
                 new FunctionRealRandomAccessible<>(2, (position, value) -> {
                     double theta = position.getDoublePosition(0);
                     double w = position.getDoublePosition(1);
                     value.set(-Math.cos(theta)+1.0/2.0*w*w); // mind the .0 !
-                }, () -> new DoubleType() );
+                }, DoubleType::new);
 
         BdvHandle bdvh = BdvHelper.display2D(dthetadt, 255, 0, 0, -2, 2, "d/dt[theta]", null);
 
@@ -81,13 +80,12 @@ public class PendulumPhaseSpace implements Command {
 
         // Puts a command into the bdv panel, which sets the energy level in the phase space
         bdvh.getCardPanel().addCard("Set energy level",
-                ScijavaSwingUI.getPanel(context, ShiftConverterSetup.class,
+                ScijavaSwingUI.getPanel(context, ShiftConverterSetupSlider.class,
                         "converter",
                         SourceAndConverterServices
                                 .getSourceAndConverterDisplayService()
                                 .getConverterSetup(coloredEnergy),
-                        "width",
-                        2),
+                        "width",2, "min", -1, "max", 8),
                 true);
 
         // Adjust view
@@ -109,7 +107,7 @@ public class PendulumPhaseSpace implements Command {
 
     }
 
-    public static void main(final String... args) throws Exception {
+    public static void main(final String... args) {
         // create the ImageJ application context with all available services
         final ImageJ ij = new ImageJ();
         ij.ui().showUI();

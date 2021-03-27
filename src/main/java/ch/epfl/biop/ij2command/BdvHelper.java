@@ -1,17 +1,14 @@
 package ch.epfl.biop.ij2command;
 
-import bdv.BigDataViewer;
 import bdv.tools.brightness.ConverterSetup;
-import bdv.util.*;
-import bdv.viewer.Source;
-import bdv.viewer.SourceAndConverter;
+import bdv.util.BdvFunctions;
+import bdv.util.BdvHandle;
+import bdv.util.BdvOptions;
+import bdv.util.BdvStackSource;
 import net.imglib2.FinalInterval;
 import net.imglib2.RealRandomAccessible;
-import net.imglib2.converter.Converter;
 import net.imglib2.display.ColorTable8;
-import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.ARGBType;
-import net.imglib2.type.numeric.real.DoubleType;
 
 public class BdvHelper {
 
@@ -48,7 +45,7 @@ public class BdvHelper {
             b[i] = (byte) (maxWhite * gray);
         }
 
-        return new ColorTable8(new byte[][]{r, g, b});
+        return new ColorTable8(r, g, b);
     }
 
 }

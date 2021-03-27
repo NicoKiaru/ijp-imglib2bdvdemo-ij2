@@ -49,10 +49,9 @@ public class PendulumInAction implements Command {
                     double theta = position.getDoublePosition(0);
                     double w = position.getDoublePosition(1);
                     value.set(-Math.cos(theta)+1.0/2.0*w*w); // mind the .0 !
-                }, () -> new DoubleType() );
+                }, DoubleType::new);
 
         BdvHandle bdvh = BdvHelper.display2D(energy, 255, 0, 0, -2, 10, "Energy", null);
-
 
         SourceAndConverter energySource = bdvh.getViewerPanel().state().getSources().get(0);
 
@@ -72,11 +71,12 @@ public class PendulumInAction implements Command {
 
         // Puts a command into the bdv panel, which sets the energy level in the phase space
         bdvh.getCardPanel().addCard("Set energy level",
-                ScijavaSwingUI.getPanel(context, ShiftConverterSetup.class,
+                ScijavaSwingUI.getPanel(context, ShiftConverterSetupSlider.class,
                         "converter",
                         SourceAndConverterServices
                                 .getSourceAndConverterDisplayService()
-                                .getConverterSetup(coloredEnergy)
+                                .getConverterSetup(coloredEnergy),
+                        "width",2, "min", -1, "max", 1.5
                         ),
                 true);
 
@@ -96,7 +96,6 @@ public class PendulumInAction implements Command {
         overlay.addPendulum(pendulumEulerExplicit);
         overlay.addPendulum(pendulumEulerImplicit);
         overlay.addPendulum(pendulumEulerRk4);
-
 
         BdvFunctions.showOverlay(overlay, "Points", BdvOptions.options().is2D().addTo(bdvh));
 
@@ -120,7 +119,7 @@ public class PendulumInAction implements Command {
 
     }
 
-    public static void main(final String... args) throws Exception {
+    public static void main(final String... args) {
         // create the ImageJ application context with all available services
         final ImageJ ij = new ImageJ();
         ij.ui().showUI();

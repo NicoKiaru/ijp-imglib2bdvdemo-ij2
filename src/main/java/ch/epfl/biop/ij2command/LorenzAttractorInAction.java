@@ -71,10 +71,9 @@ public class LorenzAttractorInAction implements Command {
             double gy = gradient.getDoublePosition(1);
             double gz = gradient.getDoublePosition(2);
             value.set(Math.sqrt(gx*gx+gy*gy+gz*gz));
-        }, () -> new DoubleType() );
+        }, DoubleType::new);
 
         BdvHandle bdvh = BdvHelper.display3D(lorenzSpeed, 255, 0, 0, -2, 10, "Gradient Intensity", null);
-
 
         SourceAndConverter energySource = bdvh.getViewerPanel().state().getSources().get(0);
 
@@ -94,7 +93,7 @@ public class LorenzAttractorInAction implements Command {
 
         // Puts a command into the bdv panel, which sets the energy level in the phase space
         bdvh.getCardPanel().addCard("Set speed levels",
-                ScijavaSwingUI.getPanel(context, ShiftConverterSetup.class,
+                ScijavaSwingUI.getPanel(context, ShiftConverterSetupSlider.class,
                         "converter",
                         SourceAndConverterServices
                                 .getSourceAndConverterDisplayService()
@@ -120,7 +119,7 @@ public class LorenzAttractorInAction implements Command {
             e.printStackTrace();
         }
 
-        for (int i = 0;i<20000;i++) {
+        for (int i = 0;i<2000000;i++) {
 
             for (Particle particle : particles)  particle.step(0.01, lorenzGradient);
 
@@ -236,7 +235,7 @@ public class LorenzAttractorInAction implements Command {
 
     }
 
-    public static void main(final String... args) throws Exception {
+    public static void main(final String... args) {
         // create the ImageJ application context with all available services
         final ImageJ ij = new ImageJ();
         ij.ui().showUI();
@@ -246,16 +245,9 @@ public class LorenzAttractorInAction implements Command {
 
     public static class ParticleOverlay extends BdvOverlay {
 
-        public ParticleOverlay() {
-
-        }
-
         List<Particle> particles = new ArrayList<>();
 
-        //Color c = new Color(135, 255,60, 201);
-
-        final int maxRadius = 10;
-        final int minRadius = 2;
+        final int radius = 10;
 
         public synchronized void addParticle(Particle particle) {
             particles.add(particle);
@@ -263,7 +255,7 @@ public class LorenzAttractorInAction implements Command {
 
         Font defaultFont = new Font("TimesRoman", Font.BOLD, 18);
 
-        final static float dash1[] = {10.0f};
+        final static float[] dash1 = {10.0f};
 
         final static BasicStroke dashed =
                 new BasicStroke(2.0f,
@@ -286,7 +278,7 @@ public class LorenzAttractorInAction implements Command {
                 g.setColor(particle.getColor());
                 particle.localize( lPos );
                 t.apply( lPos, gPos );
-                final int radius = maxRadius;//(int)(Math.max(maxRadius-Math.abs(gPos[2]),minRadius));
+                final int radius = this.radius;//(int)(Math.max(maxRadius-Math.abs(gPos[2]),minRadius));
                 final int x = ( int ) ( gPos[ 0 ] - radius );
                 final int y = ( int ) ( gPos[ 1 ] - radius );
                 g.fillOval( x, y, 2*radius, 2*radius );
@@ -304,8 +296,8 @@ public class LorenzAttractorInAction implements Command {
                     g.setColor(particle.getTrail().getColor(index));
                     rp.localize( lPos );
                     t.apply( lPos, gPos );
-                    final int xTrail = ( int ) ( gPos[ 0 ] - radius );
-                    final int yTrail = ( int ) ( gPos[ 1 ] - radius );
+                    final int xTrail = ( int ) ( gPos[ 0 ] );
+                    final int yTrail = ( int ) ( gPos[ 1 ] );
                     if (gPos[2]*previousZ<=0) {
                         if (gPos[2]==previousZ) gPos[2]+=0.01; // Hmmm
 
