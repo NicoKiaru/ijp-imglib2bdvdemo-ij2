@@ -153,9 +153,9 @@
 		<scijava.app.directory>C:/Fiji_template</scijava.app.directory>
 		<scijava.app.subdirectory>plugins/BIOP</scijava.app.subdirectory>
 
-		<bigdataviewer-core.version>10.2.0</bigdataviewer-core.version>
+		<!--<bigdataviewer-core.version>10.2.0</bigdataviewer-core.version>
 		<bigdataviewer-vistools.version>1.0.0-beta-28</bigdataviewer-vistools.version>
-		<imglib2-cache.version>1.0.0-beta-16</imglib2-cache.version>
+		<imglib2-cache.version>1.0.0-beta-16</imglib2-cache.version>-->
 	</properties>
 
 	<repositories>
@@ -184,13 +184,13 @@
 		<dependency>
 			<groupId>sc.fiji</groupId>
 			<artifactId>bigdataviewer-playground</artifactId>
-			<version>0.2.13</version>
+			<version>0.3.13</version>
 		</dependency>
 
 		<dependency>
 			<groupId>ch.epfl.biop</groupId>
 			<artifactId>bigdataviewer-biop-tools</artifactId>
-			<version>0.2.14</version>
+			<version>0.2.35</version>
 		</dependency>
 
 		<dependency>

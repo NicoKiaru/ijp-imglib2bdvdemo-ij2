@@ -2,7 +2,6 @@ package ch.epfl.biop.ij2command;
 
 import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
-import ch.epfl.biop.scijava.ui.swing.ScijavaSwingUI;
 import net.imagej.ImageJ;
 import net.imglib2.converter.Converter;
 import net.imglib2.display.ColorTable;
@@ -14,6 +13,7 @@ import org.scijava.command.Command;
 import org.scijava.convert.ConvertService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
+import sc.fiji.bdvpg.scijava.ScijavaSwingUI;
 import sc.fiji.bdvpg.services.SourceAndConverterServices;
 import sc.fiji.bdvpg.sourceandconverter.display.ConverterChanger;
 
@@ -76,14 +76,14 @@ public class PendulumPhaseSpace implements Command {
 
         SourceAndConverter coloredEnergy = cc.get();
 
-        SourceAndConverterServices.getSourceAndConverterDisplayService().show(bdvh, coloredEnergy);
+        SourceAndConverterServices.getBdvDisplayService().show(bdvh, coloredEnergy);
 
         // Puts a command into the bdv panel, which sets the energy level in the phase space
         bdvh.getCardPanel().addCard("Set energy level",
                 ScijavaSwingUI.getPanel(context, ShiftConverterSetupSlider.class,
                         "converter",
                         SourceAndConverterServices
-                                .getSourceAndConverterDisplayService()
+                                .getBdvDisplayService()
                                 .getConverterSetup(coloredEnergy),
                         "width",2, "min", -1, "max", 8),
                 true);
