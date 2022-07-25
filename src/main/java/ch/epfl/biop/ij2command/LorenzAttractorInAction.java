@@ -96,7 +96,7 @@ public class LorenzAttractorInAction implements Command {
                 ScijavaSwingUI.getPanel(context, ShiftConverterSetupSlider.class,
                         "converter",
                         SourceAndConverterServices
-                                .getBdvDisplayService()
+                                .getSourceAndConverterService()
                                 .getConverterSetup(coloredEnergy)
                 ),
                 true);

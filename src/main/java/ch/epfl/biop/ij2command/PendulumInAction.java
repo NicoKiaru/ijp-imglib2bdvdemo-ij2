@@ -74,7 +74,7 @@ public class PendulumInAction implements Command {
                 ScijavaSwingUI.getPanel(context, ShiftConverterSetupSlider.class,
                         "converter",
                         SourceAndConverterServices
-                                .getBdvDisplayService()
+                                .getSourceAndConverterService()
                                 .getConverterSetup(coloredEnergy),
                         "width",2, "min", -1, "max", 1.5
                         ),

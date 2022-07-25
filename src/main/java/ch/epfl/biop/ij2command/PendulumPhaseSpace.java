@@ -83,7 +83,7 @@ public class PendulumPhaseSpace implements Command {
                 ScijavaSwingUI.getPanel(context, ShiftConverterSetupSlider.class,
                         "converter",
                         SourceAndConverterServices
-                                .getBdvDisplayService()
+                                .getSourceAndConverterService()
                                 .getConverterSetup(coloredEnergy),
                         "width",2, "min", -1, "max", 8),
                 true);
