@@ -8,7 +8,7 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>31.1.0</version>
+		<version>37.0.0</version>
 		<relativePath />
 	</parent>
 
@@ -91,34 +91,10 @@
 	</developers>
 	<contributors>
 		<contributor>
-			<name>Romain Guiet</name>
-			<url>http://biop.epfl.ch/INFO_Facility.html</url>
-			<roles><role>founder</role></roles>
-			<properties><id>romainGuiet</id></properties>
-		</contributor>
-		<contributor>
 			<name>Nicolas Chiaruttini</name>
 			<url>http://biop.epfl.ch/INFO_Facility.html</url>
 			<roles><role>founder</role></roles>
 			<properties><id>NicoKiaru</id></properties>
-		</contributor>
-		<contributor>
-			<name>Olivier Burri</name>
-			<url>http://biop.epfl.ch/INFO_Facility.html</url>
-			<roles><role>founder</role></roles>
-			<properties><id>lacan</id></properties>
-		</contributor>
-		<contributor>
-			<name>Arne Seitz</name>
-			<url>http://biop.epfl.ch/INFO_Facility.html</url>
-			<roles><role>founder</role></roles>
-			<properties><id>ArneS70</id></properties>
-		</contributor>
-		<contributor>
-			<name>Claire Stoffel</name>
-			<url>http://biop.epfl.ch/INFO_Facility.html</url>
-			<roles><role>founder</role></roles>
-			<properties><id>stoffelc</id></properties>
 		</contributor>
 	</contributors>
 
@@ -152,8 +128,8 @@
 		<license.copyrightOwners>EPFL</license.copyrightOwners>
 		<scijava.app.directory>C:/Fiji_template</scijava.app.directory>
 		<scijava.app.subdirectory>plugins/BIOP</scijava.app.subdirectory>
-		<bigdataviewer-biop-tools.version>0.3.4</bigdataviewer-biop-tools.version>
-		<bigdataviewer-playground.version>0.5.3</bigdataviewer-playground.version>
+		<bigdataviewer-biop-tools.version>0.9.1</bigdataviewer-biop-tools.version>
+		<bigdataviewer-playground.version>0.9.1</bigdataviewer-playground.version>
 		<!--<bigdataviewer-core.version>10.2.0</bigdataviewer-core.version>
 		<bigdataviewer-vistools.version>1.0.0-beta-28</bigdataviewer-vistools.version>
 		<imglib2-cache.version>1.0.0-beta-16</imglib2-cache.version>-->
