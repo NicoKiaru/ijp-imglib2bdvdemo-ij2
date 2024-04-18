@@ -1,3 +1,5 @@
+package ch.epfl.biop.test;
+
 import net.imagej.ImageJ;
 import org.junit.Test;
 
