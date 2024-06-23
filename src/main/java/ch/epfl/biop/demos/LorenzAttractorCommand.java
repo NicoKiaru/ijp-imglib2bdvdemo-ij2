@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 //dy/dt = x(rho-z)-y
 //dz/dt = xy-beta.z
 
+@SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Lorenz Attractor")
 public class LorenzAttractorCommand implements Command {
 
@@ -129,12 +130,10 @@ public class LorenzAttractorCommand implements Command {
 
     public static class Trail {
         final int length;
-        Color color;
         int r,g,b,a;
 
         public Trail(int length, Color color) {
             this.length = length;
-            this.color = color;
             r = color.getRed();
             g = color.getGreen();
             b = color.getBlue();

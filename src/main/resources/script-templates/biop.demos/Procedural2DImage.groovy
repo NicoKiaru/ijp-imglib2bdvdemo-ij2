@@ -6,9 +6,9 @@ FunctionRealRandomAccessible<DoubleType> wave =
                 double px = position.getDoublePosition(0)
                 double py = position.getDoublePosition(1)
                 pixel.set(Math.cos(px)*Math.sin(py))
-        } as BiConsumer, DoubleType::new);
+        } as BiConsumer, DoubleType::new)
 
-def bdvStack = BdvFunctions.show(wave, Intervals.createMinMax(0,0,0,1,1,1), "Wave");
+def bdvStack = BdvFunctions.show(wave, Intervals.createMinMax(0,0,0,1,1,1), "Wave")
 bdvStack.setDisplayRange(-1,1)
 bdvStack.setColor(new ARGBType(ARGBType.rgba(255.0, 120.0, 0.0, 0.0)))
 

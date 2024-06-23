@@ -18,6 +18,7 @@ import net.imglib2.type.numeric.real.DoubleType;
 import org.scijava.Context;
 import org.scijava.command.Command;
 import org.scijava.convert.ConvertService;
+import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import sc.fiji.bdvpg.scijava.ScijavaSwingUI;
@@ -30,6 +31,7 @@ import java.util.List;
 
 // Numerical integration errors sending pendulum into orbit
 
+@SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Pendulum")
 public class PendulumCommand implements Command {
 
@@ -38,6 +40,9 @@ public class PendulumCommand implements Command {
 
     @Parameter
     Context context;
+
+    @Parameter
+    LogService logService;
 
     @Override
     public void run() {
@@ -104,7 +109,7 @@ public class PendulumCommand implements Command {
         try {
             Thread.sleep(5000);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            logService.error(e);
         }
 
         for (int i = 0;i<20000;i++) {
@@ -114,7 +119,7 @@ public class PendulumCommand implements Command {
             try {
                 Thread.sleep(15);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                logService.error(e);
             }
             bdvh.getViewerPanel().repaint();
         }
@@ -208,17 +213,17 @@ public class PendulumCommand implements Command {
 
         }
 
-        List<Pendulum> pendulums = new ArrayList<>();
+        final List<Pendulum> pendulums = new ArrayList<>();
 
-        Color c = new Color(135, 255,60, 201);
+        final Color c = new Color(135, 255,60, 201);
 
-        int radius = 10;
+        final int radius = 10;
 
         public void addPendulum(Pendulum pendulum) {
             pendulums.add(pendulum);
         }
 
-        Font defaultFont = new Font("TimesRoman", Font.BOLD, 18);
+        final Font defaultFont = new Font("TimesRoman", Font.BOLD, 18);
 
         @Override
         protected void draw(Graphics2D g) {

@@ -21,6 +21,7 @@ import sc.fiji.bdvpg.sourceandconverter.display.ConverterChanger;
 
 import static bdv.ui.BdvDefaultCards.*;
 
+@SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Pendulum Phase Space")
 public class PendulumPhaseSpaceCommand implements Command {
 
@@ -39,7 +40,6 @@ public class PendulumPhaseSpaceCommand implements Command {
 
         FunctionRealRandomAccessible<DoubleType> dthetadt =
                 new FunctionRealRandomAccessible<>(2, (position, value) -> {
-                    double theta = position.getDoublePosition(0);
                     double w = position.getDoublePosition(1);
                     value.set(w);
                 }, DoubleType::new);
@@ -47,7 +47,6 @@ public class PendulumPhaseSpaceCommand implements Command {
         FunctionRealRandomAccessible<DoubleType> dwdt =
                 new FunctionRealRandomAccessible<>(2, (position, value) -> {
                     double theta = position.getDoublePosition(0);
-                    double w = position.getDoublePosition(1);
                     value.set(-Math.sin(theta));
                 }, DoubleType::new);
 

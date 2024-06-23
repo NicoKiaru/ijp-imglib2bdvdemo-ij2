@@ -5,14 +5,14 @@ package ch.epfl.biop.test;
  * a JIT compiler should be able to do:
  * - Multiplications by ones
  * - Additions with zeros...
- *
+ * <p>
  * My wish is that special cases matrices computations could be auto-simplified.
  * (a translation matrix is only 3 additions in 3D)
  * Apparently we're not there yet, or simply I don't know how to trigger the magic
- *
+ * <p>
  * I tried OpenJDK 1.8, OpenJDK 18, Graalvm-ce-17, none of them were able to
  * discard what appears to be no-ops
- *
+ * <p>
  * Due to the simplicity of the code, please re-use and modify as you wish
  * @author Nicolas Chiaruttini, 25th July 2022
  */
@@ -94,7 +94,7 @@ public class JITTester {
         toc();
 
         System.out.println("----------------------");
-        System.out.println("Repeating "+nRepetitions+" additions by 0.0, explicitely written in the code");
+        System.out.println("Repeating "+nRepetitions+" additions by 0.0, explicitly written in the code");
         System.out.println("The code is put in the main method");
         System.out.println("This is overall is No op, and should be super fast");
         tic();
@@ -165,7 +165,7 @@ public class JITTester {
  * Result = 0.0
  * Elapsed time 	1812.0575	 ms
  * ----------------------
- * Repeating 100000000 additions by 0.0, explicitely written in the code
+ * Repeating 100000000 additions by 0.0, explicitly written in the code
  * The code is put in the main method
  * This is overall is No op, and should be super fast
  * Result = 0.0

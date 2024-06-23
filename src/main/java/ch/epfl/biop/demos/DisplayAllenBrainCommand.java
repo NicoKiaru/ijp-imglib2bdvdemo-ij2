@@ -10,14 +10,19 @@ import net.imglib2.Volatile;
 import net.imglib2.type.numeric.ARGBType;
 import org.scijava.command.Command;
 import org.scijava.command.CommandService;
+import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
+@SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Display Allen Brain")
 public class DisplayAllenBrainCommand implements Command {
 
     @Parameter
     CommandService cs;
+
+    @Parameter
+    LogService logService;
 
     @Override
     public void run() {
@@ -46,8 +51,8 @@ public class DisplayAllenBrainCommand implements Command {
             bvvAraStack.setColor(new ARGBType(ARGBType.rgba(220, 250, 0, 0)));
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logService.error(e);
         }
-
     }
+
 }

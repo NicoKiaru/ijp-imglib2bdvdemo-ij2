@@ -6,6 +6,7 @@ import org.scijava.command.InteractiveCommand;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
+@SuppressWarnings({"unused", "CanBeFinal"})
 @Plugin(type = Command.class)
 public class ShiftConverterSetupSliderCommand extends InteractiveCommand {
 
