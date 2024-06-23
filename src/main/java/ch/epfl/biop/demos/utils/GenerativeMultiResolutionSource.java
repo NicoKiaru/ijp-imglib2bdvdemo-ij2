@@ -1,4 +1,4 @@
-package ch.epfl.biop.ij2command;
+package ch.epfl.biop.demos.utils;
 
 import bdv.util.DefaultInterpolators;
 import bdv.viewer.Interpolation;

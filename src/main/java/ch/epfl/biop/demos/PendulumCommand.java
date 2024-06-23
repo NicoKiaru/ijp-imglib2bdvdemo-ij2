@@ -1,10 +1,12 @@
-package ch.epfl.biop.ij2command;
+package ch.epfl.biop.demos;
 
 import bdv.util.BdvFunctions;
 import bdv.util.BdvHandle;
 import bdv.util.BdvOptions;
 import bdv.util.BdvOverlay;
 import bdv.viewer.SourceAndConverter;
+import ch.epfl.biop.demos.utils.BdvHelper;
+import ch.epfl.biop.demos.utils.ShiftConverterSetupSliderCommand;
 import net.imagej.ImageJ;
 import net.imglib2.RealPoint;
 import net.imglib2.RealRandomAccessible;
@@ -28,8 +30,8 @@ import java.util.List;
 
 // Numerical integration errors sending pendulum into orbit
 
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Imglib2 Bdv>Pendulum In Action")
-public class PendulumInAction implements Command {
+@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Pendulum")
+public class PendulumCommand implements Command {
 
     @Parameter
     ConvertService cs;
@@ -71,7 +73,7 @@ public class PendulumInAction implements Command {
 
         // Puts a command into the bdv panel, which sets the energy level in the phase space
         bdvh.getCardPanel().addCard("Set energy level",
-                ScijavaSwingUI.getPanel(context, ShiftConverterSetupSlider.class,
+                ScijavaSwingUI.getPanel(context, ShiftConverterSetupSliderCommand.class,
                         "converter",
                         SourceAndConverterServices
                                 .getSourceAndConverterService()
@@ -124,7 +126,7 @@ public class PendulumInAction implements Command {
         final ImageJ ij = new ImageJ();
         ij.ui().showUI();
 
-        ij.command().run(PendulumInAction.class, true);
+        ij.command().run(PendulumCommand.class, true);
     }
 
     public static class Pendulum extends RealPoint {

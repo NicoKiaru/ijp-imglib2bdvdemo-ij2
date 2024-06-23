@@ -1,4 +1,4 @@
-package ch.epfl.biop.ij2command;
+package ch.epfl.biop.demos.utils;
 
 import bdv.tools.brightness.ConverterSetup;
 import org.scijava.command.Command;
@@ -7,7 +7,7 @@ import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
 @Plugin(type = Command.class)
-public class ShiftConverterSetupSlider extends InteractiveCommand {
+public class ShiftConverterSetupSliderCommand extends InteractiveCommand {
 
     @Parameter
     ConverterSetup converter;

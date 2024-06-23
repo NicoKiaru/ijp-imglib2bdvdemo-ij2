@@ -122,14 +122,19 @@
 	</ciManagement>
 
 	<properties>
-		<package-name>ch.epfl.biop.ij2command</package-name>
-		<main-class>ch.epfl.biop.ij2command.DummyCommand</main-class>
+		<package-name>ch.epfl.biop.demos</package-name>
+		<main-class>ch.epfl.biop.demos.DummyCommand</main-class>
 		<license.licenseName>gpl_v3</license.licenseName>
 		<license.copyrightOwners>EPFL</license.copyrightOwners>
 		<scijava.app.directory>C:/Fiji_template</scijava.app.directory>
 		<scijava.app.subdirectory>plugins/BIOP</scijava.app.subdirectory>
-		<bigdataviewer-biop-tools.version>0.9.1</bigdataviewer-biop-tools.version>
-		<bigdataviewer-playground.version>0.9.1</bigdataviewer-playground.version>
+		<bigdataviewer-biop-tools.version>0.10.0</bigdataviewer-biop-tools.version>
+		<bigdataviewer-playground.version>0.10.2</bigdataviewer-playground.version>
+		<ImageToAtlasRegister.version>0.9.0</ImageToAtlasRegister.version>
+
+
+		<bigwarp.version>9.1.2</bigwarp.version>
+		<bigwarp_fiji.version>9.1.2</bigwarp_fiji.version>
 		<!--<bigdataviewer-core.version>10.2.0</bigdataviewer-core.version>
 		<bigdataviewer-vistools.version>1.0.0-beta-28</bigdataviewer-vistools.version>
 		<imglib2-cache.version>1.0.0-beta-16</imglib2-cache.version>-->
@@ -148,10 +153,6 @@
 			<artifactId>imagej</artifactId>
 		</dependency>
 
-		<dependency>
-			<groupId>sc.fiji</groupId>
-			<artifactId>bigdataviewer-vistools</artifactId>
-		</dependency>
 
 		<dependency>
 			<groupId>sc.fiji</groupId>
@@ -177,12 +178,13 @@
 
 		<dependency>
 			<groupId>sc.fiji</groupId>
-			<artifactId>bigdataviewer-core</artifactId>
+			<artifactId>bigdataviewer-vistools</artifactId>
 		</dependency>
 
 		<dependency>
-			<groupId>sc.fiji</groupId>
-			<artifactId>bigdataviewer-vistools</artifactId>
+			<groupId>ch.epfl.biop</groupId>
+			<artifactId>ImageToAtlasRegister</artifactId>
+			<version>${ImageToAtlasRegister.version}</version>
 		</dependency>
 
 		<dependency>

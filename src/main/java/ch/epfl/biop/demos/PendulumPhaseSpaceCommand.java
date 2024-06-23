@@ -1,7 +1,9 @@
-package ch.epfl.biop.ij2command;
+package ch.epfl.biop.demos;
 
 import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
+import ch.epfl.biop.demos.utils.BdvHelper;
+import ch.epfl.biop.demos.utils.ShiftConverterSetupSliderCommand;
 import net.imagej.ImageJ;
 import net.imglib2.converter.Converter;
 import net.imglib2.display.ColorTable;
@@ -19,8 +21,8 @@ import sc.fiji.bdvpg.sourceandconverter.display.ConverterChanger;
 
 import static bdv.ui.BdvDefaultCards.*;
 
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Imglib2 Bdv>Pendulum phase space")
-public class PendulumPhaseSpace implements Command {
+@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Pendulum Phase Space")
+public class PendulumPhaseSpaceCommand implements Command {
 
     @Parameter
     ConvertService cs;
@@ -80,7 +82,7 @@ public class PendulumPhaseSpace implements Command {
 
         // Puts a command into the bdv panel, which sets the energy level in the phase space
         bdvh.getCardPanel().addCard("Set energy level",
-                ScijavaSwingUI.getPanel(context, ShiftConverterSetupSlider.class,
+                ScijavaSwingUI.getPanel(context, ShiftConverterSetupSliderCommand.class,
                         "converter",
                         SourceAndConverterServices
                                 .getSourceAndConverterService()
@@ -112,7 +114,7 @@ public class PendulumPhaseSpace implements Command {
         final ImageJ ij = new ImageJ();
         ij.ui().showUI();
 
-        ij.command().run(PendulumPhaseSpace.class, true);
+        ij.command().run(PendulumPhaseSpaceCommand.class, true);
     }
 
 }

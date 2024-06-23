@@ -1,38 +1,43 @@
-package ch.epfl.biop.ij2command;
+package ch.epfl.biop.demos;
 
 import bdv.util.BdvFunctions;
 import bdv.util.BdvHandle;
 import bdv.util.BdvOptions;
 import bdv.util.BdvOverlay;
 import bdv.viewer.SourceAndConverter;
-import net.imagej.ImageJ;
+import ch.epfl.biop.demos.utils.BdvHelper;
 import net.imglib2.RealPoint;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.converter.Converter;
 import net.imglib2.display.ColorTable;
 import net.imglib2.position.FunctionRealRandomAccessible;
 import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.real.DoubleType;
-import org.scijava.Context;
 import org.scijava.command.Command;
 import org.scijava.convert.ConvertService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.scijava.ScijavaSwingUI;
 import sc.fiji.bdvpg.services.SourceAndConverterServices;
 import sc.fiji.bdvpg.sourceandconverter.display.ConverterChanger;
 
-import java.awt.*;
+import javax.swing.event.AncestorEvent;
+import javax.swing.event.AncestorListener;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 //dx/dt = sigma(y-x)
 //dy/dt = x(rho-z)-y
 //dz/dt = xy-beta.z
 
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Imglib2 Bdv>Lorenz Attractor")
-public class LorenzAttractorInAction implements Command {
+@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Lorenz Attractor")
+public class LorenzAttractorCommand implements Command {
 
     @Parameter
     double sigma = 10;
@@ -43,18 +48,12 @@ public class LorenzAttractorInAction implements Command {
     @Parameter
     double beta = 8.0 / 3.0;
 
-    FunctionRealRandomAccessible<RealPoint> lorenzGradient;
-
     @Parameter
     ConvertService cs;
 
-    @Parameter
-    Context context;
-
     @Override
     public void run() {
-
-        lorenzGradient =
+        final FunctionRealRandomAccessible<RealPoint> lorenzGradient =
                 new FunctionRealRandomAccessible<>(3, (position, value) -> {
                     double x = position.getDoublePosition(0);
                     double y = position.getDoublePosition(1);
@@ -75,32 +74,21 @@ public class LorenzAttractorInAction implements Command {
 
         BdvHandle bdvh = BdvHelper.display3D(lorenzSpeed, 255, 0, 0, -2, 10, "Gradient Intensity", null);
 
-        SourceAndConverter energySource = bdvh.getViewerPanel().state().getSources().get(0);
+        SourceAndConverter<DoubleType> energySource = (SourceAndConverter<DoubleType>) bdvh.getViewerPanel().state().getSources().get(0);
 
         // Change LUT of the energy source
         bdvh.getViewerPanel().state().removeSource(energySource);
 
         ColorTable table = BdvHelper.levels(10, 120);//ColorTables.SPECTRUM;//.ICE;
 
-        Converter bdvLut = cs.convert(table, Converter.class);
+        Converter<DoubleType, ARGBType> bdvLut = cs.convert(table, Converter.class);
 
-        ConverterChanger cc = new ConverterChanger(energySource, bdvLut, bdvLut);
+        ConverterChanger<DoubleType> cc = new ConverterChanger(energySource, bdvLut, bdvLut);
         cc.run();
 
-        SourceAndConverter coloredEnergy = cc.get();
+        SourceAndConverter<DoubleType> coloredEnergy = cc.get();
 
         SourceAndConverterServices.getBdvDisplayService().show(bdvh, coloredEnergy);
-
-        // Puts a command into the bdv panel, which sets the energy level in the phase space
-        bdvh.getCardPanel().addCard("Set speed levels",
-                ScijavaSwingUI.getPanel(context, ShiftConverterSetupSlider.class,
-                        "converter",
-                        SourceAndConverterServices
-                                .getSourceAndConverterService()
-                                .getConverterSetup(coloredEnergy)
-                ),
-                true);
-
 
         List<Particle> particles = new ArrayList<>();
         particles.add(new Particle(1,1,1,"Particle 0", new Color(166, 29, 180,255)));
@@ -113,25 +101,29 @@ public class LorenzAttractorInAction implements Command {
 
         BdvFunctions.showOverlay(overlay, "Points", BdvOptions.options().addTo(bdvh));
 
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        AtomicBoolean viewerClosed = new AtomicBoolean(false);
 
-        for (int i = 0;i<2000000;i++) {
-
-            for (Particle particle : particles)  particle.step(0.01, lorenzGradient);
-
-            //System.out.println("1");
-            try {
-                Thread.sleep(15);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+        final Thread animate = new Thread(() -> {
+            while (!viewerClosed.get()) {
+                for (Particle particle : particles)  particle.step(0.01, lorenzGradient);
+                try { Thread.sleep(15); } catch (InterruptedException e) { System.err.println("Animator interrupted: "+e.getMessage()); }
+                bdvh.getViewerPanel().repaint();
             }
+            System.out.println("Lorenz Animator stopped");
+        });
 
-            bdvh.getViewerPanel().repaint();
-        }
+        animate.start();
+
+        bdvh.getViewerPanel().addAncestorListener(new AncestorListener() {
+            @Override
+            public void ancestorAdded(AncestorEvent event) {}
+            @Override
+            public void ancestorMoved(AncestorEvent event) {}
+            @Override
+            public void ancestorRemoved(AncestorEvent event) {
+                viewerClosed.set(true);
+            }
+        });
 
     }
 
@@ -233,14 +225,6 @@ public class LorenzAttractorInAction implements Command {
             }
         }
 
-    }
-
-    public static void main(final String... args) {
-        // create the ImageJ application context with all available services
-        final ImageJ ij = new ImageJ();
-        ij.ui().showUI();
-
-        ij.command().run(LorenzAttractorInAction.class, true);
     }
 
     public static class ParticleOverlay extends BdvOverlay {

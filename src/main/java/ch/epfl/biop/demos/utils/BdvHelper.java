@@ -1,4 +1,4 @@
-package ch.epfl.biop.ij2command;
+package ch.epfl.biop.demos.utils;
 
 import bdv.tools.brightness.ConverterSetup;
 import bdv.util.BdvFunctions;
@@ -9,10 +9,13 @@ import net.imglib2.FinalInterval;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.display.ColorTable8;
 import net.imglib2.type.numeric.ARGBType;
+import net.imglib2.util.Intervals;
 
 public class BdvHelper {
 
     public static BdvHandle display2D(RealRandomAccessible rra, int r, int g, int b, double min, double max, String name, BdvHandle bdvh) {
+       BdvFunctions.show(rra, Intervals.createMinMax(0,0,0,1,1,1), "prout");//Intervals.createMinMax(0,0,0,1,1,1), BdvOptions.options());
+
         FinalInterval interval = new FinalInterval(new long[]{0,0}, new long[]{1,1});
         BdvOptions options = BdvOptions.options().is2D();
         if (bdvh!=null) options.addTo(bdvh);
