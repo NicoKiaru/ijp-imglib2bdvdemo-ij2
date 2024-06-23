@@ -188,6 +188,12 @@
 		</dependency>
 
 		<dependency>
+			<groupId>ch.epfl.biop</groupId>
+			<artifactId>bigdataviewer-image-loaders</artifactId>
+			<version>0.7.3-SNAPSHOT</version>
+		</dependency>
+
+		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<scope>test</scope>
