@@ -17,7 +17,7 @@ import java.util.concurrent.ExecutionException;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Mandelbrot Set")
-public class MandelbrotSetCommand implements Command {
+public class DemoMandelbrotSetCommand implements Command {
 
     @Parameter
     CommandService cs;
@@ -31,12 +31,10 @@ public class MandelbrotSetCommand implements Command {
     @Parameter
     SourceAndConverterBdvDisplayService ds;
 
-    @Parameter
-    BdvHandle bdvH;
-
     @Override
     public void run() {
         try {
+            BdvHandle bdvh = ds.getNewBdv();
             SourceAndConverter<UnsignedShortType> mandelbrotSource = new MandelbrotSourceGetter().get();
 
             SourceAndConverter<?>[] reColoredMandelbrotSource = (SourceAndConverter<?>[])
@@ -44,7 +42,7 @@ public class MandelbrotSetCommand implements Command {
                         "sacs", new SourceAndConverter[]{mandelbrotSource}
                 ).get().getOutput("sacs_out");
 
-            ds.show(bdvH, reColoredMandelbrotSource);
+            ds.show(bdvh, reColoredMandelbrotSource);
         } catch (InterruptedException | ExecutionException e) {
             log.error(e);
         }

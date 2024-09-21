@@ -10,6 +10,7 @@ import org.scijava.command.DynamicCommand;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
+import sc.fiji.bdvpg.bdv.navigate.ViewerTransformAdjuster;
 import sc.fiji.bdvpg.bdv.supplier.DefaultBdvSupplier;
 import sc.fiji.bdvpg.bdv.supplier.SerializableBdvOptions;
 import sc.fiji.bdvpg.bdv.supplier.alpha.AlphaBdvSupplier;
@@ -23,7 +24,7 @@ import java.io.File;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Bdv Supplier", initializer = "init")
-public class BdvSupplierCommand extends DynamicCommand {
+public class DemoBdvSupplierCommand extends DynamicCommand {
 
     @Parameter
     Context ctx;
@@ -83,7 +84,8 @@ public class BdvSupplierCommand extends DynamicCommand {
                     "files", new File[]{wsiBrainSlices},
                     "split_rgb_channels", false,
                     "plane_origin_convention", "TOP LEFT",
-                    "auto_pyramidize", true
+                    "auto_pyramidize", true,
+                    "disable_memo", false
             ).get().getOutput("spimdata");
 
             SourceAndConverter<?>[] dapiSources = sourceService.getUI().getRoot().child("Brain Slice")
@@ -95,6 +97,8 @@ public class BdvSupplierCommand extends DynamicCommand {
             // I don't use BdvFunctions in order to keep the correct colors
             displayService.show(bdvh, dapiSources);
             displayService.show(bdvh, fredSources);
+
+            new ViewerTransformAdjuster(bdvh, dapiSources).run();
 
         } catch (Exception e) {
             logger.error(e);

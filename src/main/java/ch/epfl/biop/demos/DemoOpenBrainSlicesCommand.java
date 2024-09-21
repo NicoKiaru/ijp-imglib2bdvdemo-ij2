@@ -15,17 +15,15 @@ import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
 import sc.fiji.bdvpg.sourceandconverter.display.BrightnessAutoAdjuster;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Open Egg Chamber Dataset")
-public class OpenEggChamberCommand implements Command {
+@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Open Brain Slices Dataset")
+public class DemoOpenBrainSlicesCommand implements Command {
 
     @Parameter
     CommandService cs;
-
-    @Parameter
-    BdvHandle bdvh;
 
     @Parameter
     SourceAndConverterBdvDisplayService ds;
@@ -39,33 +37,36 @@ public class OpenEggChamberCommand implements Command {
     @Override
     public void run() {
         try {
-            // Downloads and cache the sample file (90Mb)
-            File eggChamber = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/1472859/files/DrosophilaEggChamber.tif");
+            // Downloads and cache a sample  vsi file (1.3Gb) from https://zenodo.org/records/6553641
+            File wsiBrainSlices = new File(ch.epfl.biop.DatasetHelper.dowloadBrainVSIDataset(3), "Slide_03.vsi");
 
             // Retrieve the dataset, that's a SpimData object, it holds metadata and the 'recipe' to load pixel data
             AbstractSpimData<?> dataset = (AbstractSpimData<?>) cs.run(CreateBdvDatasetBioFormatsCommand.class,
                     true,
                     "datasetname", "Egg_Chamber",
                     "unit", "MICROMETER",
-                    "files", new File[]{eggChamber},
+                    "files", new File[]{wsiBrainSlices},
                     "split_rgb_channels", false,
-                    "plane_origin_convention", "CENTER",
-                    "auto_pyramidize", true
+                    "plane_origin_convention", "TOP LEFT",
+                    "auto_pyramidize", true,
+                    "disable_memo", false
             ).get().getOutput("spimdata");
 
-            SourceAndConverter<?>[] eggChamberSources = ss.getSourceAndConverterFromSpimdata(dataset).toArray(new SourceAndConverter<?>[0]);
+            SourceAndConverter<?>[] brainSlicesSources = ss.getSourceAndConverterFromSpimdata(dataset).toArray(new SourceAndConverter<?>[0]);
+
+            BdvHandle bdvh = ds.getNewBdv();
 
             // I don't use BdvFunctions in order to keep the correct colors
-            ds.show(bdvh, eggChamberSources);
+            ds.show(bdvh, brainSlicesSources);
 
             // Let's center the viewer on the egg chamber
-            new ViewerTransformAdjuster( bdvh, eggChamberSources[0] ).run();
+            new ViewerTransformAdjuster( bdvh, brainSlicesSources ).run();
 
             // And adjust Brightness and Contrast
-            for (SourceAndConverter<?> source : eggChamberSources) {
+            for (SourceAndConverter<?> source : brainSlicesSources) {
                 new BrightnessAutoAdjuster<>( source, 0 ).run();
             }
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException | ExecutionException | IOException e) {
             log.error(e);
         }
     }

@@ -23,7 +23,7 @@ import static bdv.ui.BdvDefaultCards.*;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Pendulum Phase Space")
-public class PendulumPhaseSpaceCommand implements Command {
+public class DemoPendulumPhaseSpaceCommand implements Command {
 
     @Parameter
     ConvertService cs;
@@ -113,7 +113,7 @@ public class PendulumPhaseSpaceCommand implements Command {
         final ImageJ ij = new ImageJ();
         ij.ui().showUI();
 
-        ij.command().run(PendulumPhaseSpaceCommand.class, true);
+        ij.command().run(DemoPendulumPhaseSpaceCommand.class, true);
     }
 
 }

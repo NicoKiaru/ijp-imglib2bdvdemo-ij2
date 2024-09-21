@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Lorenz Attractor")
-public class LorenzAttractorCommand implements Command {
+public class DemoLorenzAttractorCommand implements Command {
 
     @Parameter
     double sigma = 10;

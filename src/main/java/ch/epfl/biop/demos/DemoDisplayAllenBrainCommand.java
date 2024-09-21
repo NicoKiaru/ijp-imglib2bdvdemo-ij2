@@ -16,7 +16,7 @@ import org.scijava.plugin.Plugin;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Display Allen Brain")
-public class DisplayAllenBrainCommand implements Command {
+public class DemoDisplayAllenBrainCommand implements Command {
 
     @Parameter
     CommandService cs;

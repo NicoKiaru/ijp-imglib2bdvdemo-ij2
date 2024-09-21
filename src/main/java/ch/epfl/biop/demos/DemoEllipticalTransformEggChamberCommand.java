@@ -22,13 +22,10 @@ import java.io.File;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Elliptical Transform Egg Chamber")
-public class EllipticalTransformEggChamberCommand implements Command {
+public class DemoEllipticalTransformEggChamberCommand implements Command {
 
     @Parameter
     CommandService cs;
-
-    @Parameter
-    BdvHandle bdvh;
 
     @Parameter
     SourceAndConverterBdvDisplayService ds;
@@ -53,10 +50,13 @@ public class EllipticalTransformEggChamberCommand implements Command {
                     "files", new File[]{eggChamber},
                     "split_rgb_channels", false,
                     "plane_origin_convention", "CENTER",
-                    "auto_pyramidize", true
+                    "auto_pyramidize", true,
+                    "disable_memo", false
             ).get().getOutput("spimdata");
 
             SourceAndConverter<?>[] eggChamberSources = ss.getSourceAndConverterFromSpimdata(dataset).toArray(new SourceAndConverter<?>[0]);
+
+            BdvHandle bdvh = ds.getNewBdv();
 
             // I don't use BdvFunctions in order to keep the correct colors
             ds.show(bdvh, eggChamberSources);
@@ -84,7 +84,7 @@ public class EllipticalTransformEggChamberCommand implements Command {
             // Display the location of the ellipse used for the transform
             SourceAndConverter<?> ellipsoidSource = (SourceAndConverter<?>)
                     cs.run(DisplayEllipseFromTransformCommand.class, true,
-                            "rMin", 0.9, "rMax", 1.1, "e3Dt", e3Dt).get().getOutput("sac_out");
+                            "r_min", 0.9, "r_max", 1.1, "e3dt", e3Dt).get().getOutput("sac_out");
 
             new BrightnessAdjuster(ellipsoidSource, 0, 255).run();
 

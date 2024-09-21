@@ -10,7 +10,7 @@ import org.scijava.command.Command;
 import org.scijava.plugin.Plugin;
 
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Procedural 2D Image")
-public class Procedural2DImageCommand implements Command {
+public class DemoProcedural2DImageCommand implements Command {
     @Override
     public void run() {
         int nDimensions = 2;

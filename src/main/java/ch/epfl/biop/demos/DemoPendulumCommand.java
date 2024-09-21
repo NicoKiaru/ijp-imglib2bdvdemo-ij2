@@ -33,7 +33,7 @@ import java.util.List;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Pendulum")
-public class PendulumCommand implements Command {
+public class DemoPendulumCommand implements Command {
 
     @Parameter
     ConvertService cs;
@@ -131,7 +131,7 @@ public class PendulumCommand implements Command {
         final ImageJ ij = new ImageJ();
         ij.ui().showUI();
 
-        ij.command().run(PendulumCommand.class, true);
+        ij.command().run(DemoPendulumCommand.class, true);
     }
 
     public static class Pendulum extends RealPoint {
