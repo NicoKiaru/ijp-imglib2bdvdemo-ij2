@@ -8,6 +8,7 @@ import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.util.Intervals;
 import org.scijava.command.Command;
 import org.scijava.plugin.Plugin;
+import sc.fiji.bdvpg.services.SourceAndConverterServices;
 
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Procedural 2D Image")
 public class DemoProcedural2DImageCommand implements Command {
@@ -26,6 +27,8 @@ public class DemoProcedural2DImageCommand implements Command {
         BdvStackSource<DoubleType> bdvStack = BdvFunctions.show(wave, Intervals.createMinMax(0, 0, 0, 1, 1, 1), "Wave");
         bdvStack.setDisplayRange(-1,1);
         bdvStack.setColor(new ARGBType(ARGBType.rgba(255.0, 120.0, 0.0, 0.0)));
+
+        SourceAndConverterServices.getSourceAndConverterService().register(bdvStack.getSources().get(0));
 
     }
 }
