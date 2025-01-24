@@ -13,7 +13,7 @@ import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
 
 @SuppressWarnings("unused")
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Resolution Level")
-public class DemoResolutionLevelDemoCommand implements Command {
+public class DemoResolutionLevelCommand implements Command {
 
     @Parameter
     SourceAndConverterBdvDisplayService ds;

@@ -1,6 +1,8 @@
 package ch.epfl.biop.demos;
 
 import bdv.util.BdvHandle;
+import bdv.util.BdvHandlePanel;
+import bdv.util.BdvOptions;
 import bdv.viewer.SourceAndConverter;
 import bvv.vistools.BvvHandle;
 import bvv.vistools.BvvOptions;
@@ -34,8 +36,8 @@ import java.util.concurrent.ExecutionException;
 import static ch.epfl.biop.demos.utils.BdvHelper.createQuadrant;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - OrthoViewer")
-public class DemoOrthoViewerCommand implements Command {
+@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - OrthoViewer (v2)")
+public class DemoOrthoViewer2Command implements Command {
 
     @Parameter
     DatasetHelper.DemoDataset dataset_name;
@@ -52,7 +54,7 @@ public class DemoOrthoViewerCommand implements Command {
     @Parameter
     LogService log;
 
-    BdvHandle bdvFront, bdvRight, bdvBottom;
+    BdvHandlePanel bdvFront, bdvRight, bdvBottom;
 
     BvvHandle bvv;
 
@@ -67,16 +69,19 @@ public class DemoOrthoViewerCommand implements Command {
 
                 JFrame frame = new JFrame("Draggable Quadrants with Panels");
 
-                bdvFront = ds.getNewBdv();
+                bdvFront = new BdvHandlePanel(frame, BdvOptions.options());//ds.getNewBdv();
                 // Let's center the viewer on the egg chamber
-                //new ViewerTransformAdjuster( bdvFront, eggChamberSources[0] ).run();
-                BdvHandleHelper.getJFrame(bdvFront).setVisible(false);
+                // new ViewerTransformAdjuster( bdvFront, eggChamberSources[0] ).run();
+                // BdvHandleHelper.getJFrame(bdvFront).setVisible(false);
 
-                bdvRight = ds.getNewBdv();
-                BdvHandleHelper.getJFrame(bdvRight).setVisible(false);
+                // bdvRight = ds.getNewBdv();
+                bdvRight = new BdvHandlePanel(frame, BdvOptions.options());//ds.getNewBdv();
+                //BdvHandleHelper.getJFrame(bdvRight).setVisible(false);
 
-                bdvBottom = ds.getNewBdv();
-                BdvHandleHelper.getJFrame(bdvBottom).setVisible(false);
+
+                bdvBottom = new BdvHandlePanel(frame, BdvOptions.options());//ds.getNewBdv();
+                //bdvBottom = ds.getNewBdv();
+                //BdvHandleHelper.getJFrame(bdvBottom).setVisible(false);
 
                 bvv = new BvvCreator(BvvOptions.options()).get();
                 BvvHandleHelper.getJFrame(bvv).setVisible(false);

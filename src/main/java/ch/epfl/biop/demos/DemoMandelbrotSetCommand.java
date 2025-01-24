@@ -1,18 +1,17 @@
 package ch.epfl.biop.demos;
 
 import bdv.util.BdvHandle;
-import bdv.viewer.SourceAndConverter;
-import net.imglib2.type.numeric.integer.UnsignedShortType;
+import ch.epfl.biop.demos.utils.DatasetHelper;
+import org.scijava.Context;
 import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
 import org.scijava.module.ModuleService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.scijava.command.source.LUTSourceCreatorCommand;
 import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
-import sc.fiji.bdvpg.sourceandconverter.importer.MandelbrotSourceGetter;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
@@ -26,6 +25,9 @@ public class DemoMandelbrotSetCommand implements Command {
     ModuleService ms;
 
     @Parameter
+    Context ctx;
+
+    @Parameter
     LogService log;
 
     @Parameter
@@ -35,16 +37,11 @@ public class DemoMandelbrotSetCommand implements Command {
     public void run() {
         try {
             BdvHandle bdvh = ds.getNewBdv();
-            SourceAndConverter<UnsignedShortType> mandelbrotSource = new MandelbrotSourceGetter().get();
-
-            SourceAndConverter<?>[] reColoredMandelbrotSource = (SourceAndConverter<?>[])
-                    ms.run(cs.getCommand(LUTSourceCreatorCommand.class), true,
-                        "sacs", new SourceAndConverter[]{mandelbrotSource}
-                ).get().getOutput("sacs_out");
-
-            ds.show(bdvh, reColoredMandelbrotSource);
+            ds.show(bdvh, DatasetHelper.getData(DatasetHelper.DemoDataset.MANDELBROT_SET, ctx));
         } catch (InterruptedException | ExecutionException e) {
             log.error(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
 
     }
