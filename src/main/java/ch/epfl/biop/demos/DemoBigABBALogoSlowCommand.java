@@ -137,7 +137,7 @@ public class DemoBigABBALogoSlowCommand implements Command {
             opts.is2D = true;
             BdvHandle bdvh = new DefaultBdvSupplier(opts).get();
             //ds.show(bdvh, allSources.toArray(new SourceAndConverter[0]));
-            allSources.forEach(source -> BdvFunctions.show(source, BdvOptions.options().addTo(bdvh)));
+            BdvFunctions.show(allSources, 1, BdvOptions.options().addTo(bdvh));
             new ViewerTransformAdjuster(bdvh, allSources.toArray(new SourceAndConverter[0])).run();
 
         } catch (InterruptedException | ExecutionException | IOException e) {
