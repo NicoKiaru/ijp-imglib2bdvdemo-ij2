@@ -130,7 +130,6 @@ public class DemoBigABBALogoCommand implements Command {
                 }
             }
             bdv.util.Prefs.showMultibox(false);
-            //BdvStackSource<UnsignedShortType> bss = BdvFunctions.show(allSources.get(0), 1, BdvOptions.options().is2D());
             SerializableBdvOptions opts = new SerializableBdvOptions();
             opts.is2D = true;
             BdvHandle bdvh = new DefaultBdvSupplier(opts).get();
