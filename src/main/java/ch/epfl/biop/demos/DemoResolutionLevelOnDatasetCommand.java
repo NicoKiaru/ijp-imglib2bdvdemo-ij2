@@ -39,7 +39,7 @@ import static ch.epfl.biop.demos.utils.BdvHelper.createTri;
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Pyramidal Image Loading")
 public class DemoResolutionLevelOnDatasetCommand implements Command {
 
-    @Parameter
+    @Parameter(persist = false)
     DatasetHelper.DemoDataset dataset_name;
 
     @Parameter

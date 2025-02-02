@@ -37,7 +37,7 @@ import static ch.epfl.biop.demos.utils.BdvHelper.createQuadrant;
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - OrthoViewer")
 public class DemoOrthoViewerCommand implements Command {
 
-    @Parameter
+    @Parameter(persist = false)
     DatasetHelper.DemoDataset dataset_name;
 
     @Parameter

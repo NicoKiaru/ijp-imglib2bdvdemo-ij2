@@ -26,7 +26,7 @@ public class DemoBdvSupplierCommand extends DynamicCommand {
     @Parameter
     Context ctx;
 
-    @Parameter
+    @Parameter(persist = false)
     DatasetHelper.DemoDataset dataset_name;
 
     @Parameter(choices = {"Default", "BIOP", "Alpha", "Alpha inverted"})

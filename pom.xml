@@ -126,11 +126,10 @@
 		<main-class>ch.epfl.biop.demos.DummyCommand</main-class>
 		<license.licenseName>gpl_v3</license.licenseName>
 		<license.copyrightOwners>EPFL</license.copyrightOwners>
-		<scijava.app.directory>C:/Fiji_template</scijava.app.directory>
-		<scijava.app.subdirectory>plugins/BIOP</scijava.app.subdirectory>
+		<!--scijava.app.directory>C:/Fiji_template</scijava.app.directory-->
 		<bigdataviewer-biop-tools.version>0.11.0</bigdataviewer-biop-tools.version>
-		<bigdataviewer-playground.version>0.11.0</bigdataviewer-playground.version>
-		<ImageToAtlasRegister.version>0.9.11</ImageToAtlasRegister.version>
+		<bigdataviewer-playground.version>0.11.1</bigdataviewer-playground.version>
+		<ImageToAtlasRegister.version>0.10.2</ImageToAtlasRegister.version>
 		<bigdataviewer-image-loaders.version>0.9.0</bigdataviewer-image-loaders.version>
 
 
