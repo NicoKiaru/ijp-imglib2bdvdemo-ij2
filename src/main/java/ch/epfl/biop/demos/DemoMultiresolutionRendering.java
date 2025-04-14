@@ -10,6 +10,7 @@ import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import sc.fiji.bdvpg.bdv.BdvHandleHelper;
+import sc.fiji.bdvpg.bdv.navigate.ViewerTransformAdjuster;
 import sc.fiji.bdvpg.bdv.supplier.biop.BiopBdvSupplier;
 import sc.fiji.bdvpg.bdv.supplier.biop.BiopSerializableBdvOptions;
 import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
@@ -27,6 +28,7 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.ExecutionException;
 
 import static ch.epfl.biop.demos.utils.BdvHelper.createQuadrant;
@@ -60,7 +62,7 @@ public class DemoMultiresolutionRendering implements Command {
         try {
             SourceAndConverter<?>[] sources = DatasetHelper.getData(dataset_name, ctx);
 
-            JFrame frame = new JFrame("Draggable Quadrants with Panels");
+            JFrame frame = new JFrame("Demo Multiresolution Rendering");
 
             BiopBdvSupplier supplier = new BiopBdvSupplier();
             BiopSerializableBdvOptions opts = new BiopSerializableBdvOptions();
@@ -85,7 +87,7 @@ public class DemoMultiresolutionRendering implements Command {
             ds.registerBdvHandle(normalBdv);
             BdvHandleHelper.getJFrame(normalBdv).setVisible(false);
 
-            SwingUtilities.invokeLater(() -> {
+            SwingUtilities.invokeAndWait(() -> {
                 // Create the main frame
 
                 frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -106,19 +108,12 @@ public class DemoMultiresolutionRendering implements Command {
                 JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
                 splitPane.setDividerLocation(400); // Set initial divider location
 
-                /*new RayCastPositionerSliderAdder(bdv16x).run();
-                new RayCastPositionerSliderAdder(bdv4x).run();
-                new RayCastPositionerSliderAdder(bdv1x).run();
-
-                BdvHandleHelper.addCenterCross(bdv16x);*/
-
                 // Add the split pane to the frame
                 frame.add(splitPane, BorderLayout.CENTER);
 
                 // Make the frame visible
                 frame.setVisible(true);
             });
-
 
             ViewerTransformSyncStarter starter = new ViewerTransformSyncStarter(
                     new ViewerAdapter[]{new ViewerAdapter(bdv16x), new ViewerAdapter(bdv1x), new ViewerAdapter(
@@ -127,6 +122,11 @@ public class DemoMultiresolutionRendering implements Command {
 
             new ViewerStateSyncStarter(new ViewerAdapter(bdv16x), new ViewerAdapter(
                     bdv1x), new ViewerAdapter(bdv4x), new ViewerAdapter(normalBdv)).run();
+
+            // We apparently need to wait one round of UI refresh to get the view right
+            SwingUtilities.invokeLater(() -> {
+                new ViewerTransformAdjuster(normalBdv, sources).run();
+            });
 
             // I don't use BdvFunctions in order to keep the correct colors
             ds.show(bdv16x, sources);
@@ -139,7 +139,7 @@ public class DemoMultiresolutionRendering implements Command {
 
         } catch (InterruptedException | ExecutionException e) {
             log.error(e);
-        } catch (IOException e) {
+        } catch (IOException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
     }

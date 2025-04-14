@@ -55,7 +55,7 @@ public class SpimDataInvestigationCommand implements Command {
 
             // If one wants to investigate the number of channels in the dataset:
             SourceAndConverterServiceUI.Node channelNodes = datasetNode.child("Channel");
-            System.out.println("There are "+channelNodes.children().size()+" in this dataset.");
+            System.out.println("There are "+channelNodes.children().size()+" channels in this dataset.");
 
             // If one wants to know the name of the first channel:
             System.out.println("The first channel is named "+channelNodes.child(1).name());
@@ -69,7 +69,6 @@ public class SpimDataInvestigationCommand implements Command {
 
             // Some other examples:
             System.out.println("There are "+datasetNode.child("ImageName").children().size()+" Images in this dataset.");
-
 
         } catch (Exception e) {
             throw new RuntimeException(e);

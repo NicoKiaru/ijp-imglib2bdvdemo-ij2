@@ -28,11 +28,11 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-import static ch.epfl.biop.demos.utils.BdvHelper.createQuadrant;
 import static ch.epfl.biop.demos.utils.BdvHelper.createTri;
 
 @SuppressWarnings("unused")
@@ -69,7 +69,7 @@ public class DemoResolutionLevelOnDatasetCommand implements Command {
                 return;
             }
 
-            JFrame frame = new JFrame("Draggable Quadrants with Panels");
+            JFrame frame = new JFrame("Demo Pyramidal Image");
 
             BiopBdvSupplier supplier = new BiopBdvSupplier();
             BiopSerializableBdvOptions opts = new BiopSerializableBdvOptions();
@@ -86,7 +86,7 @@ public class DemoResolutionLevelOnDatasetCommand implements Command {
             ds.registerBdvHandle(normalBdv);
             BdvHandleHelper.getJFrame(normalBdv).setVisible(false);
 
-            SwingUtilities.invokeLater(() -> {
+            SwingUtilities.invokeAndWait(() -> {
                 // Create the main frame
 
                 frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -106,12 +106,6 @@ public class DemoResolutionLevelOnDatasetCommand implements Command {
                 // Create a JSplitPane to split left and right sides
                 JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
                 splitPane.setDividerLocation(400); // Set initial divider location
-
-                /*new RayCastPositionerSliderAdder(bdv16x).run();
-                new RayCastPositionerSliderAdder(bdv4x).run();
-                new RayCastPositionerSliderAdder(bdv1x).run();
-
-                BdvHandleHelper.addCenterCross(bdv16x);*/
 
                 // Add the split pane to the frame
                 frame.add(splitPane, BorderLayout.CENTER);
@@ -168,6 +162,8 @@ public class DemoResolutionLevelOnDatasetCommand implements Command {
         } catch (InterruptedException | ExecutionException e) {
             log.error(e);
         } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InvocationTargetException e) {
             throw new RuntimeException(e);
         }
     }
