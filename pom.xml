@@ -153,6 +153,11 @@
 			<artifactId>imagej</artifactId>
 		</dependency>
 
+		<dependency>
+			<groupId>org.embl.mobie</groupId>
+			<artifactId>mobie-io</artifactId>
+			<version>4.0.3-SNAPSHOT</version>
+		</dependency>
 
 		<dependency>
 			<groupId>sc.fiji</groupId>

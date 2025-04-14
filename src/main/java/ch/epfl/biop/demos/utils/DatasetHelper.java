@@ -15,6 +15,7 @@ import net.imglib2.position.FunctionRandomAccessible;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.view.Views;
 import org.apache.commons.io.FilenameUtils;
+import org.embl.mobie.io.imagedata.N5ImageData;
 import org.scijava.Context;
 import org.scijava.command.CommandService;
 import org.scijava.module.ModuleService;
@@ -25,6 +26,7 @@ import sc.fiji.bdvpg.sourceandconverter.importer.MandelbrotSourceGetter;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 
 public class DatasetHelper {
@@ -134,6 +136,9 @@ public class DatasetHelper {
                 ((LinearRange) gol.asVolatile().getConverter()).setMax(17);
 
                 return new SourceAndConverter[]{gol};
+            case PLATY:
+                N5ImageData< ? > n5ImageData = new N5ImageData<>( "https://s3.embl.de/i2k-2020/platy-raw.ome.zarr" );
+                return new SourceAndConverter[]{n5ImageData.getSourcesAndConverters().get(0)};
         }
 
         throw new IllegalArgumentException("Unrecognized dataset "+datasetName);
@@ -146,6 +151,15 @@ public class DatasetHelper {
         SLOW_MANDELBROT_SET,
         ALLEN_BRAIN_ATLAS,
         RANDOM_GAME_OF_LIFE,
-        LATTICE_HELA_SKEWED
+        LATTICE_HELA_SKEWED,
+        PLATY,
+    }
+
+    public static boolean isBvvCompatible(SourceAndConverter<?>[] sources) {
+        return Arrays.stream(sources)
+                .allMatch(source ->
+                        (source.getSpimSource().getType() instanceof UnsignedShortType)
+                                && !(source.getSpimSource().getClass().getName().contains(Procedural3DImageShort.class.getName())) // Remove mandelbrot set
+                );
     }
 }

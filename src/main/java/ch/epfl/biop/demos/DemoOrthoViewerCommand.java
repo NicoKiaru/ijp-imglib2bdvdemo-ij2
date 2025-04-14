@@ -11,6 +11,7 @@ import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import sc.fiji.bdvpg.bdv.BdvHandleHelper;
+import sc.fiji.bdvpg.bdv.navigate.ViewerTransformAdjuster;
 import sc.fiji.bdvpg.bvv.BvvCreator;
 import sc.fiji.bdvpg.bvv.BvvHandleHelper;
 import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
@@ -29,6 +30,7 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.ExecutionException;
 
 import static ch.epfl.biop.demos.utils.BdvHelper.createQuadrant;
@@ -61,15 +63,14 @@ public class DemoOrthoViewerCommand implements Command {
         try {
             SourceAndConverter<?>[] sources = DatasetHelper.getData(dataset_name, ctx);
 
+            boolean showBvv = DatasetHelper.isBvvCompatible(sources);
 
-            SwingUtilities.invokeLater(() -> {
+            SwingUtilities.invokeAndWait(() -> {
                 // Create the main frame
 
-                JFrame frame = new JFrame("Draggable Quadrants with Panels");
+                JFrame frame = new JFrame("Ortho Viewer Demo");
 
                 bdvFront = ds.getNewBdv();
-                // Let's center the viewer on the egg chamber
-                //new ViewerTransformAdjuster( bdvFront, eggChamberSources[0] ).run();
                 BdvHandleHelper.getJFrame(bdvFront).setVisible(false);
 
                 bdvRight = ds.getNewBdv();
@@ -78,9 +79,10 @@ public class DemoOrthoViewerCommand implements Command {
                 bdvBottom = ds.getNewBdv();
                 BdvHandleHelper.getJFrame(bdvBottom).setVisible(false);
 
-                bvv = new BvvCreator(BvvOptions.options()).get();
-                BvvHandleHelper.getJFrame(bvv).setVisible(false);
-
+                if (showBvv) {
+                    bvv = new BvvCreator(BvvOptions.options()).get();
+                    BvvHandleHelper.getJFrame(bvv).setVisible(false);
+                }
 
                 frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
                 frame.setSize(800, 600);
@@ -94,19 +96,11 @@ public class DemoOrthoViewerCommand implements Command {
 
                 // Create the left panel, which will be divided into 4 parts using JSplitPane
                 JPanel leftPanel = createQuadrant(bdvFront.getViewerPanel(),
-                        bdvRight.getViewerPanel(), bdvBottom.getViewerPanel(), bvv.getViewerPanel());
+                        bdvRight.getViewerPanel(), bdvBottom.getViewerPanel(), showBvv?bvv.getViewerPanel(): new JLabel("Source type incompatible with BVV"));
 
                 // Create a JSplitPane to split left and right sides
                 JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
                 splitPane.setDividerLocation(400); // Set initial divider location
-
-                /*new RayCastPositionerSliderAdder(bdvFront).run();
-                new RayCastPositionerSliderAdder(bdvRight).run();
-                new RayCastPositionerSliderAdder(bdvBottom).run();
-
-                BdvHandleHelper.addCenterCross(bdvFront);
-                //BdvHandleHelper.addCenterCross(bdvBottom);
-                //BdvHandleHelper.addCenterCross(bdvRight);*/
 
                 // Add the split pane to the frame
                 frame.add(splitPane, BorderLayout.CENTER);
@@ -119,26 +113,38 @@ public class DemoOrthoViewerCommand implements Command {
                         bdvRight), true);
                 starter.run();
 
-                new ViewerTransformSyncStarter(
-                        new ViewerAdapter[]{new ViewerAdapter(bdvFront), new ViewerAdapter(bvv)}, true
-                ).run();
+                if (showBvv) {
+                    new ViewerTransformSyncStarter(
+                            new ViewerAdapter[]{new ViewerAdapter(bdvFront), new ViewerAdapter(bvv)}, true
+                    ).run();
+                }
 
-                new ViewerStateSyncStarter(new ViewerAdapter(bdvFront), new ViewerAdapter(
-                        bdvBottom), new ViewerAdapter(bdvRight), new ViewerAdapter(bvv)).run();
+                if (showBvv) {
+                    new ViewerStateSyncStarter(new ViewerAdapter(bdvFront), new ViewerAdapter(
+                            bdvBottom), new ViewerAdapter(bdvRight), new ViewerAdapter(bvv)).run();
+                } else {
+                    new ViewerStateSyncStarter(new ViewerAdapter(bdvFront), new ViewerAdapter(
+                            bdvBottom), new ViewerAdapter(bdvRight)).run();
+                }
 
                 // I don't use BdvFunctions in order to keep the correct colors
                 ds.show(bdvFront, sources);
 
-
-                for (SourceAndConverter<?> source : sources) {
-                    new BrightnessAutoAdjuster<>( source, 0 ).run();
-                }
-
             });
+
+            // We apparently need to wait one round of UI refresh to get the view right
+            SwingUtilities.invokeLater(() -> {
+                new ViewerTransformAdjuster(bdvRight, sources).run();
+            });
+
+            // Async at the end -> it can require a lot of computation for the lazy computed game of life for instance
+            for (SourceAndConverter<?> source : sources) {
+                new BrightnessAutoAdjuster<>( source, 0 ).run();
+            }
 
         } catch (InterruptedException | ExecutionException e) {
             log.error(e);
-        } catch (IOException e) {
+        } catch (IOException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
     }
