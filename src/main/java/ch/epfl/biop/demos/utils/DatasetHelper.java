@@ -15,7 +15,6 @@ import net.imglib2.position.FunctionRandomAccessible;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.view.Views;
 import org.apache.commons.io.FilenameUtils;
-import org.embl.mobie.io.imagedata.N5ImageData;
 import org.scijava.Context;
 import org.scijava.command.CommandService;
 import org.scijava.module.ModuleService;
@@ -137,8 +136,11 @@ public class DatasetHelper {
 
                 return new SourceAndConverter[]{gol};
             case PLATY:
-                N5ImageData< ? > n5ImageData = new N5ImageData<>( "https://s3.embl.de/i2k-2020/platy-raw.ome.zarr" );
-                return new SourceAndConverter[]{n5ImageData.getSourcesAndConverters().get(0)};
+                try {
+                    return SafeDataset.getPlaty();
+                } catch (Exception e) {
+                    throw new RuntimeException("You need to install the MoBIE update site in order to use the Platy dataset");
+                }
         }
 
         throw new IllegalArgumentException("Unrecognized dataset "+datasetName);
