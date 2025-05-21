@@ -1,7 +1,7 @@
 package ch.epfl.biop.demos;
 import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
-import ch.epfl.biop.demos.utils.DatasetHelper;
+import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import org.scijava.Context;
 import org.scijava.command.Command;
 import org.scijava.command.CommandService;
@@ -27,7 +27,7 @@ public class DemoBdvSupplierCommand extends DynamicCommand {
     Context ctx;
 
     @Parameter(persist = false)
-    DatasetHelper.DemoDataset dataset_name;
+    DemoDatasetHelper.DemoDataset dataset_name;
 
     @Parameter(choices = {"Default", "BIOP", "Alpha", "Alpha inverted"})
     String choice;
@@ -48,7 +48,7 @@ public class DemoBdvSupplierCommand extends DynamicCommand {
     public void run() {
         try {
 
-            SourceAndConverter<?>[] sources = DatasetHelper.getData(dataset_name, ctx);
+            SourceAndConverter<?>[] sources = DemoDatasetHelper.getData(dataset_name, ctx);
 
             BdvHandle bdvh;
             switch (choice) {

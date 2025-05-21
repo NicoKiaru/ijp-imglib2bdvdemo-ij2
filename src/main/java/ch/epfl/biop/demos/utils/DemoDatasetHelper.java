@@ -13,6 +13,7 @@ import net.imglib2.FinalInterval;
 import net.imglib2.display.LinearRange;
 import net.imglib2.position.FunctionRandomAccessible;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
+import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
 import org.apache.commons.io.FilenameUtils;
 import org.scijava.Context;
@@ -22,13 +23,14 @@ import sc.fiji.bdvpg.scijava.command.source.LUTSourceCreatorCommand;
 import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
 import sc.fiji.bdvpg.sourceandconverter.SourceAndConverterHelper;
 import sc.fiji.bdvpg.sourceandconverter.importer.MandelbrotSourceGetter;
+import sc.fiji.bdvpg.sourceandconverter.importer.VoronoiSourceGetter;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 
-public class DatasetHelper {
+public class DemoDatasetHelper {
 
     public static SourceAndConverter<?>[] getData(DemoDataset datasetName, Context ctx) throws IOException, ExecutionException, InterruptedException, IllegalArgumentException {
         CommandService cs = ctx.getService(CommandService.class);
@@ -141,6 +143,22 @@ public class DatasetHelper {
                 } catch (Exception e) {
                     throw new RuntimeException("You need to install the MoBIE update site in order to use the Platy dataset");
                 }
+            case VORONOI_BIG:
+                SourceAndConverter<FloatType> voronoi_big = new VoronoiSourceGetter(new long[]{4096*128, 4096*128, 4096*128}, 10000000, false).get();
+                SourceAndConverter<?>[] reColoredVoronoi_big = (SourceAndConverter<?>[])
+                        ctx.getService(ModuleService.class).run(ctx.getService(CommandService.class).getCommand(LUTSourceCreatorCommand.class), true,
+                                "sacs", new SourceAndConverter[]{voronoi_big}
+                        ).get().getOutput("sacs_out");
+
+                return reColoredVoronoi_big;
+            case VORONOI_SMALL:
+                SourceAndConverter<FloatType> voronoi_small = new VoronoiSourceGetter(new long[]{128, 128, 128}, 10000, false).get();
+                SourceAndConverter<?>[] reColoredVoronoi_small = (SourceAndConverter<?>[])
+                        ctx.getService(ModuleService.class).run(ctx.getService(CommandService.class).getCommand(LUTSourceCreatorCommand.class), true,
+                                "sacs", new SourceAndConverter[]{voronoi_small}
+                        ).get().getOutput("sacs_out");
+
+                return reColoredVoronoi_small;
         }
 
         throw new IllegalArgumentException("Unrecognized dataset "+datasetName);
@@ -154,6 +172,8 @@ public class DatasetHelper {
         ALLEN_BRAIN_ATLAS,
         RANDOM_GAME_OF_LIFE,
         LATTICE_HELA_SKEWED,
+        VORONOI_SMALL,
+        VORONOI_BIG,
         PLATY,
     }
 

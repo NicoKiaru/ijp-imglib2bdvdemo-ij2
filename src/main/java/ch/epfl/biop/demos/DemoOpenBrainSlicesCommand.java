@@ -2,7 +2,7 @@ package ch.epfl.biop.demos;
 
 import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
-import ch.epfl.biop.demos.utils.DatasetHelper;
+import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
@@ -40,7 +40,7 @@ public class DemoOpenBrainSlicesCommand implements Command {
     public void run() {
         try {
 
-            SourceAndConverter<?>[] brainSlicesSources = DatasetHelper.getData(DatasetHelper.DemoDataset.BRAIN_SLICES, ctx);
+            SourceAndConverter<?>[] brainSlicesSources = DemoDatasetHelper.getData(DemoDatasetHelper.DemoDataset.BRAIN_SLICES, ctx);
 
             BdvHandle bdvh = ds.getNewBdv();
 

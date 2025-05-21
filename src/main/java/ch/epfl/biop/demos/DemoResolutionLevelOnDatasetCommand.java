@@ -3,7 +3,7 @@ package ch.epfl.biop.demos;
 import bdv.util.BdvHandle;
 import bdv.viewer.Source;
 import bdv.viewer.SourceAndConverter;
-import ch.epfl.biop.demos.utils.DatasetHelper;
+import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import ch.epfl.biop.demos.utils.ReIndexedPyramidSource;
 import org.scijava.Context;
 import org.scijava.command.Command;
@@ -40,7 +40,7 @@ import static ch.epfl.biop.demos.utils.BdvHelper.createTri;
 public class DemoResolutionLevelOnDatasetCommand implements Command {
 
     @Parameter(persist = false)
-    DatasetHelper.DemoDataset dataset_name;
+    DemoDatasetHelper.DemoDataset dataset_name;
 
     @Parameter
     Context ctx;
@@ -62,7 +62,7 @@ public class DemoResolutionLevelOnDatasetCommand implements Command {
     @Override
     public void run() {
         try {
-            SourceAndConverter<?>[] sources = DatasetHelper.getData(dataset_name, ctx);
+            SourceAndConverter<?>[] sources = DemoDatasetHelper.getData(dataset_name, ctx);
 
             if (sources[0].getSpimSource().getNumMipmapLevels() == 1) {
                 System.out.println("The dataset is not multiresolution.");

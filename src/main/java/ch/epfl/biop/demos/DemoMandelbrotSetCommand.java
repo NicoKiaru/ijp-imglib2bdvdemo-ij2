@@ -1,7 +1,7 @@
 package ch.epfl.biop.demos;
 
 import bdv.util.BdvHandle;
-import ch.epfl.biop.demos.utils.DatasetHelper;
+import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import org.scijava.Context;
 import org.scijava.command.Command;
 import org.scijava.command.CommandService;
@@ -37,7 +37,7 @@ public class DemoMandelbrotSetCommand implements Command {
     public void run() {
         try {
             BdvHandle bdvh = ds.getNewBdv();
-            ds.show(bdvh, DatasetHelper.getData(DatasetHelper.DemoDataset.MANDELBROT_SET, ctx));
+            ds.show(bdvh, DemoDatasetHelper.getData(DemoDatasetHelper.DemoDataset.MANDELBROT_SET, ctx));
         } catch (InterruptedException | ExecutionException e) {
             log.error(e);
         } catch (IOException e) {

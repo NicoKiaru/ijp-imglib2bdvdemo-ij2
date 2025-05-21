@@ -4,7 +4,7 @@ import bdv.util.BdvHandle;
 import bdv.util.Elliptical3DTransform;
 import bdv.viewer.SourceAndConverter;
 import org.scijava.Context;
-import ch.epfl.biop.demos.utils.DatasetHelper;
+import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import ch.epfl.biop.scijava.command.source.register.SourcesRealTransformCommand;
 import ch.epfl.biop.scijava.command.transform.DisplayEllipseFromTransformCommand;
 
@@ -42,7 +42,7 @@ public class DemoEllipticalTransformEggChamberCommand implements Command {
     public void run() {
         try {
 
-            SourceAndConverter<?>[] eggChamberSources = DatasetHelper.getData(DatasetHelper.DemoDataset.EGG_CHAMBER, ctx);
+            SourceAndConverter<?>[] eggChamberSources = DemoDatasetHelper.getData(DemoDatasetHelper.DemoDataset.EGG_CHAMBER, ctx);
 
             BdvHandle bdvh = ds.getNewBdv();
 

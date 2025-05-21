@@ -5,7 +5,7 @@ import bdv.util.BdvOptions;
 import bdv.viewer.SourceAndConverter;
 import bvv.vistools.BvvHandle;
 import bvv.vistools.BvvOptions;
-import ch.epfl.biop.demos.utils.DatasetHelper;
+import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import org.scijava.Context;
 import org.scijava.command.Command;
 import org.scijava.log.LogService;
@@ -40,7 +40,7 @@ import static ch.epfl.biop.demos.utils.BdvHelper.createQuadrant;
 public class DemoOrthoViewer2Command implements Command {
 
     @Parameter(persist = false)
-    DatasetHelper.DemoDataset dataset_name;
+    DemoDatasetHelper.DemoDataset dataset_name;
 
     @Parameter
     Context ctx;
@@ -61,9 +61,9 @@ public class DemoOrthoViewer2Command implements Command {
     @Override
     public void run() {
         try {
-            SourceAndConverter<?>[] sources = DatasetHelper.getData(dataset_name, ctx);
+            SourceAndConverter<?>[] sources = DemoDatasetHelper.getData(dataset_name, ctx);
 
-            boolean showBvv = DatasetHelper.isBvvCompatible(sources);
+            boolean showBvv = DemoDatasetHelper.isBvvCompatible(sources);
 
             SwingUtilities.invokeAndWait(() -> {
                 // Create the main frame

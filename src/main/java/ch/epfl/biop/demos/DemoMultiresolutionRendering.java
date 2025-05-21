@@ -2,7 +2,7 @@ package ch.epfl.biop.demos;
 
 import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
-import ch.epfl.biop.demos.utils.DatasetHelper;
+import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import org.scijava.Context;
 import org.scijava.command.Command;
 import org.scijava.command.CommandService;
@@ -38,7 +38,7 @@ import static ch.epfl.biop.demos.utils.BdvHelper.createQuadrant;
 public class DemoMultiresolutionRendering implements Command {
 
     @Parameter(persist = false)
-    DatasetHelper.DemoDataset dataset_name;
+    DemoDatasetHelper.DemoDataset dataset_name;
 
     @Parameter
     Context ctx;
@@ -60,7 +60,7 @@ public class DemoMultiresolutionRendering implements Command {
     @Override
     public void run() {
         try {
-            SourceAndConverter<?>[] sources = DatasetHelper.getData(dataset_name, ctx);
+            SourceAndConverter<?>[] sources = DemoDatasetHelper.getData(dataset_name, ctx);
 
             JFrame frame = new JFrame("Demo Multiresolution Rendering");
 

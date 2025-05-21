@@ -131,7 +131,7 @@
 		<bigdataviewer-playground.version>0.11.1</bigdataviewer-playground.version>
 		<ImageToAtlasRegister.version>0.10.2</ImageToAtlasRegister.version>
 		<bigdataviewer-image-loaders.version>0.9.0</bigdataviewer-image-loaders.version>
-
+		<clij2-fft_.version>2.2.0.18-SNAPSHOT</clij2-fft_.version>
 
 		<!--bigwarp.version>9.1.2</bigwarp.version>
 		<bigwarp_fiji.version>9.1.2</bigwarp_fiji.version -->
@@ -144,6 +144,10 @@
 		<repository>
 			<id>scijava.public</id>
 			<url>https://maven.scijava.org/content/groups/public</url>
+		</repository>
+		<repository>
+			<id>clij</id>
+			<url>https://dl.bintray.com/haesleinhuepf/clij</url>
 		</repository>
 	</repositories>
 
@@ -196,6 +200,13 @@
 			<groupId>ch.epfl.biop</groupId>
 			<artifactId>bigdataviewer-image-loaders</artifactId>
 			<version>${bigdataviewer-image-loaders.version}</version>
+		</dependency>
+
+
+		<dependency>
+			<groupId>net.haesleinhuepf</groupId>
+			<artifactId>clij2-fft_</artifactId>
+			<version>${clij2-fft_.version}</version>
 		</dependency>
 
 		<dependency>
