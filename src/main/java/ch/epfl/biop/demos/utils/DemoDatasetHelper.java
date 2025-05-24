@@ -159,6 +159,34 @@ public class DemoDatasetHelper {
                         ).get().getOutput("sacs_out");
 
                 return reColoredVoronoi_small;
+            case EUROPE_PYRAMIDIZE:
+                File europePyramidize = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/12738352/files/easterness_edtm_m_240m_s_20000101_20221231_eu_epsg.3035_v20240528.tif");
+                // Retrieve the dataset, that's a SpimData object, it holds metadata and the 'recipe' to load pixel data
+                AbstractSpimData<?> datasetEuropePyramidize = (AbstractSpimData<?>) cs.run(CreateBdvDatasetBioFormatsCommand.class,
+                        true,
+                        "datasetname", "Egg_Chamber",
+                        "unit", "MICROMETER",
+                        "files", new File[]{europePyramidize},
+                        "split_rgb_channels", false,
+                        "plane_origin_convention", "CENTER",
+                        "auto_pyramidize", true,
+                        "disable_memo", false
+                ).get().getOutput("spimdata");
+                return ss.getSourceAndConverterFromSpimdata(datasetEuropePyramidize).toArray(new SourceAndConverter<?>[0]);
+            case EUROPE:
+                File europe = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/12738352/files/easterness_edtm_m_240m_s_20000101_20221231_eu_epsg.3035_v20240528.tif");
+                // Retrieve the dataset, that's a SpimData object, it holds metadata and the 'recipe' to load pixel data
+                AbstractSpimData<?> datasetEurope = (AbstractSpimData<?>) cs.run(CreateBdvDatasetBioFormatsCommand.class,
+                        true,
+                        "datasetname", "Egg_Chamber",
+                        "unit", "MICROMETER",
+                        "files", new File[]{europe},
+                        "split_rgb_channels", false,
+                        "plane_origin_convention", "CENTER",
+                        "auto_pyramidize", false,
+                        "disable_memo", false
+                ).get().getOutput("spimdata");
+                return ss.getSourceAndConverterFromSpimdata(datasetEurope).toArray(new SourceAndConverter<?>[0]);
         }
 
         throw new IllegalArgumentException("Unrecognized dataset "+datasetName);
@@ -175,6 +203,8 @@ public class DemoDatasetHelper {
         VORONOI_SMALL,
         VORONOI_BIG,
         PLATY,
+        EUROPE_PYRAMIDIZE,
+        EUROPE
     }
 
     public static boolean isBvvCompatible(SourceAndConverter<?>[] sources) {
