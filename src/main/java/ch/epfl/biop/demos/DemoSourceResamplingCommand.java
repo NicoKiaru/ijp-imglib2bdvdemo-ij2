@@ -1,5 +1,150 @@
 package ch.epfl.biop.demos;
 
-public class DemoSourceResamplingCommand {
-    // TODO
+import bdv.util.BdvHandle;
+import bdv.viewer.SourceAndConverter;
+import ch.epfl.biop.demos.utils.BdvHelper;
+import ch.epfl.biop.demos.utils.DemoDatasetHelper;
+import org.scijava.Context;
+import org.scijava.command.Command;
+import org.scijava.plugin.Parameter;
+import org.scijava.plugin.Plugin;
+import sc.fiji.bdvpg.bdv.BdvHandleHelper;
+import sc.fiji.bdvpg.bdv.navigate.ViewerTransformAdjuster;
+import sc.fiji.bdvpg.bdv.supplier.biop.BiopBdvSupplier;
+import sc.fiji.bdvpg.bdv.supplier.biop.BiopSerializableBdvOptions;
+import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
+import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
+import sc.fiji.bdvpg.scijava.services.ui.SourceAndConverterServiceUI;
+import sc.fiji.bdvpg.sourceandconverter.transform.SourceResampler;
+import sc.fiji.bdvpg.viewers.ViewerAdapter;
+import sc.fiji.bdvpg.viewers.ViewerTransformSyncStarter;
+
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JSplitPane;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import java.awt.BorderLayout;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.ExecutionException;
+
+import static ch.epfl.biop.demos.utils.BdvHelper.createTri;
+
+@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Resample a source according to another one")
+public class DemoSourceResamplingCommand implements Command {
+
+    @Parameter
+    Context ctx;
+
+    @Parameter
+    SourceAndConverterService source_service;
+
+
+    @Parameter
+    SourceAndConverterBdvDisplayService display_service;
+
+    @Parameter
+    boolean swap_sources;
+
+
+    BdvHandle bdvTopLevel, bdvBottom, normalBdv;
+
+
+    @Override
+    public void run() {
+        // BRAIN_SLICES
+        // Let's resample the BF overview image similarly as one
+
+        try {
+            //SourceAndConverter<?>[] sources =
+                    DemoDatasetHelper.getData(DemoDatasetHelper.DemoDataset.BRAIN_SLICES, ctx);
+
+            SourceAndConverterServiceUI.Node datasetNode = source_service.getUI().getRoot().child("Slide_03");
+
+            // Let's get the overview
+
+            SourceAndConverter bfToResample = datasetNode.child("ImageName").child("overview").sources()[0];
+            SourceAndConverter<?> model = datasetNode.child("ImageName").child("10x_01").sources()[0];
+
+            if (swap_sources) {
+                SourceAndConverter temp = model;
+                model = bfToResample;
+                bfToResample = temp;
+            }
+
+            SourceAndConverter resampled = new SourceResampler<>(bfToResample,
+                model, "Overview_Resampled_Like_Fluo", true,
+                true, true, 0).get();
+
+            BiopSerializableBdvOptions opts = new BiopSerializableBdvOptions();
+            opts.is2D = true;
+
+            bdvTopLevel = new BiopBdvSupplier(opts).get();
+            display_service.registerBdvHandle(bdvTopLevel);
+            BdvHandleHelper.getJFrame(bdvTopLevel).setVisible(false);
+
+            bdvBottom = new BiopBdvSupplier(opts).get();
+            display_service.registerBdvHandle(bdvBottom);
+            BdvHandleHelper.getJFrame(bdvBottom).setVisible(false);
+
+            normalBdv = new BiopBdvSupplier(opts).get();
+            display_service.registerBdvHandle(normalBdv);
+            BdvHandleHelper.getJFrame(normalBdv).setVisible(false);
+
+            JFrame frame = new JFrame("Demo Pyramidal Image");
+
+            SwingUtilities.invokeAndWait(() -> {
+                // Create the main frame
+
+                frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                frame.setSize(800, 600);
+                frame.setLayout(new BorderLayout());
+
+                // Create the right panel with a JLabel
+                JLabel rightLabel = new JLabel("Right Side");
+                rightLabel.setHorizontalAlignment(SwingConstants.CENTER);
+                JPanel rightPanel = new JPanel(new BorderLayout());
+                rightPanel.add(bdvTopLevel.getCardPanel().getComponent(), BorderLayout.CENTER);
+
+                // Create the left panel, which will be divided into 4 parts using JSplitPane
+                JPanel leftPanel = createTri(bdvTopLevel.getViewerPanel(),
+                        bdvBottom.getViewerPanel(), normalBdv.getViewerPanel());
+
+                // Create a JSplitPane to split left and right sides
+                JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
+                splitPane.setDividerLocation(400); // Set initial divider location
+
+                // Add the split pane to the frame
+                frame.add(splitPane, BorderLayout.CENTER);
+
+                // Make the frame visible
+                frame.setVisible(true);
+            });
+
+
+            ViewerTransformSyncStarter starter = new ViewerTransformSyncStarter(
+                    new ViewerAdapter[]{new ViewerAdapter(bdvTopLevel), new ViewerAdapter(bdvBottom), new ViewerAdapter(normalBdv)}, true);
+            starter.run();
+
+            display_service.show(normalBdv, resampled);
+            display_service.show(bdvTopLevel, bfToResample);
+            display_service.show(bdvBottom, model);
+
+            new ViewerTransformAdjuster(bdvTopLevel, bfToResample).run();
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+
 }

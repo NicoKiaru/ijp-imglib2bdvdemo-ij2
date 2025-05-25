@@ -57,7 +57,7 @@ public class DemoDatasetHelper {
                 // Retrieve the dataset, that's a SpimData object, it holds metadata and the 'recipe' to load pixel data
                 AbstractSpimData<?> datasetBS = (AbstractSpimData<?>) cs.run(CreateBdvDatasetBioFormatsCommand.class,
                         true,
-                        "datasetname", "Egg_Chamber",
+                        "datasetname", "Slide_03",
                         "unit", "MICROMETER",
                         "files", new File[]{wsiBrainSlices},
                         "split_rgb_channels", false,
