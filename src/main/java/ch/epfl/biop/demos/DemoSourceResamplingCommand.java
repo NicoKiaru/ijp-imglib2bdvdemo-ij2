@@ -4,6 +4,7 @@ import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import org.scijava.Context;
+import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
@@ -33,6 +34,40 @@ import static ch.epfl.biop.demos.utils.BdvHelper.createTri;
 
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Resample a source according to another one")
 public class DemoSourceResamplingCommand implements Command {
+
+    @Parameter(visibility = ItemVisibility.MESSAGE)
+    String description = "<html> <h1>Resampling a Source According to Another</h1>\n" +
+            "    <p>This demo illustrates how to resample one image source to match the geometry of another image source using ImgLib2 and BigDataViewer (BDV). The process involves loading data, selecting sources for resampling, and displaying the results in a synchronized viewer setup.</p>\n" +
+            "\n" +
+            "    <h2>Key Steps in the Demo:</h2>\n" +
+            "\n" +
+            "    <h3>1. Loading and Selecting Data</h3>\n" +
+            "    <p>The demo loads a dataset of brain slices. It then selects specific sources from this dataset: one to be resampled and another to act as a model for the resampling process.</p>\n" +
+            "\n" +
+            "    <h3>2. Resampling Process</h3>\n" +
+            "    <p>The demo uses the <code>SourceResampler</code> class to adjust the first source's geometry to match that of the model source. This process ensures that the transformed source aligns with the target model both spatially and in terms of scale.</p>\n" +
+            "\n" +
+            "    <h3>3. Setting Up Viewers</h3>\n" +
+            "    <p>Three BDV viewers are set up to visualize:</p>\n" +
+            "    <ul>\n" +
+            "        <li><strong>Original Source</strong>: The source image before resampling.</li>\n" +
+            "        <li><strong>Model Source</strong>: The source image used as a model for resampling.</li>\n" +
+            "        <li><strong>Resampled Source</strong>: The result of the resampling process, adjusted to the model source's geometry.</li>\n" +
+            "    </ul>\n" +
+            "\n" +
+            "    <h3>4. Swing GUI Setup</h3>\n" +
+            "    <p>A Swing-based GUI is created to display the three viewers in a divided layout. This allows users to visually compare the original, model, and resampled image sources side by side.</p>\n" +
+            "\n" +
+            "    <h3>5. Synchronization and Display</h3>\n" +
+            "    <p>The viewers are synchronized so that interactions with one viewer (such as zooming or panning) are reflected in the others. This synchronization helps maintain a consistent view across panels, facilitating direct comparison between the original, model, and resampled sources.</p>\n" +
+            "\n" +
+            "    <p>This demo showcases the flexibility of BDV and ImgLib2 in handling and visualizing multi-resolution image data, as well as their capabilities in image transformation and alignment tasks.</p>\n" +
+            "    <br> Note that you can always explore the source code of the demo by clicking the <code>source</code> button.</br>" +
+            "</html>";
+
+    @Parameter // Its role is to make sure that the description is displayed
+    boolean ok;
+
 
     @Parameter
     Context ctx;

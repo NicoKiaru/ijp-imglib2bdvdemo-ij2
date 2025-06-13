@@ -3,6 +3,7 @@ package ch.epfl.biop.demos;
 import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.bdv.img.bioformats.command.CreateBdvDatasetBioFormatsCommand;
 import mpicbg.spim.data.generic.AbstractSpimData;
+import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.plugin.Parameter;
@@ -14,6 +15,38 @@ import java.io.File;
 
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - SpimData Investigation")
 public class SpimDataInvestigationCommand implements Command {
+
+    @Parameter(visibility = ItemVisibility.MESSAGE)
+    String description = "<html> <h1>Investigating SpimData</h1>\n" +
+            "    <p>This demo illustrates how to investigate a SpimData dataset using ImgLib2 and BigDataViewer (BDV). SpimData is a data format used in the BigDataViewer for handling large microscopy images and their metadata.</p>\n" +
+            "\n" +
+            "    <h2>Key Steps in the Demo:</h2>\n" +
+            "\n" +
+            "    <h3>1. Loading the Dataset</h3>\n" +
+            "    <p>The demo begins by loading a SpimData dataset from specified VSI files. These files represent brain slices and are loaded into a <code>SpimData</code> object, which holds metadata and the recipe to load pixel data.</p>\n" +
+            "\n" +
+            "    <h3>2. Accessing the Dataset</h3>\n" +
+            "    <p>The loaded dataset is accessed through a node structure provided by the <code>SourceAndConverterServiceUI</code>. This allows for easy navigation and investigation of different components of the dataset.</p>\n" +
+            "\n" +
+            "    <h3>3. Exploring Dataset Properties</h3>\n" +
+            "    <p>The demo explores various properties of the dataset, such as the number of sources, channels, and image names. These properties are accessed and printed to provide an overview of the dataset's structure.</p>\n" +
+            "\n" +
+            "    <h3>4. Printing Channel Names</h3>\n" +
+            "    <p>The demo prints out the names of all channels in the dataset, which helps in identifying and analyzing different components of the dataset.</p>\n" +
+            "\n" +
+            "    <h3>5. Investigating Specific Channels</h3>\n" +
+            "    <p>The number of sources present in a specific channel is determined and printed. This aids in understanding the distribution of data across different channels.</p>\n" +
+            "\n" +
+            "    <h3>6. Error Handling</h3>\n" +
+            "    <p>The demo includes error handling to manage potential issues during the loading and investigation of the dataset.</p>\n" +
+            "\n" +
+            "    <p>This demo showcases the capabilities of ImgLib2 and BDV in handling and investigating large microscopy datasets, providing researchers with tools to explore and analyze complex image data.</p>\n" +
+            "    <br> Note that you can always explore the source code of the demo by clicking the <code>source</code> button.</br>" +
+            "</html>";
+
+    @Parameter // Its role is to make sure that the description is displayed
+    boolean ok;
+
 
     @Parameter
     CommandService cs;

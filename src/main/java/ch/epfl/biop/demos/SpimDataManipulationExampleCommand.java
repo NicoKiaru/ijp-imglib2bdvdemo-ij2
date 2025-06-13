@@ -18,6 +18,7 @@ import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
+import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.plugin.Parameter;
@@ -31,6 +32,35 @@ import java.util.Map;
 
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - SpimData Manipulation")
 public class SpimDataManipulationExampleCommand implements Command {
+
+    @Parameter(visibility = ItemVisibility.MESSAGE)
+    String description = "<html> <h1>SpimData Manipulation Example</h1>\n" +
+            "    <p>This demo illustrates how to manipulate <code>SpimData</code> objects using BigDataViewer (BDV) and related libraries. <code>SpimData</code> objects encapsulate image data and metadata, allowing for comprehensive data management and visualization.</p>\n" +
+            "\n" +
+            "    <h2>Key Steps in the Demo:</h2>\n" +
+            "\n" +
+            "    <h3>1. Loading the Dataset</h3>\n" +
+            "    <p>A sample dataset is loaded from a specified file path. The dataset is encapsulated within an <code>AbstractSpimData</code> object, which contains both the pixel data and metadata.</p>\n" +
+            "\n" +
+            "    <h3>2. Exploring Dataset Metadata</h3>\n" +
+            "    <p>The demo explores the structure of the dataset by accessing information about views, setups, and channels. This involves navigating through a hierarchy that includes view IDs, descriptions, and metadata about individual setups.</p>\n" +
+            "\n" +
+            "    <h3>3. Accessing Spatial Information</h3>\n" +
+            "    <p>The spatial positioning of the dataset is accessed using the <code>ViewRegistrations</code> object. This object provides affine transformations that describe how each view is positioned in 3D space.</p>\n" +
+            "\n" +
+            "    <h3>4. Handling SourceAndConverter Objects</h3>\n" +
+            "    <p><code>SourceAndConverter</code> objects are utilized to access and manipulate pixel data. These objects are essentially immutable in BDV, but this demo demonstrates how to extract and inspect pixel data using their methods.</p>\n" +
+            "\n" +
+            "    <h3>5. Traversing the Data Tree</h3>\n" +
+            "    <p>The demo showcases how to navigate the tree structure of the <code>SourceAndConverterServiceUI</code>, which organizes data hierarchically and allows for easy traversal and access to different parts of the dataset.</p>\n" +
+            "\n" +
+            "    <p>This example highlights the capabilities of BDV in manipulating and visualizing complex imaging datasets, providing insights into hierarchical data structures and spatial transformations.</p>\n" +
+            "    <br> Note that you can always explore the source code of the demo by clicking the <code>source</code> button.</br>" +
+            "</html>";
+
+    @Parameter // Its role is to make sure that the description is displayed
+    boolean ok;
+
 
     @Parameter
     CommandService cs;
