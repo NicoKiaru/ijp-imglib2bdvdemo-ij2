@@ -16,6 +16,7 @@ import net.imglib2.position.FunctionRealRandomAccessible;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.real.DoubleType;
 import org.scijava.Context;
+import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.convert.ConvertService;
 import org.scijava.log.LogService;
@@ -34,6 +35,39 @@ import java.util.List;
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Pendulum")
 public class DemoPendulumCommand implements Command {
+
+    @Parameter(visibility = ItemVisibility.MESSAGE)
+    String description = "<html> <h1>Demo Pendulum</h1>\n" +
+            "    <p>This demo illustrates the dynamics of a pendulum using different numerical integration schemes, visualized with ImgLib2 and BigDataViewer (BDV). The simulation showcases how different integration methods can affect the pendulum's motion due to numerical errors.</p>\n" +
+            "\n" +
+            "    <h2>Key Steps in the Demo:</h2>\n" +
+            "\n" +
+            "    <h3>1. Energy Landscape</h3>\n" +
+            "    <p>A function is defined to compute the energy of the pendulum system at any point in its phase space, which is then visualized in BDV.</p>\n" +
+            "\n" +
+            "    <h3>2. Visualization Setup</h3>\n" +
+            "    <p>A BDV handle is created and configured to display the energy landscape of the pendulum, allowing visualization of its dynamic behavior.</p>\n" +
+            "\n" +
+            "    <h3>3. Pendulum Simulation</h3>\n" +
+            "    <p>Three pendulum simulations are set up using different numerical integration methods:</p>\n" +
+            "    <ul>\n" +
+            "        <li><strong>Explicit Euler</strong>: This method is straightforward but can lead to energy gain and instability in the simulation.</li>\n" +
+            "        <li><strong>Implicit Euler</strong>: Known for its stability, this method tends to lose energy over time.</li>\n" +
+            "        <li><strong>Runge-Kutta 4th Order</strong>: A more accurate method that balances stability and computational complexity to closely approximate the true dynamics.</li>\n" +
+            "    </ul>\n" +
+            "\n" +
+            "    <h3>4. Display and Animation</h3>\n" +
+            "    <p>The trajectories of the pendulum, calculated using each integration method, are animated and visualized over the energy landscape. This allows for a direct comparison of the different numerical methods' impacts on the pendulum's motion.</p>\n" +
+            "\n" +
+            "    <h3>5. GUI Setup and Interaction</h3>\n" +
+            "    <p>The graphical user interface is configured to display the pendulum's motion and energy levels dynamically. An animation loop continuously updates the pendulum's position and repaints the viewer, illustrating the pendulum's trajectory and energy changes over time.</p>\n" +
+            "\n" +
+            "    <p>This demo provides insights into how different numerical methods can influence the behavior of dynamic systems like a pendulum, highlighting the trade-offs between accuracy and computational efficiency in simulations.</p>\n" +
+            "    <br> Note that you can always explore the source code of the demo by clicking the <code>source</code> button.</br>" +
+            "</html>";
+
+    @Parameter // Its role is to make sure that the description is displayed
+    boolean ok;
 
     @Parameter
     ConvertService cs;

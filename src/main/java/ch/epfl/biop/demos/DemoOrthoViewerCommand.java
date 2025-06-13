@@ -6,6 +6,7 @@ import bvv.vistools.BvvHandle;
 import bvv.vistools.BvvOptions;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import org.scijava.Context;
+import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
@@ -38,6 +39,44 @@ import static ch.epfl.biop.demos.utils.BdvHelper.createQuadrant;
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - OrthoViewer")
 public class DemoOrthoViewerCommand implements Command {
+
+    @Parameter(visibility = ItemVisibility.MESSAGE)
+    String description = "<html> <h1>Demo Ortho Viewer</h1>\n" +
+            "    <p>This demo illustrates the use of an orthoviewer setup using ImgLib2 and BigDataViewer (BDV). It creates multiple viewers to display different orthogonal views (front, right, bottom) of a dataset, offering comprehensive multi-angle visualization.</p>\n" +
+            "\n" +
+            "    <h2>Key Steps in the Demo:</h2>\n" +
+            "\n" +
+            "    <h3>1. Loading the Dataset</h3>\n" +
+            "    <p>The demo begins by loading a dataset specified by the user. This dataset is displayed in multiple viewers from different perspectives.</p>\n" +
+            "\n" +
+            "    <h3>2. Setting Up Multiple Viewers</h3>\n" +
+            "    <p>Three BDV viewers are created to show orthogonal views of the dataset:</p>\n" +
+            "    <ul>\n" +
+            "        <li><strong>Front View</strong>: One viewer is set to display the front view of the dataset.</li>\n" +
+            "        <li><strong>Right View</strong>: Another viewer shows the right-side view.</li>\n" +
+            "        <li><strong>Bottom View</strong>: The third viewer provides the bottom view.</li>\n" +
+            "    </ul>\n" +
+            "    <p>Additionally, a 3D viewer (Bvv) is also set up if the dataset is compatible with it, allowing for a more interactive exploration.</p>\n" +
+            "\n" +
+            "    <h3>3. Swing GUI Setup</h3>\n" +
+            "    <p>A Swing-based GUI is created to display the different viewers in a divided layout. This setup allows for simultaneous viewing of the orthogonal perspectives and the 3D view (if available).</p>\n" +
+            "\n" +
+            "    <h3>4. Synchronization of Viewers</h3>\n" +
+            "    <p>The views and states of the different BDV viewers are synchronized. This ensures that navigation and adjustments in one viewer are reflected in the others, providing a cohesive and synchronized viewing experience across all perspectives.</p>\n" +
+            "\n" +
+            "    <h3>5. Displaying the Data</h3>\n" +
+            "    <p>The loaded dataset is displayed in each viewer. Brightness adjustments are made to ensure optimal visualization across the different viewers.</p>\n" +
+            "\n" +
+            "    <h3>6. Error Handling</h3>\n" +
+            "    <p>The demo includes error handling to manage potential issues during dataset loading, viewer setup, and display.</p>\n" +
+            "\n" +
+            "    <p>This demo showcases the capabilities of BDV and ImgLib2 in visualizing datasets from multiple orthogonal perspectives and a 3D view, providing comprehensive insights into the spatial structure of the dataset.</p>\n" +
+            "    <br> Note that you can always explore the source code of the demo by clicking the <code>source</code> button.</br>" +
+            "</html>";
+
+    @Parameter // Its role is to make sure that the description is displayed
+    boolean ok;
+
 
     @Parameter(persist = false)
     DemoDatasetHelper.DemoDataset dataset_name;

@@ -4,6 +4,7 @@ import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import org.scijava.Context;
+import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
@@ -36,6 +37,43 @@ import static ch.epfl.biop.demos.utils.BdvHelper.createQuadrant;
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Demo Multiresolution Rendering")
 public class DemoMultiresolutionRendering implements Command {
+
+    @Parameter(visibility = ItemVisibility.MESSAGE)
+    String description = "<html> <h1>Demo Multiresolution Rendering</h1>\n" +
+            "    <p>This demo illustrates multiresolution rendering using ImgLib2 and BigDataViewer (BDV). It sets up multiple viewers to display the same dataset at different resolution scales, demonstrating the trade-offs between rendering speed and detail.</p>\n" +
+            "\n" +
+            "    <h2>Key Steps in the Demo:</h2>\n" +
+            "\n" +
+            "    <h3>1. Loading the Dataset</h3>\n" +
+            "    <p>The demo begins by loading a dataset specified by the user. This dataset is used across multiple viewers to demonstrate multiresolution rendering.</p>\n" +
+            "\n" +
+            "    <h3>2. Setting Up Multiple Viewers</h3>\n" +
+            "    <p>Three BDV viewers are created with different resolution scales:</p>\n" +
+            "    <ul>\n" +
+            "        <li><strong>High Resolution (1x):</strong> Displays the dataset at its highest resolution. This provides the most detail but can be slower to render.</li>\n" +
+            "        <li><strong>Medium Resolution (1/4x):</strong> Displays the dataset at a quarter of the highest resolution. This is faster to render but lacks finer details.</li>\n" +
+            "        <li><strong>Low Resolution (1/16x):</strong> Displays the dataset at a sixteenth of the highest resolution. This is super fast to render and lacks details.</li>\n" +
+            "        <li><strong>Multi-resolution (1x, 1/4x, 1/16x):</strong> The default BDV behavior that progressively renders the dataset at multiple resolutions. Low resolutions are rendered quickly for immediate feedback, while higher resolutions are rendered as they become available, providing both responsiveness and detail.</li>\n" +
+            "    </ul>\n" +
+            "\n" +
+            "    <h3>3. Swing GUI Setup</h3>\n" +
+            "    <p>A Swing-based GUI is created to display the different viewers side by side. This layout allows for a direct comparison of the rendering strategies.</p>\n" +
+            "\n" +
+            "    <h3>4. Synchronization of Viewers</h3>\n" +
+            "    <p>The views and states of the different BDV viewers are synchronized. This ensures that navigation and adjustments in one viewer are reflected in the others, providing a cohesive experience.</p>\n" +
+            "\n" +
+            "    <h3>5. Displaying the Data</h3>\n" +
+            "    <p>The loaded dataset is displayed in each viewer. Brightness adjustments are made to ensure optimal visualization across the different resolution scales.</p>\n" +
+            "\n" +
+            "    <h3>6. Error Handling</h3>\n" +
+            "    <p>The demo includes error handling to manage potential issues during dataset loading, viewer setup, and display.</p>\n" +
+            "\n" +
+            "    <p>This demo showcases the capabilities of BDV and ImgLib2 in visualizing datasets at multiple resolutions, offering insights into how different resolutions can enhance data visualization and analysis by balancing rendering speed and detail.</p>\n" +
+            "    <br> Note that you can always explore the source code of the demo by clicking the <code>source</code> button.</br>" +
+            "</html>";
+
+    @Parameter // Its role is to make sure that the description is displayed
+    boolean ok;
 
     @Parameter(persist = false)
     DemoDatasetHelper.DemoDataset dataset_name;
