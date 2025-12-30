@@ -104,7 +104,7 @@ public class DemoBigABBALogoCommand implements Command {
                     "disable_memo", false
             ).get().getOutput("spimdata");
 
-            /*SourceAndConverter<?>[] brainSlicesSources = ss.getSourceAndConverterFromSpimdata(dataset)
+            SourceAndConverter<?>[] brainSlicesSources = ss.getSourceAndConverterFromSpimdata(dataset)
                     .toArray(new SourceAndConverter<?>[0]);
 
             List<SourceAndConverter<?>> sources = Arrays.asList(brainSlicesSources).stream()
@@ -172,7 +172,7 @@ public class DemoBigABBALogoCommand implements Command {
             //bdvh = new AlphaBdvSupplier(optsAlpha).get();
             ds.show(bdvh, allSources.toArray(new SourceAndConverter[0]));
             new ViewerTransformAdjuster(bdvh, allSources.toArray(new SourceAndConverter[0])).run();
-*/
+
         } catch (InterruptedException | ExecutionException | IOException e) {
             System.err.println(e.getMessage());
             log.error(e);
