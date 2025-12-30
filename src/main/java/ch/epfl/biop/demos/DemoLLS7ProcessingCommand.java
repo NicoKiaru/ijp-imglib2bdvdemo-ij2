@@ -8,6 +8,7 @@ import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.bdv.img.bioformats.command.CreateBdvDatasetBioFormatsCommand;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import ch.epfl.biop.sourceandconverter.SourceVoxelProcessor;
+import ch.epfl.biop.sourceandconverter.deconvolve.Deconvolver;
 import mpicbg.spim.data.generic.AbstractSpimData;
 import net.haesleinhuepf.clijx.imglib2cache.Clij2RichardsonLucyImglib2Cache;
 import net.haesleinhuepf.clijx.parallel.CLIJxPool;
@@ -28,6 +29,7 @@ import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
+import sc.fiji.bdvpg.bdv.navigate.ViewerTransformAdjuster;
 import sc.fiji.bdvpg.cache.GlobalLoaderCache;
 import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
 import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
@@ -90,16 +92,16 @@ public class DemoLLS7ProcessingCommand implements Command {
                                 .nonCirculant(false)
                                 .numberOfIterations(40)
                                 .psf((RandomAccessibleInterval<? extends RealType<?>>) psf.getSpimSource().getSource(0,0))
-                                .overlap(64)
+                                .overlap(12)
                                 .useGPUPool(CLIJxPool.getInstance()) // in fact this is the default behaviour, but one can specify a different pool if necessary here
                                 .regularizationFactor(0.0001f);
 
                 for (int i = 0;i< lls7Channels.length; i++) {
 
-                    llsDeconvolved[i] = getDeconvolved(
+                    llsDeconvolved[i] = Deconvolver.getDeconvolvedCast(
                             (SourceAndConverter) lls7Channels[i],
                             lls7Channels[i].getSpimSource().getName()+"_Deconvolved",
-                            new int[]{512, 512, 128},
+                            new int[]{128-32, 128-32, 128-32},
                             builder,
                             new SharedQueue(4,1)
                     );
@@ -135,6 +137,7 @@ public class DemoLLS7ProcessingCommand implements Command {
 
             BdvHandle bdvh = ds.getNewBdv();
             ds.show(bdvh, processed);
+            new ViewerTransformAdjuster(bdvh, processed).run();
 
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -146,52 +149,4 @@ public class DemoLLS7ProcessingCommand implements Command {
     }
 
 
-    public static <T extends RealType<T>> SourceAndConverter<FloatType> getDeconvolved(final SourceAndConverter<T> source,
-                                                                                       String name,
-                                                                                       int[] cellDimensions,
-                                                                                       Clij2RichardsonLucyImglib2Cache.Builder deconvolveBuilder,
-                                                                                       SharedQueue queue) {
-
-        List<Clij2RichardsonLucyImglib2Cache<FloatType, T, T>> ops = new ArrayList<>();
-
-        int numTimepoints = SourceAndConverterHelper.getMaxTimepoint(source);
-
-        // create the version of clij2 RL that works on cells
-        for (int t = 0; t<numTimepoints; t++) {
-            // One op per timepoint, but because the same builder is reused, the same gpu pool will be shared
-            ops.add((Clij2RichardsonLucyImglib2Cache<FloatType, T, T>) deconvolveBuilder/*.psf(psf)*/.rai(source.getSpimSource().getSource(t,0)).build());
-        }
-
-        VoxelProcessedSource.Processor<T, FloatType> deconvolver =
-                new VoxelProcessedSource.Processor<T, FloatType>() {
-
-                    ConcurrentHashMap<Integer, ConcurrentHashMap<Integer,RandomAccessibleInterval<FloatType>>> cachedRAIs
-                            = new ConcurrentHashMap<>();
-
-                    RandomAccessibleInterval<FloatType> buildSource(RandomAccessibleInterval<T> rai, int t, int level) {
-
-                        CellGrid grid = new CellGrid(rai.dimensionsAsLongArray(), cellDimensions);
-                        FloatType type = new FloatType();
-                        Cache<Long, Cell<?>> cache = (new GlobalLoaderCache(new Object(), t, level))
-                                .withLoader(LoadedCellCacheLoader.get(grid, cell -> {
-                                    ops.get(t).accept(cell);
-                                }, type, AccessFlags.setOf(AccessFlags.VOLATILE)));
-                        CachedCellImg img = new CachedCellImg(grid, type, cache, ArrayDataAccessFactory.get(PrimitiveType.BYTE, AccessFlags.setOf(AccessFlags.VOLATILE)));
-                        return img;
-                    }
-
-                    @Override
-                    public synchronized RandomAccessibleInterval<FloatType> process(RandomAccessibleInterval<T> rai, int t, int level) {
-                        if (!cachedRAIs.containsKey(t)) {
-                            cachedRAIs.put(t, new ConcurrentHashMap<>());
-                        }
-                        if (!cachedRAIs.get(t).containsKey(level)) {
-                            cachedRAIs.get(t).put(level, buildSource(rai, t, level));
-                        }
-                        return cachedRAIs.get(t).get(level);
-                    }
-                };
-
-        return new SourceVoxelProcessor<>(name, source, deconvolver, new FloatType(), queue).get();
-    }
 }

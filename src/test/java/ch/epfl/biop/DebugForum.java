@@ -1,4 +1,4 @@
-package ch.epfl.biop.test;
+package ch.epfl.biop;
 
 import io.scif.img.IO;
 import net.imagej.ImageJ;

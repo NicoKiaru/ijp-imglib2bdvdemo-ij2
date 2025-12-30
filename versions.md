@@ -1,0 +1,5 @@
+[![Maven Scijava Version](https://img.shields.io/github/v/tag/bigdataviewer/bigdataviewer-playground?label=Version-[Maven%20Scijava])](https://maven.scijava.org/#browse/browse:releases:sc%2Ffiji%2Fbigdataviewer-playground)
+[![Maven Scijava Version](https://img.shields.io/github/v/tag/BIOP/bigdataviewer-biop-tools?label=Version-[Maven%20Scijava])](https://maven.scijava.org/#browse/browse:releases:ch%2Fepfl%2Fbiop%2Fbigdataviewer-biop-tools)
+[![Maven Scijava Version](https://img.shields.io/github/v/tag/BIOP/bigdataviewer-image-loaders?label=Version-[Maven%20Scijava])](https://maven.scijava.org/#browse/browse:releases:ch%2Fepfl%2Fbiop%2Fbigdataviewer-image-loaders)
+[![Maven Scijava Version](https://img.shields.io/github/v/tag/BIOP/ijp-imagetoatlas?label=Version-[Maven%20Scijava])](https://maven.scijava.org/#browse/browse:releases:ch%2Fepfl%2Fbiop%2FImageToAtlasRegister)
+[![Maven Scijava Version](https://img.shields.io/github/v/tag/clij/clij2-fft?label=Version-[Maven%20Scijava])](https://maven.scijava.org/#browse/browse:releases:net%2Fhaesleinhuepf%2Fclij2-fft_)

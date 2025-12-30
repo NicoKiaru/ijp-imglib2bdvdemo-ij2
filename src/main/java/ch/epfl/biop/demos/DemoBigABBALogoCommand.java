@@ -95,7 +95,7 @@ public class DemoBigABBALogoCommand implements Command {
             // Retrieve the dataset, that's a SpimData object, it holds metadata and the 'recipe' to load pixel data
             AbstractSpimData<?> dataset = (AbstractSpimData<?>) cs.run(CreateBdvDatasetBioFormatsCommand.class,
                     true,
-                    "datasetname", "Egg_Chamber",
+                    "datasetname", "Slices",
                     "unit", "MICROMETER",
                     "files", new File[]{wsiBrainSlices3, wsiBrainSlices4, wsiBrainSlices5},
                     "split_rgb_channels", false,
@@ -104,7 +104,7 @@ public class DemoBigABBALogoCommand implements Command {
                     "disable_memo", false
             ).get().getOutput("spimdata");
 
-            SourceAndConverter<?>[] brainSlicesSources = ss.getSourceAndConverterFromSpimdata(dataset)
+            /*SourceAndConverter<?>[] brainSlicesSources = ss.getSourceAndConverterFromSpimdata(dataset)
                     .toArray(new SourceAndConverter<?>[0]);
 
             List<SourceAndConverter<?>> sources = Arrays.asList(brainSlicesSources).stream()
@@ -119,7 +119,7 @@ public class DemoBigABBALogoCommand implements Command {
 
             ImagePlus imp = IJ.openImage(getResourceAsFile("/graphics/ABBAFrame.jpg").getAbsolutePath());
 
-            imp = imp.resize(70,70,"");
+            imp = imp.resize(40,40,"");
 
             ColorProcessor p = (ColorProcessor) imp.getProcessor();
 
@@ -165,14 +165,14 @@ public class DemoBigABBALogoCommand implements Command {
             SerializableBdvOptions opts = new SerializableBdvOptions();
             opts.is2D = true;
             BdvHandle bdvh = new DefaultBdvSupplier(opts).get();
-            /*BdvHandle bdvh;
-            AlphaSerializableBdvOptions optsAlpha = new AlphaSerializableBdvOptions();
-            optsAlpha.is2D = true;
-            optsAlpha.white_bg = true;
-            bdvh = new AlphaBdvSupplier(optsAlpha).get();*/
+            //BdvHandle bdvh;
+            //AlphaSerializableBdvOptions optsAlpha = new AlphaSerializableBdvOptions();
+            //optsAlpha.is2D = true;
+            //optsAlpha.white_bg = true;
+            //bdvh = new AlphaBdvSupplier(optsAlpha).get();
             ds.show(bdvh, allSources.toArray(new SourceAndConverter[0]));
             new ViewerTransformAdjuster(bdvh, allSources.toArray(new SourceAndConverter[0])).run();
-
+*/
         } catch (InterruptedException | ExecutionException | IOException e) {
             System.err.println(e.getMessage());
             log.error(e);

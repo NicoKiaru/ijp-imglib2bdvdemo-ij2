@@ -1,4 +1,4 @@
-package ch.epfl.biop.test;
+package ch.epfl.biop;
 
 /**
  * Simple tests of potential arithmetic simplification that I think
