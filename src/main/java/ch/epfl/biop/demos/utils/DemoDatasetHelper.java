@@ -143,6 +143,13 @@ public class DemoDatasetHelper {
                 } catch (Exception e) {
                     throw new RuntimeException("You need to install the MoBIE update site in order to use the Platy dataset");
                 }
+            case MACRO:
+                try {
+                    return SafeDataset.getMacro();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    throw new RuntimeException(e.getMessage());
+                }
             case VORONOI_BIG:
                 SourceAndConverter<FloatType> voronoi_big = new VoronoiSourceGetter(new long[]{4096*128, 4096*128, 4096*128}, 10000000, false).get();
                 SourceAndConverter<?>[] reColoredVoronoi_big = (SourceAndConverter<?>[])
@@ -204,7 +211,8 @@ public class DemoDatasetHelper {
         VORONOI_BIG,
         PLATY,
         EUROPE_PYRAMIDIZE,
-        EUROPE
+        EUROPE,
+        MACRO
     }
 
     public static boolean isBvvCompatible(SourceAndConverter<?>[] sources) {
