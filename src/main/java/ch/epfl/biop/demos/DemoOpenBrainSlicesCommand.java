@@ -7,19 +7,30 @@ import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
 import org.scijava.Context;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.bdv.navigate.ViewerTransformAdjuster;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
-import sc.fiji.bdvpg.sourceandconverter.display.BrightnessAutoAdjuster;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
+import sc.fiji.bdvpg.viewer.bdv.navigate.ViewerTransformAdjuster;
+import sc.fiji.bdvpg.scijava.service.SourceBdvDisplayService;
+import sc.fiji.bdvpg.scijava.service.SourceService;
+import sc.fiji.bdvpg.source.display.BrightnessAutoAdjuster;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Open Brain Slices Dataset")
-public class DemoOpenBrainSlicesCommand implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class,
+        //menuPath = "Plugins>BIOP>Demos>Demo - Open Brain Slices Dataset"
+        menu = {
+                @Menu(label = BdvPgMenus.L1),
+                @Menu(label = BdvPgMenus.L2),
+                @Menu(label = "Demos", weight = 10),
+                @Menu(label = "Demo - Open Brain Slices Dataset")
+        }
+)
+public class DemoOpenBrainSlicesCommand implements BdvPlaygroundActionCommand {
 
     @Parameter
     Context ctx;
@@ -28,10 +39,10 @@ public class DemoOpenBrainSlicesCommand implements Command {
     CommandService cs;
 
     @Parameter
-    SourceAndConverterBdvDisplayService ds;
+    SourceBdvDisplayService ds;
 
     @Parameter
-    SourceAndConverterService ss;
+    SourceService ss;
 
     @Parameter
     LogService log;

@@ -1,11 +1,15 @@
 package ch.epfl.biop;
 
+import bdv.viewer.SourceAndConverter;
 import io.scif.codec.JPEG2000Codec;
 import loci.common.DebugTools;
 import net.imagej.ImageJ;
+import sc.fiji.bdvpg.scijava.service.SourcePopupMenu;
+import sc.fiji.bdvpg.service.SourceServices;
 
 import javax.imageio.ImageIO;
 import java.util.Arrays;
+import java.util.function.Consumer;
 
 public class SimpleIJLaunch {
     public static void main(final String... args) {
@@ -14,6 +18,10 @@ public class SimpleIJLaunch {
         //DebugTools.enableLogging("INFO");
         DebugTools.setRootLevel("INFO");
         ij.ui().showUI();
+
+        Consumer<SourceAndConverter<?>[]> action = SourceServices.getSourceService().getAction("Source - Resample Source");
+
+        System.out.println(action);
 
         System.out.println("JPEG2000 available: " +
                 Arrays.asList(ImageIO.getReaderFormatNames()).contains("jpeg2000"));
@@ -40,6 +48,8 @@ public class SimpleIJLaunch {
                 System.err.println("JAIIIOService failed: " + t.getMessage());
                 t.printStackTrace();
             }
+
+            SourcePopupMenu spm;
         } catch (Throwable t) {
             t.printStackTrace();
         }

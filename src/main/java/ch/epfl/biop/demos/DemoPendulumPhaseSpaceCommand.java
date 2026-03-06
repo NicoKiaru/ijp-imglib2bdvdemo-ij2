@@ -16,15 +16,16 @@ import org.scijava.command.Command;
 import org.scijava.convert.ConvertService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
 import sc.fiji.bdvpg.scijava.ScijavaSwingUI;
-import sc.fiji.bdvpg.services.SourceAndConverterServices;
-import sc.fiji.bdvpg.sourceandconverter.display.ConverterChanger;
+import sc.fiji.bdvpg.service.SourceServices;
+import sc.fiji.bdvpg.source.display.ConverterChanger;
 
 import static bdv.ui.BdvDefaultCards.*;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Pendulum Phase Space")
-public class DemoPendulumPhaseSpaceCommand implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class, menuPath = "Plugins>BIOP>Demos>Demo - Pendulum Phase Space")
+public class DemoPendulumPhaseSpaceCommand implements BdvPlaygroundActionCommand {
 
     @Parameter(visibility = ItemVisibility.MESSAGE)
     String description = "<html> <h1>Demo Pendulum Phase Space</h1>\n" +
@@ -109,14 +110,14 @@ public class DemoPendulumPhaseSpaceCommand implements Command {
 
         SourceAndConverter coloredEnergy = cc.get();
 
-        SourceAndConverterServices.getBdvDisplayService().show(bdvh, coloredEnergy);
+        SourceServices.getBdvDisplayService().show(bdvh, coloredEnergy);
 
         // Puts a command into the bdv panel, which sets the energy level in the phase space
         bdvh.getCardPanel().addCard("Set energy level",
                 ScijavaSwingUI.getPanel(context, ShiftConverterSetupSliderCommand.class,
                         "converter",
-                        SourceAndConverterServices
-                                .getSourceAndConverterService()
+                        SourceServices
+                                .getSourceService()
                                 .getConverterSetup(coloredEnergy),
                         "width",2, "min", -1, "max", 8),
                 true);

@@ -1,20 +1,21 @@
 package ch.epfl.biop.demos;
 
 import bdv.viewer.SourceAndConverter;
-import ch.epfl.biop.bdv.img.bioformats.command.CreateBdvDatasetBioFormatsCommand;
+import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
 import mpicbg.spim.data.generic.AbstractSpimData;
 import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
-import sc.fiji.bdvpg.scijava.services.ui.SourceAndConverterServiceUI;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.service.SourceService;
+import sc.fiji.bdvpg.scijava.service.tree.FilterNode;
 
 import java.io.File;
 
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - SpimData Investigation")
-public class SpimDataInvestigationCommand implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class, menuPath = "Plugins>BIOP>Demos>Demo - SpimData Investigation")
+public class SpimDataInvestigationCommand implements BdvPlaygroundActionCommand {
 
     @Parameter(visibility = ItemVisibility.MESSAGE)
     String description = "<html> <h1>Investigating SpimData</h1>\n" +
@@ -26,7 +27,7 @@ public class SpimDataInvestigationCommand implements Command {
             "    <p>The demo begins by loading a SpimData dataset from specified VSI files. These files represent brain slices and are loaded into a <code>SpimData</code> object, which holds metadata and the recipe to load pixel data.</p>\n" +
             "\n" +
             "    <h3>2. Accessing the Dataset</h3>\n" +
-            "    <p>The loaded dataset is accessed through a node structure provided by the <code>SourceAndConverterServiceUI</code>. This allows for easy navigation and investigation of different components of the dataset.</p>\n" +
+            "    <p>The loaded dataset is accessed through a node structure provided by the <code>SourceServiceUI</code>. This allows for easy navigation and investigation of different components of the dataset.</p>\n" +
             "\n" +
             "    <h3>3. Exploring Dataset Properties</h3>\n" +
             "    <p>The demo explores various properties of the dataset, such as the number of sources, channels, and image names. These properties are accessed and printed to provide an overview of the dataset's structure.</p>\n" +
@@ -52,7 +53,7 @@ public class SpimDataInvestigationCommand implements Command {
     CommandService cs;
 
     @Parameter
-    SourceAndConverterService source_service;
+    SourceService source_service;
 
     @Override
     public void run() {
@@ -63,7 +64,7 @@ public class SpimDataInvestigationCommand implements Command {
             String datasetName = "MouseBrainSlices";
 
             // Retrieve the dataset, that's a SpimData object, it holds metadata and the 'recipe' to load pixel data
-            AbstractSpimData<?> dataset = (AbstractSpimData<?>) cs.run(CreateBdvDatasetBioFormatsCommand.class,
+            AbstractSpimData<?> dataset = (AbstractSpimData<?>) cs.run(DatasetFromBioFormatsCreateCommand.class,
                     true,
                     "datasetname", datasetName,
                     "unit", "MICROMETER",
@@ -74,7 +75,7 @@ public class SpimDataInvestigationCommand implements Command {
                     "disable_memo", false
             ).get().getOutput("spimdata");
 
-            SourceAndConverterServiceUI.Node datasetNode = source_service.getUI().getRoot().child(datasetName);
+            FilterNode datasetNode = source_service.tree().root().child(datasetName);
 
             // The sources from the dataset are automatically sorted according to the following properties:
             // Channel
@@ -87,7 +88,7 @@ public class SpimDataInvestigationCommand implements Command {
             System.out.println("There are "+sourcesInDataset.length+" sources in this dataset.");
 
             // If one wants to investigate the number of channels in the dataset:
-            SourceAndConverterServiceUI.Node channelNodes = datasetNode.child("Channel");
+            FilterNode channelNodes = datasetNode.child("Channel");
             System.out.println("There are "+channelNodes.children().size()+" channels in this dataset.");
 
             // If one wants to know the name of the first channel:

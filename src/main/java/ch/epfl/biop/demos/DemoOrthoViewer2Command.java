@@ -9,18 +9,21 @@ import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import org.scijava.Context;
 import org.scijava.command.Command;
 import org.scijava.log.LogService;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.bdv.navigate.ViewerTransformAdjuster;
-import sc.fiji.bdvpg.bvv.BvvCreator;
-import sc.fiji.bdvpg.bvv.BvvHandleHelper;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
-import sc.fiji.bdvpg.sourceandconverter.display.BrightnessAutoAdjuster;
-import sc.fiji.bdvpg.viewers.ViewerAdapter;
-import sc.fiji.bdvpg.viewers.ViewerOrthoSyncStarter;
-import sc.fiji.bdvpg.viewers.ViewerStateSyncStarter;
-import sc.fiji.bdvpg.viewers.ViewerTransformSyncStarter;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
+import sc.fiji.bdvpg.viewer.bdv.navigate.ViewerTransformAdjuster;
+import sc.fiji.bdvpg.viewer.bvv.BvvCreator;
+import sc.fiji.bdvpg.viewer.bvv.BvvHandleHelper;
+import sc.fiji.bdvpg.scijava.service.SourceBdvDisplayService;
+import sc.fiji.bdvpg.scijava.service.SourceService;
+import sc.fiji.bdvpg.source.display.BrightnessAutoAdjuster;
+import sc.fiji.bdvpg.viewer.ViewerAdapter;
+import sc.fiji.bdvpg.viewer.ViewerOrthoSyncStarter;
+import sc.fiji.bdvpg.viewer.ViewerStateSyncStarter;
+import sc.fiji.bdvpg.viewer.ViewerTransformSyncStarter;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -37,8 +40,16 @@ import org.scijava.ItemVisibility;
 import static ch.epfl.biop.demos.utils.BdvHelper.createQuadrant;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - OrthoViewer (v2)")
-public class DemoOrthoViewer2Command implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class,
+       // menuPath = "Plugins>BIOP>Demos>Demo - OrthoViewer (v2)"
+        menu = {
+            @Menu(label = BdvPgMenus.L1),
+            @Menu(label = BdvPgMenus.L2),
+            @Menu(label = "Demos", weight = 10),
+            @Menu(label = "Demo - OrthoViewer (v2)")
+        }
+)
+public class DemoOrthoViewer2Command implements BdvPlaygroundActionCommand {
 
     @Parameter(visibility = ItemVisibility.MESSAGE)
     String description = "<html> <h1>Demo Ortho Viewer (v2)</h1>\n" +
@@ -84,10 +95,10 @@ public class DemoOrthoViewer2Command implements Command {
     Context ctx;
 
     @Parameter
-    SourceAndConverterBdvDisplayService ds;
+    SourceBdvDisplayService ds;
 
     @Parameter
-    SourceAndConverterService ss;
+    SourceService ss;
 
     @Parameter
     LogService log;

@@ -8,16 +8,27 @@ import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
 import org.scijava.module.ModuleService;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
+import sc.fiji.bdvpg.scijava.service.SourceBdvDisplayService;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Mandelbrot Set")
-public class DemoMandelbrotSetCommand implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class,
+        //menuPath = "Plugins>BIOP>Demos>Demo - Mandelbrot Set"
+        menu = {
+                @Menu(label = BdvPgMenus.L1),
+                @Menu(label = BdvPgMenus.L2),
+                @Menu(label = "Demos", weight = 10),
+                @Menu(label = "Demo - Mandelbrot Set")
+        }
+)
+public class DemoMandelbrotSetCommand implements BdvPlaygroundActionCommand {
 
     @Parameter(visibility = ItemVisibility.MESSAGE)
     String description = "<html> <h1>Visualizing the Mandelbrot Set</h1>\n" +
@@ -58,7 +69,7 @@ public class DemoMandelbrotSetCommand implements Command {
     LogService log;
 
     @Parameter
-    SourceAndConverterBdvDisplayService ds;
+    SourceBdvDisplayService ds;
 
     @Override
     public void run() {

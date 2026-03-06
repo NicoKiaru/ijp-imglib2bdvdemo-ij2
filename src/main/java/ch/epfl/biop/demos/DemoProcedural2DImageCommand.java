@@ -8,10 +8,11 @@ import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.util.Intervals;
 import org.scijava.command.Command;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.services.SourceAndConverterServices;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.service.SourceServices;
 
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Procedural 2D Image")
-public class DemoProcedural2DImageCommand implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class, menuPath = "Plugins>BIOP>Demos>Demo - Procedural 2D Image")
+public class DemoProcedural2DImageCommand implements BdvPlaygroundActionCommand {
     @Override
     public void run() {
         int nDimensions = 2;
@@ -28,7 +29,7 @@ public class DemoProcedural2DImageCommand implements Command {
         bdvStack.setDisplayRange(-1,1);
         bdvStack.setColor(new ARGBType(ARGBType.rgba(255.0, 120.0, 0.0, 0.0)));
 
-        SourceAndConverterServices.getSourceAndConverterService().register(bdvStack.getSources().get(0));
+        SourceServices.getSourceService().register(bdvStack.getSources().get(0));
 
     }
 }

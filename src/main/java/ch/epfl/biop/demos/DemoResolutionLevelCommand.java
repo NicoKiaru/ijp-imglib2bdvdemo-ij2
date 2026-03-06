@@ -9,14 +9,15 @@ import net.imglib2.type.numeric.integer.UnsignedShortType;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.service.SourceBdvDisplayService;
 
 @SuppressWarnings("unused")
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Resolution Level")
-public class DemoResolutionLevelCommand implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class, menuPath = "Plugins>BIOP>Demos>Demo - Resolution Level")
+public class DemoResolutionLevelCommand implements BdvPlaygroundActionCommand {
 
     @Parameter
-    SourceAndConverterBdvDisplayService ds;
+    SourceBdvDisplayService ds;
 
     @Override
     public void run() {

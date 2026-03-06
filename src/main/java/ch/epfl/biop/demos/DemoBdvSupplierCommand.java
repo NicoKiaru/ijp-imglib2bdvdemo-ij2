@@ -7,20 +7,32 @@ import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.command.DynamicCommand;
 import org.scijava.log.LogService;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.bdv.navigate.ViewerTransformAdjuster;
-import sc.fiji.bdvpg.bdv.supplier.DefaultBdvSupplier;
-import sc.fiji.bdvpg.bdv.supplier.SerializableBdvOptions;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
+import sc.fiji.bdvpg.viewer.bdv.navigate.ViewerTransformAdjuster;
+import sc.fiji.bdvpg.viewer.bdv.supplier.DefaultBdvSupplier;
+import sc.fiji.bdvpg.viewer.bdv.supplier.SerializableBdvOptions;
 import sc.fiji.bdvpg.bdv.supplier.alpha.AlphaBdvSupplier;
 import sc.fiji.bdvpg.bdv.supplier.alpha.AlphaSerializableBdvOptions;
 import sc.fiji.bdvpg.bdv.supplier.biop.BiopBdvSupplier;
 import sc.fiji.bdvpg.bdv.supplier.biop.BiopSerializableBdvOptions;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
+import sc.fiji.bdvpg.scijava.service.SourceBdvDisplayService;
+import sc.fiji.bdvpg.scijava.service.SourceService;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Bdv Supplier", initializer = "init")
+@Plugin(type = BdvPlaygroundActionCommand.class,
+        //menuPath = "Plugins>BIOP>Demos>Demo - Bdv Supplier",
+        menu = {
+                @Menu(label = BdvPgMenus.L1),
+                @Menu(label = BdvPgMenus.L2),
+                @Menu(label = "Demos", weight = 10),
+                @Menu(label = "Demo - Bdv Supplier")
+        },
+        initializer = "init"
+)
 public class DemoBdvSupplierCommand extends DynamicCommand {
 
     @Parameter
@@ -33,10 +45,10 @@ public class DemoBdvSupplierCommand extends DynamicCommand {
     String choice;
 
     @Parameter
-    SourceAndConverterBdvDisplayService displayService;
+    SourceBdvDisplayService displayService;
 
     @Parameter
-    SourceAndConverterService sourceService;
+    SourceService sourceService;
 
     @Parameter
     CommandService cs;

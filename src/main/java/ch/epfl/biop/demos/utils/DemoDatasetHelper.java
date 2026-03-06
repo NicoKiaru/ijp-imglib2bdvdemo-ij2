@@ -6,8 +6,7 @@ import bdv.viewer.Source;
 import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.atlas.mouse.allen.ccfv3p1.command.AllenBrainAdultMouseAtlasCCF2017v3p1Command;
 import ch.epfl.biop.atlas.struct.Atlas;
-import ch.epfl.biop.bdv.img.bioformats.command.CreateBdvDatasetBioFormatsCommand;
-import ch.epfl.biop.scijava.command.spimdata.LLS7OpenDatasetCommand;
+import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
 import mpicbg.spim.data.generic.AbstractSpimData;
 import net.imglib2.FinalInterval;
 import net.imglib2.display.LinearRange;
@@ -19,11 +18,11 @@ import org.apache.commons.io.FilenameUtils;
 import org.scijava.Context;
 import org.scijava.command.CommandService;
 import org.scijava.module.ModuleService;
-import sc.fiji.bdvpg.scijava.command.source.LUTSourceCreatorCommand;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
-import sc.fiji.bdvpg.sourceandconverter.SourceAndConverterHelper;
-import sc.fiji.bdvpg.sourceandconverter.importer.MandelbrotSourceGetter;
-import sc.fiji.bdvpg.sourceandconverter.importer.VoronoiSourceGetter;
+import sc.fiji.bdvpg.command.process.SourceWithLUTDuplicateCommand;
+import sc.fiji.bdvpg.scijava.service.SourceService;
+import sc.fiji.bdvpg.source.SourceHelper;
+import sc.fiji.bdvpg.source.importer.MandelbrotSourceCreator;
+import sc.fiji.bdvpg.source.importer.VoronoiSourceCreator;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,13 +33,13 @@ public class DemoDatasetHelper {
 
     public static SourceAndConverter<?>[] getData(DemoDataset datasetName, Context ctx) throws IOException, ExecutionException, InterruptedException, IllegalArgumentException {
         CommandService cs = ctx.getService(CommandService.class);
-        SourceAndConverterService ss = ctx.getService(SourceAndConverterService.class);
+        SourceService ss = ctx.getService(SourceService.class);
         ModuleService ms = ctx.getService(ModuleService.class);
         switch (datasetName) {
             case EGG_CHAMBER:
                 File eggChamber = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/1472859/files/DrosophilaEggChamber.tif");
                 // Retrieve the dataset, that's a SpimData object, it holds metadata and the 'recipe' to load pixel data
-                AbstractSpimData<?> datasetEC = (AbstractSpimData<?>) cs.run(CreateBdvDatasetBioFormatsCommand.class,
+                AbstractSpimData<?> datasetEC = (AbstractSpimData<?>) cs.run(DatasetFromBioFormatsCreateCommand.class,
                         true,
                         "datasetname", "Egg_Chamber",
                         "unit", "MICROMETER",
@@ -50,12 +49,12 @@ public class DemoDatasetHelper {
                         "auto_pyramidize", true,
                         "disable_memo", false
                 ).get().getOutput("spimdata");
-                return ss.getSourceAndConverterFromSpimdata(datasetEC).toArray(new SourceAndConverter<?>[0]);
+                return ss.getSourcesFromDataset(datasetEC).toArray(new SourceAndConverter<?>[0]);
 
             case BRAIN_SLICES:
                 File wsiBrainSlices = new File(ch.epfl.biop.DatasetHelper.dowloadBrainVSIDataset(3), "Slide_03.vsi");
                 // Retrieve the dataset, that's a SpimData object, it holds metadata and the 'recipe' to load pixel data
-                AbstractSpimData<?> datasetBS = (AbstractSpimData<?>) cs.run(CreateBdvDatasetBioFormatsCommand.class,
+                AbstractSpimData<?> datasetBS = (AbstractSpimData<?>) cs.run(DatasetFromBioFormatsCreateCommand.class,
                         true,
                         "datasetname", "Slide_03",
                         "unit", "MICROMETER",
@@ -65,12 +64,12 @@ public class DemoDatasetHelper {
                         "auto_pyramidize", true,
                         "disable_memo", false
                 ).get().getOutput("spimdata");
-                return ss.getSourceAndConverterFromSpimdata(datasetBS).toArray(new SourceAndConverter<?>[0]);
+                return ss.getSourcesFromDataset(datasetBS).toArray(new SourceAndConverter<?>[0]);
 
             case MANDELBROT_SET:
-                SourceAndConverter<UnsignedShortType> mandelbrotSource = new MandelbrotSourceGetter().get();
+                SourceAndConverter<UnsignedShortType> mandelbrotSource = new MandelbrotSourceCreator().get();
                 return (SourceAndConverter<?>[])
-                        ms.run(cs.getCommand(LUTSourceCreatorCommand.class), true,
+                        ms.run(cs.getCommand(SourceWithLUTDuplicateCommand.class), true,
                                 "sacs", new SourceAndConverter[]{mandelbrotSource}
                         ).get().getOutput("sacs_out");
 
@@ -91,8 +90,8 @@ public class DemoDatasetHelper {
                 }).getSource("Mandelbrot Set (Slow)");
 
                 return (SourceAndConverter<?>[])
-                    ms.run(cs.getCommand(LUTSourceCreatorCommand.class), true,
-                            "sacs", new SourceAndConverter[]{SourceAndConverterHelper.createSourceAndConverter(s)}
+                    ms.run(cs.getCommand(SourceWithLUTDuplicateCommand.class), true,
+                            "sacs", new SourceAndConverter[]{SourceHelper.createSourceAndConverter(s)}
                     ).get().getOutput("sacs_out");
 
             case ALLEN_BRAIN_ATLAS:
@@ -109,13 +108,13 @@ public class DemoDatasetHelper {
             case LATTICE_HELA_SKEWED:
                 File f = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/14203207/files/Hela-Kyoto-1-Timepoint-LLS7.czi");
 
-                cs.run(LLS7OpenDatasetCommand.class, true,
+                cs.run(SourceWithLUTDuplicateCommand.class, true,
                         "czi_file", f,
                         "legacy_xy_mode", false).get();
 
                 String datasetNameLattice = FilenameUtils.removeExtension(f.getName());
 
-                return ctx.getService(SourceAndConverterService.class).getUI().getSourceAndConvertersFromPath(datasetNameLattice)
+                return ctx.getService(SourceService.class).tree().getSources(datasetNameLattice)
                         .toArray(new SourceAndConverter[0]);
 
             case RANDOM_GAME_OF_LIFE:
@@ -151,17 +150,17 @@ public class DemoDatasetHelper {
                     throw new RuntimeException(e.getMessage());
                 }
             case VORONOI_BIG:
-                SourceAndConverter<FloatType> voronoi_big = new VoronoiSourceGetter(new long[]{4096*128, 4096*128, 4096*128}, 10000000, false).get();
+                SourceAndConverter<FloatType> voronoi_big = new VoronoiSourceCreator(new long[]{4096*128, 4096*128, 4096*128}, 10000000, false).get();
                 SourceAndConverter<?>[] reColoredVoronoi_big = (SourceAndConverter<?>[])
-                        ctx.getService(ModuleService.class).run(ctx.getService(CommandService.class).getCommand(LUTSourceCreatorCommand.class), true,
+                        ctx.getService(ModuleService.class).run(ctx.getService(CommandService.class).getCommand(SourceWithLUTDuplicateCommand.class), true,
                                 "sacs", new SourceAndConverter[]{voronoi_big}
                         ).get().getOutput("sacs_out");
 
                 return reColoredVoronoi_big;
             case VORONOI_SMALL:
-                SourceAndConverter<FloatType> voronoi_small = new VoronoiSourceGetter(new long[]{128, 128, 128}, 10000, false).get();
+                SourceAndConverter<FloatType> voronoi_small = new VoronoiSourceCreator(new long[]{128, 128, 128}, 10000, false).get();
                 SourceAndConverter<?>[] reColoredVoronoi_small = (SourceAndConverter<?>[])
-                        ctx.getService(ModuleService.class).run(ctx.getService(CommandService.class).getCommand(LUTSourceCreatorCommand.class), true,
+                        ctx.getService(ModuleService.class).run(ctx.getService(CommandService.class).getCommand(SourceWithLUTDuplicateCommand.class), true,
                                 "sacs", new SourceAndConverter[]{voronoi_small}
                         ).get().getOutput("sacs_out");
 
@@ -169,7 +168,7 @@ public class DemoDatasetHelper {
             case EUROPE_PYRAMIDIZE:
                 File europePyramidize = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/12738352/files/easterness_edtm_m_240m_s_20000101_20221231_eu_epsg.3035_v20240528.tif");
                 // Retrieve the dataset, that's a SpimData object, it holds metadata and the 'recipe' to load pixel data
-                AbstractSpimData<?> datasetEuropePyramidize = (AbstractSpimData<?>) cs.run(CreateBdvDatasetBioFormatsCommand.class,
+                AbstractSpimData<?> datasetEuropePyramidize = (AbstractSpimData<?>) cs.run(DatasetFromBioFormatsCreateCommand.class,
                         true,
                         "datasetname", "Egg_Chamber",
                         "unit", "MICROMETER",
@@ -179,11 +178,11 @@ public class DemoDatasetHelper {
                         "auto_pyramidize", true,
                         "disable_memo", false
                 ).get().getOutput("spimdata");
-                return ss.getSourceAndConverterFromSpimdata(datasetEuropePyramidize).toArray(new SourceAndConverter<?>[0]);
+                return ss.getSourcesFromDataset(datasetEuropePyramidize).toArray(new SourceAndConverter<?>[0]);
             case EUROPE:
                 File europe = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/12738352/files/easterness_edtm_m_240m_s_20000101_20221231_eu_epsg.3035_v20240528.tif");
                 // Retrieve the dataset, that's a SpimData object, it holds metadata and the 'recipe' to load pixel data
-                AbstractSpimData<?> datasetEurope = (AbstractSpimData<?>) cs.run(CreateBdvDatasetBioFormatsCommand.class,
+                AbstractSpimData<?> datasetEurope = (AbstractSpimData<?>) cs.run(DatasetFromBioFormatsCreateCommand.class,
                         true,
                         "datasetname", "Egg_Chamber",
                         "unit", "MICROMETER",
@@ -193,7 +192,7 @@ public class DemoDatasetHelper {
                         "auto_pyramidize", false,
                         "disable_memo", false
                 ).get().getOutput("spimdata");
-                return ss.getSourceAndConverterFromSpimdata(datasetEurope).toArray(new SourceAndConverter<?>[0]);
+                return ss.getSourcesFromDataset(datasetEurope).toArray(new SourceAndConverter<?>[0]);
         }
 
         throw new IllegalArgumentException("Unrecognized dataset "+datasetName);

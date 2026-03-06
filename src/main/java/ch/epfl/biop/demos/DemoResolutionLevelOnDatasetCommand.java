@@ -11,14 +11,15 @@ import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.bdv.BdvHandleHelper;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.viewer.bdv.BdvHandleHelper;
 import sc.fiji.bdvpg.bdv.supplier.biop.BiopBdvSupplier;
 import sc.fiji.bdvpg.bdv.supplier.biop.BiopSerializableBdvOptions;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
-import sc.fiji.bdvpg.sourceandconverter.display.BrightnessAutoAdjuster;
-import sc.fiji.bdvpg.viewers.ViewerAdapter;
-import sc.fiji.bdvpg.viewers.ViewerTransformSyncStarter;
+import sc.fiji.bdvpg.scijava.service.SourceBdvDisplayService;
+import sc.fiji.bdvpg.scijava.service.SourceService;
+import sc.fiji.bdvpg.source.display.BrightnessAutoAdjuster;
+import sc.fiji.bdvpg.viewer.ViewerAdapter;
+import sc.fiji.bdvpg.viewer.ViewerTransformSyncStarter;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -36,8 +37,8 @@ import java.util.concurrent.ExecutionException;
 import static ch.epfl.biop.demos.utils.BdvHelper.createTri;
 
 @SuppressWarnings("unused")
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Pyramidal Image Loading")
-public class DemoResolutionLevelOnDatasetCommand implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class, menuPath = "Plugins>BIOP>Demos>Demo - Pyramidal Image Loading")
+public class DemoResolutionLevelOnDatasetCommand implements BdvPlaygroundActionCommand {
 
     @Parameter(persist = false)
     DemoDatasetHelper.DemoDataset dataset_name;
@@ -49,10 +50,10 @@ public class DemoResolutionLevelOnDatasetCommand implements Command {
     CommandService cs;
 
     @Parameter
-    SourceAndConverterBdvDisplayService ds;
+    SourceBdvDisplayService ds;
 
     @Parameter
-    SourceAndConverterService ss;
+    SourceService ss;
 
     @Parameter
     LogService log;

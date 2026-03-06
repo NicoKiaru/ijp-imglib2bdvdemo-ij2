@@ -8,18 +8,21 @@ import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.bdv.BdvHandleHelper;
-import sc.fiji.bdvpg.bdv.navigate.ViewerTransformAdjuster;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
+import sc.fiji.bdvpg.viewer.bdv.BdvHandleHelper;
+import sc.fiji.bdvpg.viewer.bdv.navigate.ViewerTransformAdjuster;
 import sc.fiji.bdvpg.bdv.supplier.biop.BiopBdvSupplier;
 import sc.fiji.bdvpg.bdv.supplier.biop.BiopSerializableBdvOptions;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
-import sc.fiji.bdvpg.sourceandconverter.display.BrightnessAutoAdjuster;
-import sc.fiji.bdvpg.viewers.ViewerAdapter;
-import sc.fiji.bdvpg.viewers.ViewerStateSyncStarter;
-import sc.fiji.bdvpg.viewers.ViewerTransformSyncStarter;
+import sc.fiji.bdvpg.scijava.service.SourceBdvDisplayService;
+import sc.fiji.bdvpg.scijava.service.SourceService;
+import sc.fiji.bdvpg.source.display.BrightnessAutoAdjuster;
+import sc.fiji.bdvpg.viewer.ViewerAdapter;
+import sc.fiji.bdvpg.viewer.ViewerStateSyncStarter;
+import sc.fiji.bdvpg.viewer.ViewerTransformSyncStarter;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -35,8 +38,16 @@ import java.util.concurrent.ExecutionException;
 import static ch.epfl.biop.demos.utils.BdvHelper.createQuadrant;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Demo Multiresolution Rendering")
-public class DemoMultiresolutionRendering implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class,
+        //menuPath = "Plugins>BIOP>Demos>Demo - Demo Multiresolution Rendering"
+        menu = {
+                @Menu(label = BdvPgMenus.L1),
+                @Menu(label = BdvPgMenus.L2),
+                @Menu(label = "Demos", weight = 10),
+                @Menu(label = "Demo - Demo Multiresolution Rendering")
+        }
+)
+public class DemoMultiresolutionRendering implements BdvPlaygroundActionCommand {
 
     @Parameter(visibility = ItemVisibility.MESSAGE)
     String description = "<html> <h1>Demo Multiresolution Rendering</h1>\n" +
@@ -85,10 +96,10 @@ public class DemoMultiresolutionRendering implements Command {
     CommandService cs;
 
     @Parameter
-    SourceAndConverterBdvDisplayService ds;
+    SourceBdvDisplayService ds;
 
     @Parameter
-    SourceAndConverterService ss;
+    SourceService ss;
 
     @Parameter
     LogService log;

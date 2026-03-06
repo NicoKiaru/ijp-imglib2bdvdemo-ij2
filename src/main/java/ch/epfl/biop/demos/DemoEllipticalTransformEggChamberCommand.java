@@ -5,24 +5,35 @@ import bdv.util.Elliptical3DTransform;
 import bdv.viewer.SourceAndConverter;
 import org.scijava.Context;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
-import ch.epfl.biop.scijava.command.source.register.SourcesRealTransformCommand;
-import ch.epfl.biop.scijava.command.transform.DisplayEllipseFromTransformCommand;
+import ch.epfl.biop.command.register.SourcesRealTransformCommand;
+import ch.epfl.biop.command.workflow.elliptic.DisplayEllipseFromTransformCommand;
 
 import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.bdv.navigate.ViewerTransformAdjuster;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
-import sc.fiji.bdvpg.sourceandconverter.display.BrightnessAdjuster;
-import sc.fiji.bdvpg.sourceandconverter.display.BrightnessAutoAdjuster;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
+import sc.fiji.bdvpg.viewer.bdv.navigate.ViewerTransformAdjuster;
+import sc.fiji.bdvpg.scijava.service.SourceBdvDisplayService;
+import sc.fiji.bdvpg.scijava.service.SourceService;
+import sc.fiji.bdvpg.source.display.BrightnessAdjuster;
+import sc.fiji.bdvpg.source.display.BrightnessAutoAdjuster;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Elliptical Transform Egg Chamber")
-public class DemoEllipticalTransformEggChamberCommand implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class,
+        //menuPath = "Plugins>BIOP>Demos>Demo - Elliptical Transform Egg Chamber"
+        menu = {
+                @Menu(label = BdvPgMenus.L1),
+                @Menu(label = BdvPgMenus.L2),
+                @Menu(label = "Demos", weight = 10),
+                @Menu(label = "Demo - Elliptical Transform Egg Chamber")
+        }
+)
+public class DemoEllipticalTransformEggChamberCommand implements BdvPlaygroundActionCommand {
 
     @Parameter(visibility = ItemVisibility.MESSAGE)
     String demodescription = "<html><h1>Elliptical Transformation of an Egg Chamber</h1>\n" +
@@ -60,10 +71,10 @@ public class DemoEllipticalTransformEggChamberCommand implements Command {
     CommandService cs;
 
     @Parameter
-    SourceAndConverterBdvDisplayService ds;
+    SourceBdvDisplayService ds;
 
     @Parameter
-    SourceAndConverterService ss;
+    SourceService ss;
 
     @Parameter
     LogService log;

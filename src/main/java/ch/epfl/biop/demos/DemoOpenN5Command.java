@@ -7,14 +7,25 @@ import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.command.DynamicCommand;
 import org.scijava.log.LogService;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.bdv.navigate.ViewerTransformAdjuster;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
+import sc.fiji.bdvpg.viewer.bdv.navigate.ViewerTransformAdjuster;
+import sc.fiji.bdvpg.scijava.service.SourceBdvDisplayService;
+import sc.fiji.bdvpg.scijava.service.SourceService;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Open N5", initializer = "init")
+@Plugin(type = BdvPlaygroundActionCommand.class,
+        //menuPath = "Plugins>BIOP>Demos>Demo - Open N5",
+        menu = {
+                @Menu(label = BdvPgMenus.L1),
+                @Menu(label = BdvPgMenus.L2),
+                @Menu(label = "Demos", weight = 10),
+                @Menu(label = "Demo - Open N5")
+        },
+        initializer = "init")
 public class DemoOpenN5Command extends DynamicCommand {
 
     @Parameter
@@ -24,10 +35,10 @@ public class DemoOpenN5Command extends DynamicCommand {
     String url;
 
     @Parameter
-    SourceAndConverterBdvDisplayService displayService;
+    SourceBdvDisplayService displayService;
 
     @Parameter
-    SourceAndConverterService sourceService;
+    SourceService sourceService;
 
     @Parameter
     CommandService cs;

@@ -14,9 +14,12 @@ import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.view.Views;
 import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.services.SourceAndConverterServices;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
+import sc.fiji.bdvpg.service.SourceServices;
 
 import javax.swing.JButton;
 import javax.swing.JPanel;
@@ -25,8 +28,16 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Game Of Life")
-public class DemoGameOfLifeCommand implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class, //menuPath = "Plugins>BIOP>Demos>Demo - Game Of Life"
+        menu = {
+                @Menu(label = BdvPgMenus.L1),
+                @Menu(label = BdvPgMenus.L2),
+                @Menu(label = "Demos", weight = 10),
+                @Menu(label = "Demo - Game Of Life")
+        }
+
+)
+public class DemoGameOfLifeCommand implements BdvPlaygroundActionCommand {
 
     @Parameter(visibility = ItemVisibility.MESSAGE)
     String description = "<html> <h1>Visualizing Conway's Game of Life</h1>\n" +
@@ -68,7 +79,7 @@ public class DemoGameOfLifeCommand implements Command {
     @Override
     public void run() {
 
-        BdvHandle bdvh = SourceAndConverterServices.getBdvDisplayService().getNewBdv();
+        BdvHandle bdvh = SourceServices.getBdvDisplayService().getNewBdv();
 
         int maxX, maxY;
         FunctionRandomAccessible<UnsignedShortType> seed;
@@ -108,7 +119,7 @@ public class DemoGameOfLifeCommand implements Command {
         ((LinearRange) gol.getConverter()).setMax(17);
         ((LinearRange) gol.asVolatile().getConverter()).setMax(17);
 
-        SourceAndConverterServices
+        SourceServices
                 .getBdvDisplayService()
                 .show(bdvh, gol);
 

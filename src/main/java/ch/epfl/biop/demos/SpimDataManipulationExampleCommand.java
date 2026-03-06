@@ -2,7 +2,7 @@ package ch.epfl.biop.demos;
 
 import bdv.viewer.Source;
 import bdv.viewer.SourceAndConverter;
-import ch.epfl.biop.bdv.img.bioformats.command.CreateBdvDatasetBioFormatsCommand;
+import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
 import mpicbg.spim.data.generic.AbstractSpimData;
 import mpicbg.spim.data.generic.base.Entity;
 import mpicbg.spim.data.generic.sequence.AbstractSequenceDescription;
@@ -23,15 +23,16 @@ import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
-import sc.fiji.bdvpg.scijava.services.ui.SourceAndConverterServiceUI;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.service.SourceService;
+import sc.fiji.bdvpg.scijava.service.tree.FilterNode;
 
 import java.io.File;
 import java.util.List;
 import java.util.Map;
 
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - SpimData Manipulation")
-public class SpimDataManipulationExampleCommand implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class, menuPath = "Plugins>BIOP>Demos>Demo - SpimData Manipulation")
+public class SpimDataManipulationExampleCommand implements BdvPlaygroundActionCommand {
 
     @Parameter(visibility = ItemVisibility.MESSAGE)
     String description = "<html> <h1>SpimData Manipulation Example</h1>\n" +
@@ -52,7 +53,7 @@ public class SpimDataManipulationExampleCommand implements Command {
             "    <p><code>SourceAndConverter</code> objects are utilized to access and manipulate pixel data. These objects are essentially immutable in BDV, but this demo demonstrates how to extract and inspect pixel data using their methods.</p>\n" +
             "\n" +
             "    <h3>5. Traversing the Data Tree</h3>\n" +
-            "    <p>The demo showcases how to navigate the tree structure of the <code>SourceAndConverterServiceUI</code>, which organizes data hierarchically and allows for easy traversal and access to different parts of the dataset.</p>\n" +
+            "    <p>The demo showcases how to navigate the tree structure of the <code>SourceServiceUI</code>, which organizes data hierarchically and allows for easy traversal and access to different parts of the dataset.</p>\n" +
             "\n" +
             "    <p>This example highlights the capabilities of BDV in manipulating and visualizing complex imaging datasets, providing insights into hierarchical data structures and spatial transformations.</p>\n" +
             "    <br> Note that you can always explore the source code of the demo by clicking the <code>source</code> button.</br>" +
@@ -66,7 +67,7 @@ public class SpimDataManipulationExampleCommand implements Command {
     CommandService cs;
 
     @Parameter
-    SourceAndConverterService source_service;
+    SourceService source_service;
 
     @Override
     public void run() {
@@ -74,7 +75,7 @@ public class SpimDataManipulationExampleCommand implements Command {
             File wsiBrainSlices = new File(ch.epfl.biop.DatasetHelper.dowloadBrainVSIDataset(3), "Slide_03.vsi");
 
             // Retrieve the dataset, that's a SpimData object, it holds metadata and the 'recipe' to load pixel data
-            AbstractSpimData<?> dataset = (AbstractSpimData<?>) cs.run(CreateBdvDatasetBioFormatsCommand.class,
+            AbstractSpimData<?> dataset = (AbstractSpimData<?>) cs.run(DatasetFromBioFormatsCreateCommand.class,
                     true,
                     "datasetname", "Egg_Chamber",
                     "unit", "MICROMETER",
@@ -144,17 +145,17 @@ public class SpimDataManipulationExampleCommand implements Command {
             // It is possible to change the spatial location of the SourceAndConverter object, but this has to be done
             // through the underlying SpimData object. How to do it is not detailed now. You thus can't do it.
 
-            // But the SourceAndConverterService provides an easy way to access the SourceAndConverter from SpimData objects
+            // But the SourceService provides an easy way to access the SourceAndConverter from SpimData objects
             // here's various way to achieve that:
 
-            List<SourceAndConverter<?>> sourceAndConverterFromSpimdata = source_service.getSourceAndConverterFromSpimdata(dataset);
+            List<SourceAndConverter<?>> sourceAndConverterFromSpimdata = source_service.getSourcesFromDataset(dataset);
 
             // However the SourceAndConverters are not easily sorted through properties such as all sources of a certain Channel,
             // or all sources of a Tile.
 
             // To do that the SourceAndConverter UI can be convenient:
 
-            SourceAndConverterServiceUI.Node root = source_service.getUI().getRoot();
+            FilterNode root = source_service.tree().root();
 
             // All sources put in the SourceAndConverter service are a tree structure. The root of the tree contains all sources.
 
@@ -162,7 +163,7 @@ public class SpimDataManipulationExampleCommand implements Command {
 
             // To access all the sources of the Spimdata dataset object one can either use;
 
-            List<SourceAndConverter<?>> sourcesOfDataset = source_service.getSourceAndConverterFromSpimdata(dataset);
+            List<SourceAndConverter<?>> sourcesOfDataset = source_service.getSourcesFromDataset(dataset);
 
             // But one can also use the tree structure and refer to the datasetname that was given when opening the file (here "Egg_Chamber")
 
@@ -204,7 +205,7 @@ public class SpimDataManipulationExampleCommand implements Command {
 
             // Note: a Node object from the UI can be looked at like that:
 
-            for (SourceAndConverterServiceUI.Node node : root.children()) {
+            for (FilterNode node : root.children()) {
                 System.out.println(node.name());
                 System.out.println(node.child(0)); // Children nodes can be indexed
                 node.sources(); // Gets the array of sources below the node

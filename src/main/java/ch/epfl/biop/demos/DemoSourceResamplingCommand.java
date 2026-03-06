@@ -8,16 +8,17 @@ import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.bdv.BdvHandleHelper;
-import sc.fiji.bdvpg.bdv.navigate.ViewerTransformAdjuster;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.service.tree.FilterNode;
+import sc.fiji.bdvpg.viewer.bdv.BdvHandleHelper;
+import sc.fiji.bdvpg.viewer.bdv.navigate.ViewerTransformAdjuster;
 import sc.fiji.bdvpg.bdv.supplier.biop.BiopBdvSupplier;
 import sc.fiji.bdvpg.bdv.supplier.biop.BiopSerializableBdvOptions;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
-import sc.fiji.bdvpg.scijava.services.ui.SourceAndConverterServiceUI;
-import sc.fiji.bdvpg.sourceandconverter.transform.SourceResampler;
-import sc.fiji.bdvpg.viewers.ViewerAdapter;
-import sc.fiji.bdvpg.viewers.ViewerTransformSyncStarter;
+import sc.fiji.bdvpg.scijava.service.SourceBdvDisplayService;
+import sc.fiji.bdvpg.scijava.service.SourceService;
+import sc.fiji.bdvpg.source.transform.SourceResampler;
+import sc.fiji.bdvpg.viewer.ViewerAdapter;
+import sc.fiji.bdvpg.viewer.ViewerTransformSyncStarter;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -32,8 +33,8 @@ import java.util.concurrent.ExecutionException;
 
 import static ch.epfl.biop.demos.utils.BdvHelper.createTri;
 
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Resample a source according to another one")
-public class DemoSourceResamplingCommand implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class, menuPath = "Plugins>BIOP>Demos>Demo - Resample a source according to another one")
+public class DemoSourceResamplingCommand implements BdvPlaygroundActionCommand {
 
     @Parameter(visibility = ItemVisibility.MESSAGE)
     String description = "<html> <h1>Resampling a Source According to Another</h1>\n" +
@@ -73,11 +74,11 @@ public class DemoSourceResamplingCommand implements Command {
     Context ctx;
 
     @Parameter
-    SourceAndConverterService source_service;
+    SourceService source_service;
 
 
     @Parameter
-    SourceAndConverterBdvDisplayService display_service;
+    SourceBdvDisplayService display_service;
 
     @Parameter
     boolean swap_sources;
@@ -95,7 +96,7 @@ public class DemoSourceResamplingCommand implements Command {
             //SourceAndConverter<?>[] sources =
                     DemoDatasetHelper.getData(DemoDatasetHelper.DemoDataset.BRAIN_SLICES, ctx);
 
-            SourceAndConverterServiceUI.Node datasetNode = source_service.getUI().getRoot().child("Slide_03");
+            FilterNode datasetNode = source_service.tree().root().child("Slide_03");
 
             // Let's get the overview
 

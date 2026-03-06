@@ -2,7 +2,7 @@ package ch.epfl.biop.demos;
 
 import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
-import ch.epfl.biop.bdv.img.bioformats.command.CreateBdvDatasetBioFormatsCommand;
+import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.process.ColorProcessor;
@@ -17,15 +17,18 @@ import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.bdv.navigate.ViewerTransformAdjuster;
-import sc.fiji.bdvpg.bdv.supplier.DefaultBdvSupplier;
-import sc.fiji.bdvpg.bdv.supplier.SerializableBdvOptions;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
-import sc.fiji.bdvpg.sourceandconverter.SourceAndConverterHelper;
-import sc.fiji.bdvpg.sourceandconverter.transform.SourceAffineTransformer;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
+import sc.fiji.bdvpg.viewer.bdv.navigate.ViewerTransformAdjuster;
+import sc.fiji.bdvpg.viewer.bdv.supplier.DefaultBdvSupplier;
+import sc.fiji.bdvpg.viewer.bdv.supplier.SerializableBdvOptions;
+import sc.fiji.bdvpg.scijava.service.SourceBdvDisplayService;
+import sc.fiji.bdvpg.scijava.service.SourceService;
+import sc.fiji.bdvpg.source.SourceHelper;
+import sc.fiji.bdvpg.source.transform.SourceAffineTransformer;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -39,8 +42,15 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Big ABBA Logo")
-public class DemoBigABBALogoCommand implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class,
+        //menuPath = "Plugins>BIOP>Demos>Demo - Big ABBA Logo"),
+        menu = {
+                @Menu(label = BdvPgMenus.L1),
+                @Menu(label = BdvPgMenus.L2),
+                @Menu(label = "Demos", weight = 10),
+                @Menu(label = "Demo - Big ABBA Logo")
+        })
+public class DemoBigABBALogoCommand implements BdvPlaygroundActionCommand {
 
     @Parameter(visibility = ItemVisibility.MESSAGE)
     String demodescription = "" +
@@ -76,10 +86,10 @@ public class DemoBigABBALogoCommand implements Command {
     CommandService cs;
 
     @Parameter
-    SourceAndConverterBdvDisplayService ds;
+    SourceBdvDisplayService ds;
 
     @Parameter
-    SourceAndConverterService ss;
+    SourceService ss;
 
     @Parameter
     LogService log;
@@ -93,7 +103,7 @@ public class DemoBigABBALogoCommand implements Command {
             File wsiBrainSlices5 = new File(ch.epfl.biop.DatasetHelper.dowloadBrainVSIDataset(5), "Slide_05.vsi");
 
             // Retrieve the dataset, that's a SpimData object, it holds metadata and the 'recipe' to load pixel data
-            AbstractSpimData<?> dataset = (AbstractSpimData<?>) cs.run(CreateBdvDatasetBioFormatsCommand.class,
+            AbstractSpimData<?> dataset = (AbstractSpimData<?>) cs.run(DatasetFromBioFormatsCreateCommand.class,
                     true,
                     "datasetname", "Slices",
                     "unit", "MICROMETER",
@@ -104,7 +114,7 @@ public class DemoBigABBALogoCommand implements Command {
                     "disable_memo", false
             ).get().getOutput("spimdata");
 
-            SourceAndConverter<?>[] brainSlicesSources = ss.getSourceAndConverterFromSpimdata(dataset)
+            SourceAndConverter<?>[] brainSlicesSources = ss.getSourcesFromDataset(dataset)
                     .toArray(new SourceAndConverter<?>[0]);
 
             List<SourceAndConverter<?>> sources = Arrays.asList(brainSlicesSources).stream()
@@ -128,7 +138,7 @@ public class DemoBigABBALogoCommand implements Command {
                     SourceAndConverter<?> source = sources.get(iSource % nSources);
                     AffineTransform3D location = new AffineTransform3D();
                     source.getSpimSource().getSourceTransform(0,0, location);
-                    RealPoint center = SourceAndConverterHelper.getSourceAndConverterCenterPoint(source, 0);
+                    RealPoint center = SourceHelper.getSourceCenterPoint(source, 0);
                     long nPixX = source.getSpimSource().getSource(0, 0).dimension(0);
                     long nPixY = source.getSpimSource().getSource(0, 0).dimension(1);
                     long nPixZ = source.getSpimSource().getSource(0, 0).dimension(2);

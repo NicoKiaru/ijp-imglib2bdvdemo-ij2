@@ -3,22 +3,33 @@ package ch.epfl.biop.demos;
 import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
-import ch.epfl.biop.sourceandconverter.SourceVoxelProcessor;
+import ch.epfl.biop.source.SourceVoxelProcessor;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import org.scijava.Context;
 import org.scijava.command.Command;
 import org.scijava.log.LogService;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.bdv.navigate.ViewerTransformAdjuster;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
-import sc.fiji.bdvpg.services.SourceAndConverterServices;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
+import sc.fiji.bdvpg.viewer.bdv.navigate.ViewerTransformAdjuster;
+import sc.fiji.bdvpg.scijava.service.SourceBdvDisplayService;
+import sc.fiji.bdvpg.service.SourceServices;
 
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Lazy compute image border")
-public class DemoLazyBorderCommand implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class,
+        //menuPath = "Plugins>BIOP>Demos>Demo - Lazy compute image border"
+        menu = {
+                @Menu(label = BdvPgMenus.L1),
+                @Menu(label = BdvPgMenus.L2),
+                @Menu(label = "Demos", weight = 10),
+                @Menu(label = "Demo - Lazy Compute Image Border")
+        }
+)
+public class DemoLazyBorderCommand implements BdvPlaygroundActionCommand {
 
     @Parameter
     Context ctx;
@@ -27,7 +38,7 @@ public class DemoLazyBorderCommand implements Command {
     DemoDatasetHelper.DemoDataset dataset_name;
 
     @Parameter
-    SourceAndConverterBdvDisplayService displayService;
+    SourceBdvDisplayService displayService;
 
     @Parameter
     LogService logger;
@@ -61,8 +72,8 @@ public class DemoLazyBorderCommand implements Command {
             displayService.show(bdvh, source);
             displayService.show(bdvh, borders);
 
-            SourceAndConverterServices
-                    .getSourceAndConverterService()
+            SourceServices
+                    .getSourceService()
                     .getConverterSetup(borders).setDisplayRange(-10,100); // Display the 0 values in gray -> show progression
 
             new ViewerTransformAdjuster(bdvh, sources).run();

@@ -6,32 +6,43 @@ import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import net.imglib2.type.numeric.ARGBType;
 import org.scijava.Context;
 import org.scijava.command.Command;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.bdv.navigate.ViewerTransformAdjuster;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
+import sc.fiji.bdvpg.viewer.bdv.navigate.ViewerTransformAdjuster;
 import sc.fiji.bdvpg.bdv.supplier.biop.BiopBdvSupplier;
 import sc.fiji.bdvpg.bdv.supplier.biop.BiopSerializableBdvOptions;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterBdvDisplayService;
-import sc.fiji.bdvpg.scijava.services.SourceAndConverterService;
-import sc.fiji.bdvpg.viewers.ViewerAdapter;
-import sc.fiji.bdvpg.viewers.ViewerTransformSyncStarter;
+import sc.fiji.bdvpg.scijava.service.SourceBdvDisplayService;
+import sc.fiji.bdvpg.scijava.service.SourceService;
+import sc.fiji.bdvpg.viewer.ViewerAdapter;
+import sc.fiji.bdvpg.viewer.ViewerTransformSyncStarter;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Lazy pyramidize 2D image")
-public class DemoLazyDownscaling implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class,
+//        menuPath = "Plugins>BIOP>Demos>Demo - Lazy pyramidize 2D image"
+        menu = {
+                @Menu(label = BdvPgMenus.L1),
+                @Menu(label = BdvPgMenus.L2),
+                @Menu(label = "Demos", weight = 10),
+                @Menu(label = "Demo - Lazy Pyramidize 2D Image")
+        }
+)
+public class DemoLazyDownscaling implements BdvPlaygroundActionCommand {
 
     @Parameter
     Context ctx;
 
     @Parameter
-    SourceAndConverterBdvDisplayService display;
+    SourceBdvDisplayService display;
 
     @Parameter
-    SourceAndConverterService sourceService;
+    SourceService sourceService;
 
     @Override
     public void run() {

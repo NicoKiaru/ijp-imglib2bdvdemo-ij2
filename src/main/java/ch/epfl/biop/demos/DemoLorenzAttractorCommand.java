@@ -17,10 +17,13 @@ import net.imglib2.type.numeric.real.DoubleType;
 import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.convert.ConvertService;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.bdvpg.services.SourceAndConverterServices;
-import sc.fiji.bdvpg.sourceandconverter.display.ConverterChanger;
+import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
+import sc.fiji.bdvpg.service.SourceServices;
+import sc.fiji.bdvpg.source.display.ConverterChanger;
 
 import javax.swing.event.AncestorEvent;
 import javax.swing.event.AncestorListener;
@@ -38,8 +41,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 //dz/dt = xy-beta.z
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = Command.class, menuPath = "Plugins>BIOP>Demos>Demo - Lorenz Attractor")
-public class DemoLorenzAttractorCommand implements Command {
+@Plugin(type = BdvPlaygroundActionCommand.class,
+//        menuPath = "Plugins>BIOP>Demos>Demo - Lorenz Attractor"
+        menu = {
+                @Menu(label = BdvPgMenus.L1),
+                @Menu(label = BdvPgMenus.L2),
+                @Menu(label = "Demos", weight = 10),
+                @Menu(label = "Demo - Lorenz Attractor")
+        }
+)
+public class DemoLorenzAttractorCommand implements BdvPlaygroundActionCommand {
 
     @Parameter(visibility = ItemVisibility.MESSAGE)
     String description = "<html> <h1>Visualizing the Lorenz Attractor</h1>\n" +
@@ -132,7 +143,7 @@ public class DemoLorenzAttractorCommand implements Command {
 
         SourceAndConverter<DoubleType> coloredEnergy = cc.get();
 
-        SourceAndConverterServices.getBdvDisplayService().show(bdvh, coloredEnergy);
+        SourceServices.getBdvDisplayService().show(bdvh, coloredEnergy);
 
         List<Particle> particles = new ArrayList<>();
         particles.add(new Particle(1,1,1,"Particle 0", new Color(166, 29, 180,255)));
