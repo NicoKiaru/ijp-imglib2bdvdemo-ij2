@@ -21,7 +21,6 @@ import sc.fiji.bdvpg.scijava.BdvPgMenus;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = BdvPlaygroundActionCommand.class,
-        //menuPath = "Plugins>BIOP>Demos>Demo - Display Allen Brain"
         menu = {
                 @Menu(label = BdvPgMenus.L1),
                 @Menu(label = BdvPgMenus.L2),

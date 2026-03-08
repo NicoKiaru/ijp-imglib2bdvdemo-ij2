@@ -25,7 +25,6 @@ import java.util.concurrent.ExecutionException;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = BdvPlaygroundActionCommand.class,
-//        menuPath = "Plugins>BIOP>Demos>Demo - Lazy pyramidize 2D image"
         menu = {
                 @Menu(label = BdvPgMenus.L1),
                 @Menu(label = BdvPgMenus.L2),

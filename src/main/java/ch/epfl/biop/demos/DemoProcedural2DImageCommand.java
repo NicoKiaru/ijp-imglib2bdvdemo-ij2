@@ -7,11 +7,19 @@ import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.util.Intervals;
 import org.scijava.command.Command;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Plugin;
 import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
 import sc.fiji.bdvpg.service.SourceServices;
 
-@Plugin(type = BdvPlaygroundActionCommand.class, menuPath = "Plugins>BIOP>Demos>Demo - Procedural 2D Image")
+@Plugin(type = BdvPlaygroundActionCommand.class,
+        menu = {
+                @org.scijava.plugin.Menu(label = BdvPgMenus.L1),
+                @org.scijava.plugin.Menu(label = BdvPgMenus.L2),
+                @org.scijava.plugin.Menu(label = "Demos", weight = 10),
+                @Menu(label = "Demo - Procedural 2D Image")
+        })
 public class DemoProcedural2DImageCommand implements BdvPlaygroundActionCommand {
     @Override
     public void run() {

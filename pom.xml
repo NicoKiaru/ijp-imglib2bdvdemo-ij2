@@ -81,7 +81,6 @@
 
 	<properties>
 		<package-name>ch.epfl.biop.demos</package-name>
-		<main-class>ch.epfl.biop.demos.DummyCommand</main-class>
 		<license.licenseName>gpl_v3</license.licenseName>
 		<license.copyrightOwners>EPFL</license.copyrightOwners>
 		<!--scijava.app.directory>C:/Fiji_template</scijava.app.directory-->

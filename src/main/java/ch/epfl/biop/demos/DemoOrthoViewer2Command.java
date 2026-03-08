@@ -41,7 +41,6 @@ import static ch.epfl.biop.demos.utils.BdvHelper.createQuadrant;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = BdvPlaygroundActionCommand.class,
-       // menuPath = "Plugins>BIOP>Demos>Demo - OrthoViewer (v2)"
         menu = {
             @Menu(label = BdvPgMenus.L1),
             @Menu(label = BdvPgMenus.L2),

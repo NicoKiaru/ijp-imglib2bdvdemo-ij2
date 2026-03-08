@@ -20,7 +20,6 @@ import java.util.concurrent.ExecutionException;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = BdvPlaygroundActionCommand.class,
-        //menuPath = "Plugins>BIOP>Demos>Demo - Mandelbrot Set"
         menu = {
                 @Menu(label = BdvPgMenus.L1),
                 @Menu(label = BdvPgMenus.L2),

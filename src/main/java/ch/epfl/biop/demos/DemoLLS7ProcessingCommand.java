@@ -31,7 +31,6 @@ import java.util.concurrent.ExecutionException;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = BdvPlaygroundActionCommand.class,
-//        menuPath = "Plugins>BIOP>Demos>Demo - Lattice Light Sheet Processing"
         menu = {
                 @Menu(label = BdvPgMenus.L1),
                 @Menu(label = BdvPgMenus.L2),

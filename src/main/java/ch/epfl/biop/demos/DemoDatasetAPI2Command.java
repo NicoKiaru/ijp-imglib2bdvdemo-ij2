@@ -4,18 +4,26 @@ import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
 import mpicbg.spim.data.generic.AbstractSpimData;
 import org.scijava.ItemVisibility;
-import org.scijava.command.Command;
 import org.scijava.command.CommandService;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
 import sc.fiji.bdvpg.scijava.service.SourceService;
 import sc.fiji.bdvpg.scijava.service.tree.FilterNode;
 
 import java.io.File;
 
-@Plugin(type = BdvPlaygroundActionCommand.class, menuPath = "Plugins>BIOP>Demos>Demo - SpimData Investigation")
-public class SpimDataInvestigationCommand implements BdvPlaygroundActionCommand {
+@Plugin(type = BdvPlaygroundActionCommand.class,
+        menu = {
+                @Menu(label = BdvPgMenus.L1),
+                @Menu(label = BdvPgMenus.L2),
+                @Menu(label = "Demos", weight = 10),
+                @Menu(label = "Demo - Dataset API (2)")
+        }
+)
+public class DemoDatasetAPI2Command implements BdvPlaygroundActionCommand {
 
     @Parameter(visibility = ItemVisibility.MESSAGE)
     String description = "<html> <h1>Investigating SpimData</h1>\n" +

@@ -5,7 +5,6 @@ import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import org.scijava.Context;
 import org.scijava.ItemVisibility;
-import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Menu;
@@ -39,7 +38,6 @@ import static ch.epfl.biop.demos.utils.BdvHelper.createQuadrant;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = BdvPlaygroundActionCommand.class,
-        //menuPath = "Plugins>BIOP>Demos>Demo - Demo Multiresolution Rendering"
         menu = {
                 @Menu(label = BdvPgMenus.L1),
                 @Menu(label = BdvPgMenus.L2),
@@ -47,7 +45,7 @@ import static ch.epfl.biop.demos.utils.BdvHelper.createQuadrant;
                 @Menu(label = "Demo - Demo Multiresolution Rendering")
         }
 )
-public class DemoMultiresolutionRendering implements BdvPlaygroundActionCommand {
+public class DemoMultiresolutionRenderingCommand implements BdvPlaygroundActionCommand {
 
     @Parameter(visibility = ItemVisibility.MESSAGE)
     String description = "<html> <h1>Demo Multiresolution Rendering</h1>\n" +

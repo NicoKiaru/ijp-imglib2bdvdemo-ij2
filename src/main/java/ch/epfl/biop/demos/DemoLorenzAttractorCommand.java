@@ -42,7 +42,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = BdvPlaygroundActionCommand.class,
-//        menuPath = "Plugins>BIOP>Demos>Demo - Lorenz Attractor"
         menu = {
                 @Menu(label = BdvPgMenus.L1),
                 @Menu(label = BdvPgMenus.L2),

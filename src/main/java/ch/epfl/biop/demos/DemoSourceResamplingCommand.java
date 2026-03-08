@@ -6,9 +6,11 @@ import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import org.scijava.Context;
 import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
 import sc.fiji.bdvpg.scijava.service.tree.FilterNode;
 import sc.fiji.bdvpg.viewer.bdv.BdvHandleHelper;
 import sc.fiji.bdvpg.viewer.bdv.navigate.ViewerTransformAdjuster;
@@ -33,7 +35,14 @@ import java.util.concurrent.ExecutionException;
 
 import static ch.epfl.biop.demos.utils.BdvHelper.createTri;
 
-@Plugin(type = BdvPlaygroundActionCommand.class, menuPath = "Plugins>BIOP>Demos>Demo - Resample a source according to another one")
+@Plugin(type = BdvPlaygroundActionCommand.class,
+        menu = {
+                @Menu(label = BdvPgMenus.L1),
+                @Menu(label = BdvPgMenus.L2),
+                @Menu(label = "Demos", weight = 10),
+                @Menu(label = "Demo - Resample Source")
+        }
+)
 public class DemoSourceResamplingCommand implements BdvPlaygroundActionCommand {
 
     @Parameter(visibility = ItemVisibility.MESSAGE)

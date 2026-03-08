@@ -9,9 +9,11 @@ import org.scijava.Context;
 import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
 import sc.fiji.bdvpg.viewer.bdv.BdvHandleHelper;
 import sc.fiji.bdvpg.bdv.supplier.biop.BiopBdvSupplier;
 import sc.fiji.bdvpg.bdv.supplier.biop.BiopSerializableBdvOptions;
@@ -37,7 +39,14 @@ import java.util.concurrent.ExecutionException;
 import static ch.epfl.biop.demos.utils.BdvHelper.createTri;
 
 @SuppressWarnings("unused")
-@Plugin(type = BdvPlaygroundActionCommand.class, menuPath = "Plugins>BIOP>Demos>Demo - Pyramidal Image Loading")
+@Plugin(type = BdvPlaygroundActionCommand.class,
+        menu = {
+                @Menu(label = BdvPgMenus.L1),
+                @Menu(label = BdvPgMenus.L2),
+                @Menu(label = "Demos", weight = 10),
+                @Menu(label = "Demo - Pyramidal Image Loading")
+        }
+)
 public class DemoResolutionLevelOnDatasetCommand implements BdvPlaygroundActionCommand {
 
     @Parameter(persist = false)

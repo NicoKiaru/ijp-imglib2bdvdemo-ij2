@@ -25,7 +25,6 @@ import sc.fiji.bdvpg.source.display.BrightnessAutoAdjuster;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = BdvPlaygroundActionCommand.class,
-        //menuPath = "Plugins>BIOP>Demos>Demo - Elliptical Transform Egg Chamber"
         menu = {
                 @Menu(label = BdvPgMenus.L1),
                 @Menu(label = BdvPgMenus.L2),
@@ -113,7 +112,9 @@ public class DemoEllipticalTransformEggChamberCommand implements BdvPlaygroundAc
             // Display the location of the ellipse used for the transform
             SourceAndConverter<?> ellipsoidSource = (SourceAndConverter<?>)
                     cs.run(DisplayEllipseFromTransformCommand.class, true,
-                            "r_min", 0.9, "r_max", 1.1, "e3dt", e3Dt).get().getOutput("sac_out");
+                            "r_min", 0.9, "r_max", 1.1, "e3dt", e3Dt).get().getOutput("source_out");
+
+            ss.register(ellipsoidSource);
 
             new BrightnessAdjuster(ellipsoidSource, 0, 255).run();
 

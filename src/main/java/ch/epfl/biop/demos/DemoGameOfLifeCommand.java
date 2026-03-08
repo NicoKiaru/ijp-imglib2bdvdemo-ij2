@@ -28,14 +28,13 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = BdvPlaygroundActionCommand.class, //menuPath = "Plugins>BIOP>Demos>Demo - Game Of Life"
+@Plugin(type = BdvPlaygroundActionCommand.class,
         menu = {
                 @Menu(label = BdvPgMenus.L1),
                 @Menu(label = BdvPgMenus.L2),
                 @Menu(label = "Demos", weight = 10),
                 @Menu(label = "Demo - Game Of Life")
         }
-
 )
 public class DemoGameOfLifeCommand implements BdvPlaygroundActionCommand {
 

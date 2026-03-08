@@ -43,7 +43,6 @@ import java.util.stream.Collectors;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
 @Plugin(type = BdvPlaygroundActionCommand.class,
-        //menuPath = "Plugins>BIOP>Demos>Demo - Big ABBA Logo"),
         menu = {
                 @Menu(label = BdvPgMenus.L1),
                 @Menu(label = BdvPgMenus.L2),

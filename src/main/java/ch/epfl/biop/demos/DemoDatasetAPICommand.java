@@ -19,11 +19,12 @@ import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
 import org.scijava.ItemVisibility;
-import org.scijava.command.Command;
 import org.scijava.command.CommandService;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
 import sc.fiji.bdvpg.scijava.service.SourceService;
 import sc.fiji.bdvpg.scijava.service.tree.FilterNode;
 
@@ -31,8 +32,15 @@ import java.io.File;
 import java.util.List;
 import java.util.Map;
 
-@Plugin(type = BdvPlaygroundActionCommand.class, menuPath = "Plugins>BIOP>Demos>Demo - SpimData Manipulation")
-public class SpimDataManipulationExampleCommand implements BdvPlaygroundActionCommand {
+@Plugin(type = BdvPlaygroundActionCommand.class,
+    menu = {
+        @Menu(label = BdvPgMenus.L1),
+        @Menu(label = BdvPgMenus.L2),
+        @Menu(label = "Demos", weight = 10),
+        @Menu(label = "Demo - Dataset API (1)")
+    }
+)
+public class DemoDatasetAPICommand implements BdvPlaygroundActionCommand {
 
     @Parameter(visibility = ItemVisibility.MESSAGE)
     String description = "<html> <h1>SpimData Manipulation Example</h1>\n" +
@@ -77,7 +85,7 @@ public class SpimDataManipulationExampleCommand implements BdvPlaygroundActionCo
             // Retrieve the dataset, that's a SpimData object, it holds metadata and the 'recipe' to load pixel data
             AbstractSpimData<?> dataset = (AbstractSpimData<?>) cs.run(DatasetFromBioFormatsCreateCommand.class,
                     true,
-                    "datasetname", "Egg_Chamber",
+                    "datasetname", "Mouse Brain Slices",
                     "unit", "MICROMETER",
                     "files", new File[]{wsiBrainSlices},
                     "split_rgb_channels", false,

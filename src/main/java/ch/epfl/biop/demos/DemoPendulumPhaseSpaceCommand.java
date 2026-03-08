@@ -14,9 +14,11 @@ import org.scijava.Context;
 import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.convert.ConvertService;
+import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import sc.fiji.bdvpg.command.BdvPlaygroundActionCommand;
+import sc.fiji.bdvpg.scijava.BdvPgMenus;
 import sc.fiji.bdvpg.scijava.ScijavaSwingUI;
 import sc.fiji.bdvpg.service.SourceServices;
 import sc.fiji.bdvpg.source.display.ConverterChanger;
@@ -24,7 +26,13 @@ import sc.fiji.bdvpg.source.display.ConverterChanger;
 import static bdv.ui.BdvDefaultCards.*;
 
 @SuppressWarnings({"CanBeFinal", "unused"})
-@Plugin(type = BdvPlaygroundActionCommand.class, menuPath = "Plugins>BIOP>Demos>Demo - Pendulum Phase Space")
+@Plugin(type = BdvPlaygroundActionCommand.class,
+        menu = {
+                @org.scijava.plugin.Menu(label = BdvPgMenus.L1),
+                @org.scijava.plugin.Menu(label = BdvPgMenus.L2),
+                @org.scijava.plugin.Menu(label = "Demos", weight = 10),
+                @Menu(label = "Demo - Pendulum Phase Space")
+        })
 public class DemoPendulumPhaseSpaceCommand implements BdvPlaygroundActionCommand {
 
     @Parameter(visibility = ItemVisibility.MESSAGE)
