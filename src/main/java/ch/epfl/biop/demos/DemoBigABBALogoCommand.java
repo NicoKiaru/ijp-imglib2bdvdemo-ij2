@@ -14,7 +14,6 @@ import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import org.scijava.ItemVisibility;
-import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Menu;
@@ -174,11 +173,7 @@ public class DemoBigABBALogoCommand implements BdvPlaygroundActionCommand {
             SerializableBdvOptions opts = new SerializableBdvOptions();
             opts.is2D = true;
             BdvHandle bdvh = new DefaultBdvSupplier(opts).get();
-            //BdvHandle bdvh;
-            //AlphaSerializableBdvOptions optsAlpha = new AlphaSerializableBdvOptions();
-            //optsAlpha.is2D = true;
-            //optsAlpha.white_bg = true;
-            //bdvh = new AlphaBdvSupplier(optsAlpha).get();
+
             ds.show(bdvh, allSources.toArray(new SourceAndConverter[0]));
             new ViewerTransformAdjuster(bdvh, allSources.toArray(new SourceAndConverter[0])).run();
 

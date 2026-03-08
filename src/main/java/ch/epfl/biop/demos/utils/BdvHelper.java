@@ -22,7 +22,7 @@ public class BdvHelper {
         FinalInterval interval = new FinalInterval(new long[]{0,0}, new long[]{1,1});
         BdvOptions options = BdvOptions.options().is2D();
         if (bdvh!=null) options.addTo(bdvh);
-        BdvStackSource bss = BdvFunctions.show(rra, interval, name, options); // Issue : not accepting a RealInterval! TODO : mention
+        BdvStackSource<?> bss = BdvFunctions.show(rra, interval, name, options); // Issue : not accepting a RealInterval! TODO : mention
         bss.setColor(new ARGBType(ARGBType.rgba(r,g,b,0)));
         ((ConverterSetup)bss.getConverterSetups().get(0)).setDisplayRange(min,max); // Why cast to Converter Setup ? mention issue TODO
         return bss.getBdvHandle();

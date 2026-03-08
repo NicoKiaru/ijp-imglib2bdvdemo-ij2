@@ -41,7 +41,7 @@ public class GameOfLifeSource implements Source<UnsignedByteType> {
 
     final int nResolutionLevels;
 
-    Map<Integer, RandomAccessibleInterval<UnsignedByteType>> sources = new HashMap<>();
+    final Map<Integer, RandomAccessibleInterval<UnsignedByteType>> sources = new HashMap<>();
 
     public GameOfLifeSource(String name, RandomAccessibleInterval<UnsignedByteType> origin) {
         this.name = name;

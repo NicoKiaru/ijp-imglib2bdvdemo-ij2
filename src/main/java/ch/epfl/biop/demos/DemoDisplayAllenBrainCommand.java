@@ -8,9 +8,7 @@ import ch.epfl.biop.atlas.mouse.allen.ccfv3p1.command.AllenBrainAdultMouseAtlasC
 import ch.epfl.biop.atlas.struct.Atlas;
 import net.imglib2.Volatile;
 import net.imglib2.type.numeric.ARGBType;
-import ome.xml.meta.IMetadata;
 import org.scijava.ItemVisibility;
-import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Menu;

@@ -6,7 +6,6 @@ import bdv.util.BdvOptions;
 import bdv.viewer.Source;
 import ch.epfl.biop.demos.utils.GenerativeMultiResolutionSource;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
-import org.scijava.command.Command;
 import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;

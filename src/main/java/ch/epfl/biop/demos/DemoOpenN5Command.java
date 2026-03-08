@@ -3,7 +3,6 @@ import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
 import org.embl.mobie.io.imagedata.N5ImageData;
 import org.scijava.Context;
-import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.command.DynamicCommand;
 import org.scijava.log.LogService;

@@ -7,7 +7,6 @@ import ch.epfl.biop.source.SourceVoxelProcessor;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import org.scijava.Context;
-import org.scijava.command.Command;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;

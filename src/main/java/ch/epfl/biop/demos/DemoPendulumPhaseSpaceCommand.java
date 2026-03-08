@@ -12,7 +12,6 @@ import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.real.DoubleType;
 import org.scijava.Context;
 import org.scijava.ItemVisibility;
-import org.scijava.command.Command;
 import org.scijava.convert.ConvertService;
 import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;

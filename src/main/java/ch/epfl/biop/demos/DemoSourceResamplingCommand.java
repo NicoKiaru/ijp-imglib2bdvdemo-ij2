@@ -5,7 +5,6 @@ import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import org.scijava.Context;
 import org.scijava.ItemVisibility;
-import org.scijava.command.Command;
 import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
@@ -178,13 +177,7 @@ public class DemoSourceResamplingCommand implements BdvPlaygroundActionCommand {
 
             new ViewerTransformAdjuster(bdvTopLevel, bfToResample).run();
 
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        } catch (InvocationTargetException e) {
+        } catch (IOException | InvocationTargetException | InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }
     }

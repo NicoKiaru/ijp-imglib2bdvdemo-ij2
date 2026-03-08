@@ -5,7 +5,6 @@ import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import net.imglib2.type.numeric.ARGBType;
 import org.scijava.Context;
-import org.scijava.command.Command;
 import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;

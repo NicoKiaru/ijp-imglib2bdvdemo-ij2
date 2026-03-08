@@ -6,7 +6,6 @@ import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import ch.epfl.biop.demos.utils.ReIndexedPyramidSource;
 import org.scijava.Context;
-import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Menu;
@@ -171,9 +170,7 @@ public class DemoResolutionLevelOnDatasetCommand implements BdvPlaygroundActionC
 
         } catch (InterruptedException | ExecutionException e) {
             log.error(e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (InvocationTargetException e) {
+        } catch (IOException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
     }

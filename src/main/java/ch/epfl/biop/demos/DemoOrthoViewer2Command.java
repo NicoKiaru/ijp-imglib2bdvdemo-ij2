@@ -7,7 +7,6 @@ import bvv.vistools.BvvHandle;
 import bvv.vistools.BvvOptions;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import org.scijava.Context;
-import org.scijava.command.Command;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;

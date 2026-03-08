@@ -9,7 +9,6 @@ import ch.epfl.biop.command.register.SourcesRealTransformCommand;
 import ch.epfl.biop.command.workflow.elliptic.DisplayEllipseFromTransformCommand;
 
 import org.scijava.ItemVisibility;
-import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Menu;

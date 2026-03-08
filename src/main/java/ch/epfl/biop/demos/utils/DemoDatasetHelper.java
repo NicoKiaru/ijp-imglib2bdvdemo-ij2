@@ -7,7 +7,6 @@ import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.atlas.mouse.allen.ccfv3p1.command.AllenBrainAdultMouseAtlasCCF2017v3p1Command;
 import ch.epfl.biop.atlas.struct.Atlas;
 import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
-import ch.epfl.biop.command.importer.DatasetFromCZICreateCommand;
 import mpicbg.spim.data.generic.AbstractSpimData;
 import net.imglib2.FinalInterval;
 import net.imglib2.display.LinearRange;
@@ -109,15 +108,6 @@ public class DemoDatasetHelper {
             case LATTICE_HELA_SKEWED:
                 File f = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/14203207/files/Hela-Kyoto-1-Timepoint-LLS7.czi");
 
-                /*cs.run(DatasetFromCZICreateCommand.class, true,
-                        "czi_file", f,
-                        "legacy_xy_mode", false).get();
-
-                String datasetNameLattice = FilenameUtils.removeExtension(f.getName());
-
-                return ctx.getService(SourceService.class).tree().getSources(datasetNameLattice)
-                        .toArray(new SourceAndConverter[0]);*/
-
                 String datasetNameLattice = FilenameUtils.removeExtension(f.getName());
 
                 AbstractSpimData<?> dataset = (AbstractSpimData<?>) cs.run(DatasetFromBioFormatsCreateCommand.class,
@@ -138,9 +128,8 @@ public class DemoDatasetHelper {
 
                 FunctionRandomAccessible<UnsignedShortType> random =
                         new FunctionRandomAccessible<>(3,
-                                (position, pixel) -> {
-                                    pixel.set((Math.random() > 0.5)?16:0);
-                                }, UnsignedShortType::new);
+                                (position, pixel) -> pixel.set((Math.random() > 0.5)?16:0),
+                                UnsignedShortType::new);
 
                 SharedQueue queue = new SharedQueue(
                         Runtime.getRuntime().availableProcessors()-1

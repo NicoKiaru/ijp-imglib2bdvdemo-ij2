@@ -7,7 +7,6 @@ import bvv.vistools.BvvOptions;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import org.scijava.Context;
 import org.scijava.ItemVisibility;
-import org.scijava.command.Command;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
@@ -182,9 +181,7 @@ public class DemoOrthoViewerCommand implements BdvPlaygroundActionCommand {
             });
 
             // We apparently need to wait one round of UI refresh to get the view right
-            SwingUtilities.invokeLater(() -> {
-                new ViewerTransformAdjuster(bdvRight, sources).run();
-            });
+            SwingUtilities.invokeLater(() -> new ViewerTransformAdjuster(bdvRight, sources).run());
 
             // Async at the end -> it can require a lot of computation for the lazy computed game of life for instance
             for (SourceAndConverter<?> source : sources) {

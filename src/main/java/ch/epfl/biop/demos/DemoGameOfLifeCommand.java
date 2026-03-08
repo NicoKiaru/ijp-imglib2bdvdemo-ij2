@@ -13,7 +13,6 @@ import net.imglib2.position.FunctionRandomAccessible;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.view.Views;
 import org.scijava.ItemVisibility;
-import org.scijava.command.Command;
 import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
@@ -122,10 +121,6 @@ public class DemoGameOfLifeCommand implements BdvPlaygroundActionCommand {
                 .getBdvDisplayService()
                 .show(bdvh, gol);
 
-        //new ViewerTransformAdjuster(bdvh, gol).run();
-
-        //bdvh.getViewerPanel().state().setNumTimepoints(1500);
-
         bdvh.getCardPanel().addCard("Control Computation", makePauseResumePanel(queue), true);
 
         bdvh.getSplitPanel().setCollapsed(false);
@@ -139,34 +134,28 @@ public class DemoGameOfLifeCommand implements BdvPlaygroundActionCommand {
 
         // Create the "Pause" button
         JButton pauseButton = new JButton("Pause");
-        pauseButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                System.out.println("Pause button clicked");
-                // Add any additional actions for pausing here
-                try {
-                    queue.pause();
-                } catch (InterruptedException ex) {
-                    throw new RuntimeException(ex);
-                }
+        pauseButton.addActionListener(e -> {
+            System.out.println("Pause button clicked");
+            // Add any additional actions for pausing here
+            try {
+                queue.pause();
+            } catch (InterruptedException ex) {
+                throw new RuntimeException(ex);
             }
         });
 
         // Create the "Resume" button
         JButton resumeButton = new JButton("Resume");
-        resumeButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                System.out.println("Resume button clicked");
-                // Add any additional actions for resuming here
-                new Thread(() -> {
-                    try {
-                        queue.resume();
-                    } catch (InterruptedException ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }).start();
-            }
+        resumeButton.addActionListener(e -> {
+            System.out.println("Resume button clicked");
+            // Add any additional actions for resuming here
+            new Thread(() -> {
+                try {
+                    queue.resume();
+                } catch (InterruptedException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }).start();
         });
 
         // Add buttons to the panel

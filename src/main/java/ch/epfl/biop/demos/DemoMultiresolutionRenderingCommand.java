@@ -171,9 +171,7 @@ public class DemoMultiresolutionRenderingCommand implements BdvPlaygroundActionC
                     bdv1x), new ViewerAdapter(bdv4x), new ViewerAdapter(normalBdv)).run();
 
             // We apparently need to wait one round of UI refresh to get the view right
-            SwingUtilities.invokeLater(() -> {
-                new ViewerTransformAdjuster(normalBdv, sources).run();
-            });
+            SwingUtilities.invokeLater(() -> new ViewerTransformAdjuster(normalBdv, sources).run());
 
             // I don't use BdvFunctions in order to keep the correct colors
             ds.show(bdv16x, sources);

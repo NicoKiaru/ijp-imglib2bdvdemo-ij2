@@ -3,17 +3,14 @@ package ch.epfl.biop.demos;
 import bdv.cache.SharedQueue;
 import bdv.util.BdvHandle;
 import bdv.util.EmptySource;
-import bdv.util.source.process.VoxelProcessedSource;
 import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
-import ch.epfl.biop.source.SourceVoxelProcessor;
 import ch.epfl.biop.source.deconvolve.Deconvolver;
 import mpicbg.spim.data.generic.AbstractSpimData;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.RealType;
 import org.scijava.Context;
-import org.scijava.command.Command;
 import org.scijava.command.CommandService;
 import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
@@ -80,15 +77,6 @@ public class DemoLLS7ProcessingCommand implements BdvPlaygroundActionCommand {
             if (deconvolve) {
                 SourceAndConverter<?> psf = ss.getSourcesFromDataset(datasetEC).toArray(new SourceAndConverter<?>[0])[0];
 
-                /*Clij2RichardsonLucyImglib2Cache.Builder builder =
-                        Clij2RichardsonLucyImglib2Cache.builder()
-                                .nonCirculant(false)
-                                .numberOfIterations(40)
-                                .psf((RandomAccessibleInterval<? extends RealType<?>>) psf.getSpimSource().getSource(0,0))
-                                .overlap(12)
-                                .useGPUPool(CLIJxPool.getInstance()) // in fact this is the default behaviour, but one can specify a different pool if necessary here
-                                .regularizationFactor(0.0001f);*/
-
                 for (int i = 0;i< lls7Channels.length; i++) {
 
                     llsDeconvolved[i] = Deconvolver.getDeconvolvedCast(
@@ -135,11 +123,7 @@ public class DemoLLS7ProcessingCommand implements BdvPlaygroundActionCommand {
             ds.show(bdvh, processed);
             new ViewerTransformAdjuster(bdvh, processed).run();
 
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        } catch (InterruptedException e) {
+        } catch (IOException | ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
