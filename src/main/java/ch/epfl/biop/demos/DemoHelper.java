@@ -231,6 +231,74 @@ public class DemoHelper {
     /** Default wait time in milliseconds before capturing */
     public static final long DEFAULT_WAIT_MS = 4000;
 
+    // ==================== CLIPBOARD SCREENSHOT METHODS ====================
+
+    /**
+     * Shows a dialog instructing the user to take a snip, then reads the image from the clipboard and saves it.
+     *
+     * <p>Typical workflow:</p>
+     * <ol>
+     *   <li>Dialog appears with {@code message} (e.g. "Open menu Plugins > BigDataViewer, then snip it")</li>
+     *   <li>User opens the menu, presses Win+Shift+S (Snipping Tool), selects region</li>
+     *   <li>User clicks OK in the dialog</li>
+     *   <li>Code reads the clipboard image and saves it as {@code filename.png}</li>
+     * </ol>
+     *
+     * <p>Example usage:</p>
+     * <pre>
+     * DemoHelper.shotFromClipboard(OUTPUT_DIR, "menu_open_sources",
+     *     "Open menu: Plugins > BigDataViewer > Open Sources\n" +
+     *     "Take a snip with Win+Shift+S, then click OK.");
+     * </pre>
+     *
+     * @param outputDir directory to save the screenshot
+     * @param filename  filename without extension (saved as {@code filename.png})
+     * @param message   instructions shown to the user
+     */
+    public static void shotFromClipboard(File outputDir, String filename, String message) {
+        showInstructionDialog("Screenshot from Clipboard",
+                message + "\n\nTake your snip (Win+Shift+S), then click OK.",
+                "OK – save clipboard image");
+
+        try {
+            java.awt.datatransfer.Transferable contents =
+                    Toolkit.getDefaultToolkit().getSystemClipboard().getContents(null);
+
+            if (contents == null || !contents.isDataFlavorSupported(java.awt.datatransfer.DataFlavor.imageFlavor)) {
+                System.err.println("[Screenshot] Clipboard does not contain an image. Nothing saved.");
+                return;
+            }
+
+            java.awt.Image img = (java.awt.Image)
+                    contents.getTransferData(java.awt.datatransfer.DataFlavor.imageFlavor);
+
+            // Convert to BufferedImage
+            BufferedImage buffered = new BufferedImage(
+                    img.getWidth(null), img.getHeight(null), BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2d = buffered.createGraphics();
+            g2d.drawImage(img, 0, 0, null);
+            g2d.dispose();
+
+            outputDir.mkdirs();
+            File outputFile = new File(outputDir, filename + ".png");
+            ImageIO.write(buffered, "png", outputFile);
+            System.out.println("[Screenshot] Saved clipboard image: " + outputFile.getPath());
+
+        } catch (Exception e) {
+            System.err.println("[Screenshot] Failed to read clipboard: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Convenience overload using {@link #DEFAULT_OUTPUT_DIR}.
+     *
+     * @param filename filename without extension
+     * @param message  instructions shown to the user
+     */
+    public static void shotFromClipboard(String filename, String message) {
+        shotFromClipboard(DEFAULT_OUTPUT_DIR, filename, message);
+    }
+
     // ==================== ONE-LINER METHODS ====================
 
     /**
