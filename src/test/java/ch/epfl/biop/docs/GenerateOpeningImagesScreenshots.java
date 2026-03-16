@@ -43,11 +43,14 @@ public class GenerateOpeningImagesScreenshots {
         // Open the menu and snip it before clicking OK.
         // -------------------------------------------------------------------------
         System.out.println("\n=== Scenario 1: Import submenu (clipboard) ===");
-        DemoHelper.shotFromClipboard(OUTPUT_DIR, "import_menu",
-                "Open the menu:\n" +
-                "  Plugins > BigDataViewer-Playground > Import\n\n" +
-                "Hover over 'Import' so the submenu is fully visible.\n" +
-                "Snip it with Win+Shift+S, then click OK.");
+        DemoHelper.clipboardShot()
+                .to(OUTPUT_DIR)
+                .filename("import_menu")
+                .withMessage("Open the menu:\n" +
+                        "  Plugins > BigDataViewer-Playground > Import\n\n" +
+                        "Hover over 'Import' so the submenu is fully visible.\n" +
+                        "Snip it with Win+Shift+S, then click OK.")
+                .capture();
 
         // -------------------------------------------------------------------------
         // Scenario 2: BDV Playground tree view (auto-shot)
@@ -60,23 +63,30 @@ public class GenerateOpeningImagesScreenshots {
         DemoHelper.expandTreeView(ij, 3);
         DemoHelper.waitFor(1000);
 
-        DemoHelper.pause(
-                "Scenario 2 – Sources Tree View\n\n" +
-                "The BDV Playground window should show the source tree expanded\n" +
-                "with the LLS7 dataset and its channels as child nodes.\n\n" +
-                "Resize or rearrange the window so the tree is clearly visible.\n" +
-                "Click Continue to capture.");
         // The window is titled "BDV Sources" in version 0.20.4.
-        DemoHelper.shot(OUTPUT_DIR, "sources_tree", 2000, "BDV Sources");
+        DemoHelper.shot()
+                .to(OUTPUT_DIR)
+                .prefix("sources_tree")
+                .waitMs(2000)
+                .filter("BDV Sources")
+                .pause("Scenario 2 – Sources Tree View\n\n" +
+                        "The BDV Playground window should show the source tree expanded\n" +
+                        "with the LLS7 dataset and its channels as child nodes.\n\n" +
+                        "Resize or rearrange the window so the tree is clearly visible.\n" +
+                        "Click Continue to capture.")
+                .capture();
 
         // -------------------------------------------------------------------------
         // Scenario 3: Right-click context menu on a tree node (clipboard)
         // -------------------------------------------------------------------------
         System.out.println("\n=== Scenario 3: Tree context menu (clipboard) ===");
-        DemoHelper.shotFromClipboard(OUTPUT_DIR, "tree_context_menu",
-                "In the BDV Playground tree, right-click on any source node\n" +
-                "(e.g. one of the LLS7 channels) to open the context menu.\n\n" +
-                "Keep the menu open, snip it with Win+Shift+S, then click OK.");
+        DemoHelper.clipboardShot()
+                .to(OUTPUT_DIR)
+                .filename("tree_context_menu")
+                .withMessage("In the BDV Playground tree, right-click on any source node\n" +
+                        "(e.g. one of the LLS7 channels) to open the context menu.\n\n" +
+                        "Keep the menu open, snip it with Win+Shift+S, then click OK.")
+                .capture();
 
         System.out.println("\n=== Done. Screenshots saved to: " + OUTPUT_DIR.getAbsolutePath() + " ===");
         // Fiji stays open so you can inspect the results. Close it manually when done.

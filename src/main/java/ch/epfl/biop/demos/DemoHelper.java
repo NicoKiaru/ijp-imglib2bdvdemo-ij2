@@ -42,6 +42,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
@@ -572,6 +573,220 @@ public class DemoHelper {
             Thread.sleep(millis);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+    }
+
+    // ==================== EDIT-IN-IMAGEJ CAPTURE ====================
+
+    /**
+     * Captures each matching window to a {@link BufferedImage}, opens it as an
+     * {@code ImagePlus} in ImageJ so the user can annotate it (arrows, text,
+     * overlays …), then flattens and saves the result when the user clicks Save.
+     *
+     * @param outputDir  directory to save the final images
+     * @param prefix     filename prefix
+     * @param waitMs     milliseconds to wait before capturing (for rendering)
+     * @param filters    title filters passed to {@link #getFilteredVisibleFrames(String...)}
+     * @return list of files that were saved
+     */
+    private static List<File> captureAndEditFrames(File outputDir, String prefix, long waitMs, String[] filters) {
+        waitFor(waitMs);
+        List<File> saved = new ArrayList<>();
+        List<JFrame> frames = getFilteredVisibleFrames(filters);
+        int index = 0;
+        for (JFrame frame : frames) {
+            try {
+                // 1 – render frame to BufferedImage
+                int w = frame.getWidth(), h = frame.getHeight();
+                if (w <= 0 || h <= 0) {
+                    System.err.println("[Screenshot] Skipping frame with invalid size: " + frame.getTitle());
+                    continue;
+                }
+                BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g2d = img.createGraphics();
+                frame.paint(g2d);
+                g2d.dispose();
+
+                // 2 – open in ImageJ for annotation
+                ij.ImagePlus imp = new ij.ImagePlus(frame.getTitle(), img);
+                imp.show();
+
+                showInstructionDialog("Annotate Screenshot",
+                        "Annotate \"" + frame.getTitle() + "\" in the ImageJ window.\n" +
+                        "Use any ImageJ tool: arrows, text, overlays, measurements…\n\n" +
+                        "When done, click Save to flatten and write the image.",
+                        "Save");
+
+                // 3 – flatten overlays and save
+                outputDir.mkdirs();
+                File outputFile = new File(outputDir, generateFilename(frame, prefix, index));
+                ij.ImagePlus flat = imp.flatten();
+                ImageIO.write(flat.getBufferedImage(), "png", outputFile);
+                imp.changes = false;
+                imp.close();
+                flat.close();
+
+                saved.add(outputFile);
+                System.out.println("[Screenshot] Saved annotated: " + outputFile.getPath());
+                index++;
+            } catch (Exception e) {
+                System.err.println("[Screenshot] Failed for frame \"" + frame.getTitle() + "\": " + e.getMessage());
+            }
+        }
+        return saved;
+    }
+
+    // ==================== BUILDER FACTORY METHODS ====================
+
+    /**
+     * Returns a fluent builder for capturing window screenshots.
+     *
+     * <p>Example – pause then capture a single BDV window:</p>
+     * <pre>
+     * DemoHelper.shot()
+     *     .to(OUTPUT_DIR)
+     *     .prefix("bdv_show_sources")
+     *     .waitMs(4000)
+     *     .filter("BigDataViewer")
+     *     .pause("Scenario 1 – adjust the view, then click Continue.")
+     *     .capture();
+     * </pre>
+     */
+    public static ShotBuilder shot() {
+        return new ShotBuilder();
+    }
+
+    /**
+     * Returns a fluent builder for capturing a screenshot from the system clipboard.
+     *
+     * <p>Example:</p>
+     * <pre>
+     * DemoHelper.clipboardShot()
+     *     .to(OUTPUT_DIR)
+     *     .filename("menu_open_sources")
+     *     .withMessage("Open Plugins > BigDataViewer > Open Sources, snip it with Win+Shift+S, then click OK.")
+     *     .capture();
+     * </pre>
+     */
+    public static ClipboardShotBuilder clipboardShot() {
+        return new ClipboardShotBuilder();
+    }
+
+    // ==================== BUILDER CLASSES ====================
+
+    /**
+     * Fluent builder for window screenshot capture.
+     * Defaults to {@link #DEFAULT_OUTPUT_DIR} and {@link #DEFAULT_WAIT_MS}.
+     */
+    public static class ShotBuilder {
+
+        private File outputDir = DEFAULT_OUTPUT_DIR;
+        private String prefix = "";
+        private long waitMs = DEFAULT_WAIT_MS;
+        private final List<String> filters = new ArrayList<>();
+        private String pauseMessage = null;
+        private boolean editInImageJ = false;
+
+        /** Sets the directory where screenshots will be saved. */
+        public ShotBuilder to(File outputDir) {
+            this.outputDir = outputDir;
+            return this;
+        }
+
+        /** Sets the filename prefix (e.g. {@code "bdv_show_sources"}). */
+        public ShotBuilder prefix(String prefix) {
+            this.prefix = prefix;
+            return this;
+        }
+
+        /** Overrides the default wait time before the capture. */
+        public ShotBuilder waitMs(long waitMs) {
+            this.waitMs = waitMs;
+            return this;
+        }
+
+        /**
+         * Adds one or more title filters: only windows whose title contains at least
+         * one of the given strings (case-insensitive) will be captured.
+         * Calling this method multiple times accumulates the filters.
+         */
+        public ShotBuilder filter(String... titleFilters) {
+            filters.addAll(Arrays.asList(titleFilters));
+            return this;
+        }
+
+        /**
+         * Shows a "Demo Paused / Continue" dialog before capturing.
+         * Replaces a separate {@link DemoHelper#pause(String)} call.
+         */
+        public ShotBuilder pause(String message) {
+            this.pauseMessage = message;
+            return this;
+        }
+
+        /**
+         * Opens each captured frame in an ImageJ window so you can annotate it
+         * (arrows, text, ROI overlays …) before it is saved.
+         * After clicking "Save" in the dialog, the image is flattened and written to disk.
+         */
+        public ShotBuilder editInImageJ() {
+            this.editInImageJ = true;
+            return this;
+        }
+
+        /**
+         * Executes the capture: shows the pause dialog (if set), waits, then
+         * captures all matching windows. If {@link #editInImageJ()} was called,
+         * each frame is opened in ImageJ for annotation before saving; otherwise
+         * the frames are saved directly.
+         */
+        public void capture() {
+            if (pauseMessage != null) {
+                showInstructionDialog("Demo Paused", pauseMessage, "Continue");
+            }
+            String[] filterArray = filters.toArray(new String[0]);
+            if (editInImageJ) {
+                List<File> files = captureAndEditFrames(outputDir, prefix, waitMs, filterArray);
+                System.out.println("[Screenshot] Saved " + files.size() + " annotated frame(s) with prefix '" + prefix + "'.");
+            } else {
+                shot(outputDir, prefix, waitMs, filterArray);
+            }
+        }
+    }
+
+    /**
+     * Fluent builder for clipboard-based screenshot capture.
+     * Defaults to {@link #DEFAULT_OUTPUT_DIR}.
+     */
+    public static class ClipboardShotBuilder {
+
+        private File outputDir = DEFAULT_OUTPUT_DIR;
+        private String filename = "screenshot";
+        private String message = "Take your snip with Win+Shift+S, then click OK.";
+
+        /** Sets the directory where the image will be saved. */
+        public ClipboardShotBuilder to(File outputDir) {
+            this.outputDir = outputDir;
+            return this;
+        }
+
+        /** Sets the output filename (without extension – saved as {@code filename.png}). */
+        public ClipboardShotBuilder filename(String filename) {
+            this.filename = filename;
+            return this;
+        }
+
+        /** Sets the instruction message shown to the user before they take the snip. */
+        public ClipboardShotBuilder withMessage(String message) {
+            this.message = message;
+            return this;
+        }
+
+        /**
+         * Shows the instruction dialog, then reads the clipboard image and saves it.
+         */
+        public void capture() {
+            shotFromClipboard(outputDir, filename, message);
         }
     }
 }

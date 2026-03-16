@@ -98,8 +98,13 @@ public class GenerateVisualizingImagesScreenshots {
             BdvHandleHelper.getJFrame(bdv1).setTitle("BigDataViewer");
             new ViewerTransformAdjuster(bdv1, sources[0]).run();
         });
-        DemoHelper.pause("Scenario 1 – BDV Show Sources\nAdjust the view if needed, then click Continue to capture.");
-        DemoHelper.shot(OUTPUT_DIR, "bdv_show_sources", 4000, "BigDataViewer");
+        DemoHelper.shot()
+                .to(OUTPUT_DIR)
+                .prefix("bdv_show_sources")
+                .waitMs(4000)
+                .filter("BigDataViewer")
+                .pause("Scenario 1 – BDV Show Sources\nAdjust the view if needed, then click Continue to capture.")
+                .capture();
         SwingUtilities.invokeAndWait(() -> BdvHandleHelper.closeWindow(bdv1));
         DemoHelper.waitFor(500);
 
@@ -134,8 +139,13 @@ public class GenerateVisualizingImagesScreenshots {
             BdvHandleHelper.getJFrame(bdvBottom).setTitle("BigDataViewer-XZ");
             new ViewerTransformAdjuster(bdvFront, sources[0]).run();
         });
-        DemoHelper.pause("Scenario 2 – BDV Orthogonal Views\nAll three windows (XY, ZY, XZ) will be captured.\nAdjust the view in any window if needed, then click Continue.");
-        DemoHelper.shot(OUTPUT_DIR, "bdv_orthogonal_views", 5000, "BigDataViewer-");
+        DemoHelper.shot()
+                .to(OUTPUT_DIR)
+                .prefix("bdv_orthogonal_views")
+                .waitMs(5000)
+                .filter("BigDataViewer-")
+                .pause("Scenario 2 – BDV Orthogonal Views\nAll three windows (XY, ZY, XZ) will be captured.\nAdjust the view in any window if needed, then click Continue.")
+                .capture();
         SwingUtilities.invokeAndWait(() -> {
             BdvHandleHelper.closeWindow(bdvFront);
             BdvHandleHelper.closeWindow(bdvRight);
@@ -157,8 +167,13 @@ public class GenerateVisualizingImagesScreenshots {
 
         Thread.sleep(3000);
 
-        DemoHelper.pause("Scenario 3 – BDV Grid Overview\nAdjust the view if needed, then click Continue to capture.");
-        DemoHelper.shot(OUTPUT_DIR, "bdv_grid_overview", 5000, "BigDataViewer");
+        DemoHelper.shot()
+                .to(OUTPUT_DIR)
+                .prefix("bdv_grid_overview")
+                .waitMs(5000)
+                .filter("BigDataViewer")
+                .pause("Scenario 3 – BDV Grid Overview\nAdjust the view if needed, then click Continue to capture.")
+                .capture();
         SwingUtilities.invokeAndWait(() ->
                 DemoHelper.getFilteredVisibleFrames("BigDataViewer").forEach(f -> f.dispose())
         );
@@ -185,8 +200,13 @@ public class GenerateVisualizingImagesScreenshots {
             BdvHandleHelper.getJFrame(bdv4).setTitle("BigDataViewer");
             new ViewerTransformAdjuster(bdv4, sources[0]).run();
         });
-        DemoHelper.pause("Scenario 4 – Source Set Color\nChannel 0 = cyan, channel 1 = magenta.\nAdjust if needed, then click Continue to capture.");
-        DemoHelper.shot(OUTPUT_DIR, "source_set_color", 4000, "BigDataViewer");
+        DemoHelper.shot()
+                .to(OUTPUT_DIR)
+                .prefix("source_set_color")
+                .waitMs(4000)
+                .filter("BigDataViewer")
+                .pause("Scenario 4 – Source Set Color\nChannel 0 = cyan, channel 1 = magenta.\nAdjust if needed, then click Continue to capture.")
+                .capture();
         SwingUtilities.invokeAndWait(() -> BdvHandleHelper.closeWindow(bdv4));
         DemoHelper.waitFor(500);
 
@@ -203,8 +223,13 @@ public class GenerateVisualizingImagesScreenshots {
 
         new ViewerTransformAdjuster(new ViewerAdapter(bvv), new SourceAndConverter[]{sources[0]}).run();
 
-        DemoHelper.pause("Scenario 5 – BVV Show Sources\nRotate or zoom the volume if needed, then click Continue to capture.");
-        DemoHelper.shot(OUTPUT_DIR, "bvv_show_sources", 6000, "BigVolumeViewer");
+        DemoHelper.shot()
+                .to(OUTPUT_DIR)
+                .prefix("bvv_show_sources")
+                .waitMs(6000)
+                .filter("BigVolumeViewer")
+                .pause("Scenario 5 – BVV Show Sources\nRotate or zoom the volume if needed, then click Continue to capture.")
+                .capture();
         SwingUtilities.invokeAndWait(() -> BvvHandleHelper.closeWindow(bvv));
         DemoHelper.waitFor(500);
 
@@ -245,8 +270,13 @@ public class GenerateVisualizingImagesScreenshots {
             BvvHandleHelper.getJFrame(bvvRight) .setTitle("BigVolumeViewer-ZY");
             BvvHandleHelper.getJFrame(bvvBottom).setTitle("BigVolumeViewer-XZ");
         });
-        DemoHelper.pause("Scenario 6 – BVV Orthogonal Views\nAll three windows (XY, ZY, XZ) will be captured.\nAdjust the view if needed, then click Continue.");
-        DemoHelper.shot(OUTPUT_DIR, "bvv_orthogonal_views", 6000, "BigVolumeViewer-");
+        DemoHelper.shot()
+                .to(OUTPUT_DIR)
+                .prefix("bvv_orthogonal_views")
+                .waitMs(6000)
+                .filter("BigVolumeViewer-")
+                .pause("Scenario 6 – BVV Orthogonal Views\nAll three windows (XY, ZY, XZ) will be captured.\nAdjust the view if needed, then click Continue.")
+                .capture();
         SwingUtilities.invokeAndWait(() -> {
             BvvHandleHelper.closeWindow(bvvFront);
             BvvHandleHelper.closeWindow(bvvRight);
