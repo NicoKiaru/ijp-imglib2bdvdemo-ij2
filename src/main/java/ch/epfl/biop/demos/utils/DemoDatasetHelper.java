@@ -123,7 +123,60 @@ public class DemoDatasetHelper {
 
                 return ctx.getService(SourceService.class).tree().getSources(datasetNameLattice)
                         .toArray(new SourceAndConverter[0]);
+            case LATTICE_HELA_SKEWED_TIMELAPSE:
+                File fTimelapse = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/19047136/files/ZeissLLS7Demo.czi");//https://zenodo.org/records/14203207/files/Hela-Kyoto-1-Timepoint-LLS7.czi");
 
+                String datasetNameLatticeTimelapse = FilenameUtils.removeExtension(fTimelapse.getName());
+
+                AbstractSpimData<?> datasetTimelapse = (AbstractSpimData<?>) cs.run(DatasetFromBioFormatsCreateCommand.class,
+                        true,
+                        "datasetname", datasetNameLatticeTimelapse,
+                        "unit", "MICROMETER",
+                        "files", new File[]{fTimelapse},
+                        "split_rgb_channels", false,
+                        "plane_origin_convention", "TOP LEFT",
+                        "auto_pyramidize", true,
+                        "disable_memo", false
+                ).get().getOutput("spimdata");
+
+                return ctx.getService(SourceService.class).tree().getSources(datasetNameLatticeTimelapse)
+                        .toArray(new SourceAndConverter[0]);
+            case LATTICE_PSF_200NM:
+                File fPSF200nm = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/14505724/files/psf-200nm.tif");//https://zenodo.org/records/14203207/files/Hela-Kyoto-1-Timepoint-LLS7.czi");
+
+                String psf200nmName = FilenameUtils.removeExtension(fPSF200nm.getName());
+
+                AbstractSpimData<?> datasetPSF200nm = (AbstractSpimData<?>) cs.run(DatasetFromBioFormatsCreateCommand.class,
+                        true,
+                        "datasetname", psf200nmName,
+                        "unit", "MICROMETER",
+                        "files", new File[]{fPSF200nm},
+                        "split_rgb_channels", false,
+                        "plane_origin_convention", "TOP LEFT",
+                        "auto_pyramidize", true,
+                        "disable_memo", false
+                ).get().getOutput("spimdata");
+
+                return ctx.getService(SourceService.class).tree().getSources(psf200nmName)
+                        .toArray(new SourceAndConverter[0]);
+            case LATTICE_PSF_400NM:
+                File fPSF400nm = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/14505724/files/psf-400nm.tif");//https://zenodo.org/records/14203207/files/Hela-Kyoto-1-Timepoint-LLS7.czi");
+
+                String psf400nmName = FilenameUtils.removeExtension(fPSF400nm.getName());
+
+                AbstractSpimData<?> datasetPSF400nm = (AbstractSpimData<?>) cs.run(DatasetFromBioFormatsCreateCommand.class,
+                        true,
+                        "datasetname", psf400nmName,
+                        "unit", "MICROMETER",
+                        "files", new File[]{fPSF400nm},
+                        "split_rgb_channels", false,
+                        "plane_origin_convention", "TOP LEFT",
+                        "auto_pyramidize", true,
+                        "disable_memo", false
+                ).get().getOutput("spimdata");
+
+                return ctx.getService(SourceService.class).tree().getSources(psf400nmName)
+                        .toArray(new SourceAndConverter[0]);
             case RANDOM_GAME_OF_LIFE:
 
                 FunctionRandomAccessible<UnsignedShortType> random =
@@ -205,19 +258,33 @@ public class DemoDatasetHelper {
     }
 
     public enum DemoDataset {
-        BRAIN_SLICES,
-        EGG_CHAMBER,
-        MANDELBROT_SET,
-        SLOW_MANDELBROT_SET,
-        ALLEN_BRAIN_ATLAS,
-        RANDOM_GAME_OF_LIFE,
-        LATTICE_HELA_SKEWED,
-        VORONOI_SMALL,
-        VORONOI_BIG,
-        PLATY,
-        EUROPE_PYRAMIDIZE,
-        EUROPE,
-        MACRO
+        BRAIN_SLICES("Mouse Brain Sections (1.3Gb, SXYC)"),
+        EGG_CHAMBER("Fly Egg Chamber (90Mb, XYZC)"),
+        MANDELBROT_SET("Mandelbrot Set (Generative, XY)"),
+        SLOW_MANDELBROT_SET("Slow Mandelbrot Set (Generative, XY)"),
+        ALLEN_BRAIN_ATLAS("Allen Brain Atlas (3Gb, XYZC)"),
+        RANDOM_GAME_OF_LIFE("Game Of Life (Generative)"),
+        LATTICE_HELA_SKEWED("Hela Kyoto, LLS7 Skewed, 1 Timepoint (3Gb, XYz'C)"),
+        LATTICE_HELA_SKEWED_TIMELAPSE("Hela Kyoto Division, LLS7 Skewed, 60 Timepoint (15Gb, XYz'CT)"),
+        LATTICE_PSF_200NM("LLS7 Skewed PSF 200 NM (15Gb, XYz')"), // https://zenodo.org/records/14505724/files/psf-200nm.tif
+        LATTICE_PSF_400NM("LLS7 Skewed PSF 400 NM (15Gb, XYz')"), // https://zenodo.org/records/14505724/files/psf-400nm.tif
+        VORONOI_SMALL("Voronoi Sample Dataset (Generative, XYZ)"),
+        VORONOI_BIG("Big Voronoi Sample Dataset (Generative, XYZ)"),
+        PLATY("Platy EM, (Streamed, XYZ)"),
+        EUROPE_PYRAMIDIZE("Europe Height Map Pyramidized (110Mb, XY)"),
+        EUROPE("Europe Height Map (110Mb, XY)"),
+        MACRO("Mistery dataset");
+
+        final String name;
+
+        DemoDataset(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
     }
 
     public static boolean isBvvCompatible(SourceAndConverter<?>[] sources) {
