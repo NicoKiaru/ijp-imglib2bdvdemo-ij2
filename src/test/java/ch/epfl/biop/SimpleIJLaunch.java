@@ -60,8 +60,6 @@ public class SimpleIJLaunch {
             t.printStackTrace();
         }
 
-        DatasetHelper.getDataset("https://zenodo.org/records/19047136/files/ZeissLLS7Demo-Max.czi");
-        DatasetHelper.getDataset("https://zenodo.org/records/19047136/files/ZeissLLS7Demo.czi");
 
     }
 }
