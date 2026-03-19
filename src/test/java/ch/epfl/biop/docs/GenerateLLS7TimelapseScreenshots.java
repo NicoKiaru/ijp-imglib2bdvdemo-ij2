@@ -2,8 +2,10 @@ package ch.epfl.biop.docs;
 
 import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
+import bvv.vistools.BvvFunctions;
 import bvv.vistools.BvvHandle;
 import bvv.vistools.BvvOptions;
+import bvv.vistools.BvvStackSource;
 import ch.epfl.biop.command.process.deconvolve.SourcesDeconvolveCommand;
 import ch.epfl.biop.command.workflow.lls7.LLS7CropCommand;
 import ch.epfl.biop.command.workflow.lls7.LLS7ZDriftCompensateCommand;
@@ -11,6 +13,9 @@ import ch.epfl.biop.demos.DemoHelper;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import net.imagej.ImageJ;
 import net.imagej.patcher.LegacyInjector;
+import net.imglib2.Volatile;
+import net.imglib2.type.numeric.ARGBType;
+import org.scijava.command.CommandModule;
 import org.scijava.module.Module;
 import sc.fiji.bdvpg.command.display.ViewSynchronizeCommand;
 import sc.fiji.bdvpg.command.display.bdv.SingleBdvSourcesShowCommand;
@@ -29,6 +34,7 @@ import sc.fiji.bdvpg.viewer.bvv.BvvHandleHelper;
 import javax.swing.SwingUtilities;
 import java.io.File;
 import java.util.List;
+import java.util.concurrent.Future;
 
 /**
  * Generates screenshots for the workflows/lls7_timelapse.md documentation page.
@@ -137,7 +143,7 @@ public class GenerateLLS7TimelapseScreenshots {
                 "overlap_size", 16,
                 "non_circulant", true,
                 "regularization_factor", 0.002f,
-                "output_pixel_type", "Float",
+                "output_pixel_type", "Keep Pixel Type Of Original Image",
                 "suffix", "_deconvolved",
                 "n_threads", 4
         ).get();
@@ -236,7 +242,7 @@ public class GenerateLLS7TimelapseScreenshots {
 
         // Run the Crop command — this is interactive (shows a 3D bounding box)
         // Do NOT call .get() — the command blocks until the user confirms the crop.
-        ij.command().run(LLS7CropCommand.class, true,
+        Future<CommandModule> module = ij.command().run(LLS7CropCommand.class, true,
                 "bdvh", bdvRaw,
                 "image_name", "LLS7_cropped",
                 "sources", deconvSources);
@@ -251,6 +257,8 @@ public class GenerateLLS7TimelapseScreenshots {
                         "Confirm the crop selection in the dialog.\n\n" +
                         "Click Continue to capture.")
                 .capture();
+
+        module.get();
 
         DemoHelper.expandTreeView(ij);
 
@@ -268,8 +276,6 @@ public class GenerateLLS7TimelapseScreenshots {
         List<SourceAndConverter<?>> allSources =
                 ij.get(SourceService.class).getSources();
         SourceAndConverter<?>[] croppedSources = allSources.stream()
-                //.filter(s -> ij.get(SourceService.class)
-                //        .getMetadata(s, SourceService.SPIM_DATA_INFO) != null)
                 .filter(s -> s.getSpimSource().getName().contains("cropped"))
                 .toArray(SourceAndConverter<?>[]::new);
 
@@ -283,10 +289,8 @@ public class GenerateLLS7TimelapseScreenshots {
                 "adjust_view", true
         ).get();
 
-        SwingUtilities.invokeAndWait(() -> {
-            BvvHandleHelper.getJFrame(bvv).setTitle("BigVolumeViewer-Cropped Deconvolved");
-            new ViewerTransformAdjuster(new ViewerAdapter(bvv), new SourceAndConverter[]{croppedSources[0]}).run();
-        });
+        BvvHandleHelper.setWindowTitle(bvv.getBvvHandle(), "BigVolumeViewer-Cropped Deconvolved");
+
         DemoHelper.waitFor(1000);
 
         DemoHelper.shot()
@@ -300,7 +304,7 @@ public class GenerateLLS7TimelapseScreenshots {
                         "Click Continue to capture.")
                 .capture();
 
-        SwingUtilities.invokeAndWait(() -> BvvHandleHelper.closeWindow(bvv));
+        //SwingUtilities.invokeAndWait(() -> BvvHandleHelper.closeWindow(bvv));
         DemoHelper.waitFor(500);
 
         System.out.println("\n=== Done. Screenshots saved to: " + OUTPUT_DIR.getAbsolutePath() + " ===");
