@@ -2,10 +2,8 @@ package ch.epfl.biop.docs;
 
 import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
-import bvv.vistools.BvvFunctions;
 import bvv.vistools.BvvHandle;
 import bvv.vistools.BvvOptions;
-import bvv.vistools.BvvStackSource;
 import ch.epfl.biop.command.process.deconvolve.SourcesDeconvolveCommand;
 import ch.epfl.biop.command.workflow.lls7.LLS7CropCommand;
 import ch.epfl.biop.command.workflow.lls7.LLS7ZDriftCompensateCommand;
@@ -13,8 +11,6 @@ import ch.epfl.biop.demos.DemoHelper;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import net.imagej.ImageJ;
 import net.imagej.patcher.LegacyInjector;
-import net.imglib2.Volatile;
-import net.imglib2.type.numeric.ARGBType;
 import org.scijava.command.CommandModule;
 import org.scijava.module.Module;
 import sc.fiji.bdvpg.command.display.ViewSynchronizeCommand;
@@ -23,7 +19,6 @@ import sc.fiji.bdvpg.command.display.bvv.BvvSourcesShowCommand;
 import sc.fiji.bdvpg.scijava.service.SourceBdvDisplayService;
 import sc.fiji.bdvpg.scijava.service.SourceService;
 import sc.fiji.bdvpg.source.display.BrightnessAutoAdjuster;
-import sc.fiji.bdvpg.viewer.ViewerAdapter;
 import sc.fiji.bdvpg.viewer.bdv.BdvHandleHelper;
 import sc.fiji.bdvpg.viewer.bdv.navigate.ViewerTransformAdjuster;
 import sc.fiji.bdvpg.viewer.bdv.supplier.DefaultBdvSupplier;
@@ -213,7 +208,7 @@ public class GenerateLLS7TimelapseScreenshots {
                 "model_source", sources[0],
                 "sources_to_correct", sources,
                 "threshold", 130.0,
-                "mode", "Mutate",
+                "mode", "Append",
                 "debug", false
         ).get();
 
