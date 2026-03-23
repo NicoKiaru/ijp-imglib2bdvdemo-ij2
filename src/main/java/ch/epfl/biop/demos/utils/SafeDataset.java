@@ -18,7 +18,7 @@ public class SafeDataset {
         // Not working:
         // https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.4/idr0062A/6001240.zarr
         // https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.4/idr0062A/6001240.zarr/0
-        N5ImageData< ? > n5ImageData = new N5ImageData<>("s3://ome-zarr-scivis/v0.5/96x2/shockwave.ome.zarr");//https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.4/idr0062A/6001240.zarr");s3://janelia-cosem-datasets/jrc_mus-hippocampus-2/jrc_mus-hippocampus-2.zarr/recon-1/em/fibsem-uint8" );
-        return new SourceAndConverter[]{n5ImageData.getSourcesAndConverters().get(0)};
+        N5ImageData< ? > n5ImageData = new N5ImageData<>("https://sv-open.epfl.ch/ptbiop-public/omezarr_library/FV4000/DXPM_001_0003.zarr/0/");//https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.4/idr0062A/6001240.zarr");s3://janelia-cosem-datasets/jrc_mus-hippocampus-2/jrc_mus-hippocampus-2.zarr/recon-1/em/fibsem-uint8" );
+        return n5ImageData.getSourcesAndConverters().toArray(new SourceAndConverter[0]);//new SourceAndConverter[]{n5ImageData.getSourcesAndConverters().get(0)};
     }
 }

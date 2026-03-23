@@ -89,13 +89,7 @@
 		<ImageToAtlasRegister.version>0.20.0-SNAPSHOT</ImageToAtlasRegister.version>
 		<bigdataviewer-image-loaders.version>0.20.1</bigdataviewer-image-loaders.version>
 		<clij2-fft_.version>2.2.0.22</clij2-fft_.version>
-
-		<n5-universe.version>2.3.0</n5-universe.version>
-		<org.janelia.saalfeldlab.n5-universe.version>${n5-universe.version}</org.janelia.saalfeldlab.n5-universe.version>
-
-		<n5.universe>3.5.1</n5.universe>
-		<n5-blosc.version>1.1.1</n5-blosc.version>
-		<mobie-io.version>4.0.5</mobie-io.version>
+		<mobie-io.version>4.0.8</mobie-io.version>
 		<!--bigwarp.version>9.1.2</bigwarp.version>
 		<bigwarp_fiji.version>9.1.2</bigwarp_fiji.version -->
 		<!--<bigdataviewer-core.version>10.2.0</bigdataviewer-core.version>
@@ -143,6 +137,31 @@
 			<groupId>org.embl.mobie</groupId>
 			<artifactId>mobie-io</artifactId>
 			<version>${mobie-io.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.janelia.saalfeldlab</groupId>
+			<artifactId>n5-viewer_fiji</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.janelia.saalfeldlab</groupId>
+			<artifactId>n5-universe</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.janelia.saalfeldlab</groupId>
+			<artifactId>n5-ij</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.janelia.saalfeldlab</groupId>
+			<artifactId>n5</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.janelia.saalfeldlab</groupId>
+			<artifactId>n5-google-cloud</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.janelia.saalfeldlab</groupId>
+			<artifactId>n5-aws-s3</artifactId>
 		</dependency>
 
 		<dependency>
