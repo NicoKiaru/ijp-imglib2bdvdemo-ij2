@@ -84,10 +84,10 @@
 		<license.licenseName>gpl_v3</license.licenseName>
 		<license.copyrightOwners>EPFL</license.copyrightOwners>
 		<!--scijava.app.directory>C:/Fiji_template</scijava.app.directory-->
-		<bigdataviewer-biop-tools.version>0.20.4</bigdataviewer-biop-tools.version>
-		<bigdataviewer-playground.version>0.20.2</bigdataviewer-playground.version>
+		<bigdataviewer-biop-tools.version>0.20.7</bigdataviewer-biop-tools.version>
+		<bigdataviewer-playground.version>0.20.4</bigdataviewer-playground.version>
 		<ImageToAtlasRegister.version>0.20.0-SNAPSHOT</ImageToAtlasRegister.version>
-		<bigdataviewer-image-loaders.version>0.20.1</bigdataviewer-image-loaders.version>
+		<bigdataviewer-image-loaders.version>0.20.2</bigdataviewer-image-loaders.version>
 		<clij2-fft_.version>2.2.0.22</clij2-fft_.version>
 		<mobie-io.version>4.0.8</mobie-io.version>
 		<!--bigwarp.version>9.1.2</bigwarp.version>
