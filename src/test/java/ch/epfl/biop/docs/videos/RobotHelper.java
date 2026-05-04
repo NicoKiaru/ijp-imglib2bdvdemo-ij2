@@ -5,6 +5,7 @@ import java.awt.AWTException;
 import java.awt.Frame;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.Insets;
 import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -27,18 +28,13 @@ public class RobotHelper {
     // ===== Tweakable defaults =====================================================
 
     /** Index into {@link GraphicsEnvironment#getScreenDevices()}. 0 = primary. */
-    public static int DEFAULT_SCREEN = 1;
+    public static int DEFAULT_SCREEN = 0;
 
     /** Top-left position of the GUI frame, RELATIVE to the target screen's origin. */
     public static int DEFAULT_FRAME_X = 100;
     public static int DEFAULT_FRAME_Y = 100;
 
-    /** Default smooth-move duration and frame count. */
-    public static long DEFAULT_MOVE_MS = 700;
-    public static int DEFAULT_MOVE_FRAMES = 60;
-
-    /** Delay between mouse press and release for a click. */
-    public static int DEFAULT_CLICK_HOLD_MS = 60;
+    // Timings (durations, holds, polling) live in {@link Timings}.
 
     // ===== Robot singleton ========================================================
 
@@ -101,12 +97,73 @@ public class RobotHelper {
         return new Point(o.x + dx, o.y + dy);
     }
 
+    /**
+     * Returns the first visible {@link Frame} whose title contains
+     * {@code titleSubstring} (case-insensitive), or {@code null}.
+     */
+    public static Frame findFrame(String titleSubstring) {
+        String needle = titleSubstring.toLowerCase();
+        for (Frame f : Frame.getFrames()) {
+            String title = f.getTitle();
+            if (f.isVisible() && title != null && title.toLowerCase().contains(needle)) {
+                return f;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Polls {@link #findFrame(String)} for up to {@code timeoutMs} ms.
+     * Returns the matching frame as soon as it appears, or {@code null} on timeout.
+     */
+    public static Frame waitForFrame(String titleSubstring, long timeoutMs) {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < deadline) {
+            Frame f = findFrame(titleSubstring);
+            if (f != null) return f;
+            rawPause(Timings.FRAME_POLL_INTERVAL_MS);
+        }
+        return null;
+    }
+
     /** Move a frame to {@link #defaultFrameOrigin()} and bring it to front. */
     public static void placeFrame(Frame frame) {
-        Point o = defaultFrameOrigin();
+        placeFrame(frame, DEFAULT_FRAME_X, DEFAULT_FRAME_Y);
+    }
+
+    /**
+     * Visibly moves the cursor to the minimize button of the given frame's
+     * title bar (Windows-style: leftmost of the three top-right buttons) and
+     * clicks it.
+     *
+     * The position is estimated from {@link Frame#getInsets()}: button width
+     * is taken as 1.5 × title-bar height, which matches Windows 10/11 default
+     * theming. Will not work for borderless frames or non-native LAFs that
+     * draw their own title bar.
+     */
+    public static void minimizeWithMouse(Frame frame) {
+        Insets insets = frame.getInsets();
+        int titleBarHeight = Math.max(insets.top, 24);
+        int buttonWidth = (int) (1.5 * titleBarHeight);
+        int x = frame.getX() + frame.getWidth() - (int) (1.5 * buttonWidth);
+        int y = frame.getY() + titleBarHeight / 2;
+
+        moveTo(x, y);
+        pause(Timings.PAUSE_AFTER_MOVE_MS);
+        click();
+    }
+
+    /**
+     * Move a frame to {@code (dxOnTargetScreen, dyOnTargetScreen)} relative to
+     * the target screen's top-left corner, and bring it to front.
+     */
+    public static void placeFrame(Frame frame, int dxOnTargetScreen, int dyOnTargetScreen) {
+        Rectangle b = targetScreenBounds();
+        int absX = b.x + dxOnTargetScreen;
+        int absY = b.y + dyOnTargetScreen;
         try {
             SwingUtilities.invokeAndWait(() -> {
-                frame.setLocation(o.x, o.y);
+                frame.setLocation(absX, absY);
                 frame.toFront();
                 frame.requestFocus();
             });
@@ -119,16 +176,18 @@ public class RobotHelper {
 
     /**
      * Smoothly moves the cursor to {@code (x, y)} using a sine ease-in / ease-out
-     * profile (slow at both ends, fast in the middle).
+     * profile (slow at both ends, fast in the middle). The duration is scaled
+     * by {@link Timings#GLOBAL_SPEED}.
      *
      * @param x absolute screen X
      * @param y absolute screen Y
-     * @param durationMs total motion duration
-     * @param frames number of intermediate steps
+     * @param durationMs total motion duration (before GLOBAL_SPEED scaling)
+     * @param frames number of intermediate steps (NOT scaled)
      */
     public static void moveTo(int x, int y, long durationMs, int frames) {
+        long scaledMs = Timings.scaled(durationMs);
         Point start = MouseInfo.getPointerInfo().getLocation();
-        int perFrame = (int) Math.max(1, durationMs / Math.max(1, frames));
+        int perFrame = (int) Math.max(1, scaledMs / Math.max(1, frames));
         for (int i = 1; i <= frames; i++) {
             double t = (double) i / frames;
             double eased = 0.5 - 0.5 * Math.cos(Math.PI * t); // sin ease-in-out
@@ -139,9 +198,9 @@ public class RobotHelper {
         }
     }
 
-    /** Convenience: smooth move using {@link #DEFAULT_MOVE_MS} / {@link #DEFAULT_MOVE_FRAMES}. */
+    /** Convenience: smooth move using {@link Timings#MOUSE_MOVE_MS} / {@link Timings#MOUSE_MOVE_FRAMES}. */
     public static void moveTo(int x, int y) {
-        moveTo(x, y, DEFAULT_MOVE_MS, DEFAULT_MOVE_FRAMES);
+        moveTo(x, y, Timings.MOUSE_MOVE_MS, Timings.MOUSE_MOVE_FRAMES);
     }
 
     /** Convenience: smooth move to a {@link Point}. */
@@ -158,25 +217,25 @@ public class RobotHelper {
 
     public static void click() {
         robot().mousePress(InputEvent.BUTTON1_DOWN_MASK);
-        robot().delay(DEFAULT_CLICK_HOLD_MS);
+        robot().delay(Timings.CLICK_HOLD_MS);
         robot().mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
     }
 
     public static void doubleClick() {
         click();
-        robot().delay(60);
+        robot().delay(Timings.DOUBLE_CLICK_GAP_MS);
         click();
     }
 
     public static void rightClick() {
         robot().mousePress(InputEvent.BUTTON3_DOWN_MASK);
-        robot().delay(DEFAULT_CLICK_HOLD_MS);
+        robot().delay(Timings.CLICK_HOLD_MS);
         robot().mouseRelease(InputEvent.BUTTON3_DOWN_MASK);
     }
 
     public static void key(int keyCode) {
         robot().keyPress(keyCode);
-        robot().delay(40);
+        robot().delay(Timings.KEY_HOLD_MS);
         robot().keyRelease(keyCode);
     }
 
@@ -195,16 +254,17 @@ public class RobotHelper {
      */
     public static void type(String s) {
         Robot r = robot();
+        long interChar = Timings.scaled(Timings.TYPE_INTER_CHAR_MS);
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
             int code = keyCodeFor(c);
             boolean shift = needsShift(c);
             if (shift) r.keyPress(KeyEvent.VK_SHIFT);
             r.keyPress(code);
-            r.delay(30);
+            r.delay(Timings.TYPE_KEY_HOLD_MS);
             r.keyRelease(code);
             if (shift) r.keyRelease(KeyEvent.VK_SHIFT);
-            r.delay(40);
+            r.delay((int) interChar);
         }
     }
 
@@ -248,8 +308,17 @@ public class RobotHelper {
 
     // ===== Pause ==================================================================
 
-    /** Blocks the calling thread for {@code ms} milliseconds. */
+    /**
+     * Blocks the calling thread for {@code ms} milliseconds, scaled by
+     * {@link Timings#GLOBAL_SPEED}. Use {@link #rawPause(long)} for waits
+     * that must NOT be affected by speed (e.g. polling intervals).
+     */
     public static void pause(long ms) {
+        rawPause(Timings.scaled(ms));
+    }
+
+    /** Blocks the calling thread for {@code ms} milliseconds — never scaled. */
+    public static void rawPause(long ms) {
         try {
             Thread.sleep(ms);
         } catch (InterruptedException e) {

@@ -10,6 +10,7 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 
 | File | Role |
 |---|---|
+| `Timings` | Central timing constants + `GLOBAL_SPEED`. One knob to speed every video pace up or down. |
 | `RobotHelper` | Robot wrapper: target-screen handling, frame placement, sin-eased `moveTo`, click/key/`type(String)`, `pause`. |
 | `ComponentInspector` | Recursive AWT/Swing tree walker. Returns a `LinkedHashMap<String, ComponentInfo>` with hierarchical path keys, local bounds and absolute screen positions. Includes `prettyPrint`. |
 | `FijiCommands` | Fiji-specific actions: `startFiji()` (boots Fiji + places the IJ frame), `searchAndRun(String query)` (drives the legacy search bar). Holds the `LegacyInjector.preinit()` static block. |
@@ -27,6 +28,26 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 - **Component inspection.** `ComponentInspector.inspect(frame)` returns every
   component reachable from a `Frame`, with class name, label, local bounds
   and (when realized) absolute screen position.
+- **Locating other windows.** `RobotHelper.findFrame("BDV Sources")` /
+  `waitForFrame(title, timeoutMs)` find a visible `Frame` by case-insensitive
+  title substring — useful to grab a window opened as a side effect of a
+  command, then inspect it.
+- **Placing any frame on the target screen.**
+  `RobotHelper.placeFrame(frame, dx, dy)` moves a frame to `(dx, dy)`
+  *relative to the target screen's top-left*. The single-arg overload uses
+  `DEFAULT_FRAME_X` / `DEFAULT_FRAME_Y`. Note: a bare `setLocation(x, y)`
+  uses absolute virtual-desktop coordinates and so always lands on screen 0.
+- **Minimizing a frame "by hand".** `RobotHelper.minimizeWithMouse(frame)`
+  estimates the title-bar minimize button position from the frame's
+  `Insets` (Windows 10/11 native title bar) and clicks it visibly — useful
+  to look natural on video. Does not work for borderless / undecorated
+  frames or non-native LAFs that paint their own title bar.
+- **Single speed knob.** `Timings.GLOBAL_SPEED = 2.0` makes every visible
+  motion / pause go twice as fast; `0.5` halves the speed. Mouse motion,
+  inter-character typing rhythm, and any `RobotHelper.pause(ms)` are
+  scaled. Mechanical timings (click hold, key hold) and polling intervals
+  (`Timings.FRAME_POLL_INTERVAL_MS`) stay raw. Use `RobotHelper.rawPause`
+  for waits that must NOT be affected by speed.
 - **Running any Fiji command.** `FijiCommands.searchAndRun("show bdv play")`
   focuses the legacy search bar, types, and presses Enter. This sidesteps
   the AWT-menu limitation (see below) and works for anything reachable via

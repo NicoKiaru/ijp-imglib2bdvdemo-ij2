@@ -23,10 +23,11 @@ public class FijiCommands {
     public static Frame startFiji() {
         ImageJ ij = new ImageJ();
         DemoHelper.startFiji(ij);
-        Frame frame = waitForIJFrame(5000);
-        if (frame == null) throw new IllegalStateException("ImageJ main frame not available after 5s");
+        Frame frame = waitForIJFrame(Timings.FRAME_WAIT_TIMEOUT_MS);
+        if (frame == null) throw new IllegalStateException("ImageJ main frame not available after "
+                + Timings.FRAME_WAIT_TIMEOUT_MS + "ms");
         RobotHelper.placeFrame(frame);
-        RobotHelper.pause(800);
+        RobotHelper.pause(Timings.PAUSE_AFTER_FRAME_PLACEMENT_MS);
         return frame;
     }
 
@@ -46,11 +47,11 @@ public class FijiCommands {
                     + "is the IJ frame realized and on screen?");
         }
         RobotHelper.moveTo(center);
-        RobotHelper.pause(200);
+        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
         RobotHelper.click();
-        RobotHelper.pause(300);
+        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
         RobotHelper.type(query);
-        RobotHelper.pause(800);
+        RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
         RobotHelper.enter();
     }
 
@@ -69,7 +70,7 @@ public class FijiCommands {
         while (System.currentTimeMillis() < deadline) {
             ij.ImageJ ij1 = IJ.getInstance();
             if (ij1 != null && ij1.isShowing()) return ij1;
-            RobotHelper.pause(100);
+            RobotHelper.rawPause(Timings.FRAME_POLL_INTERVAL_MS);
         }
         return null;
     }
