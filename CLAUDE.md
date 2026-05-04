@@ -43,3 +43,7 @@ mvn test
 ## Testing
 
 Run `SimpleIJLaunch` to start a local ImageJ instance with all plugins loaded for manual testing.
+
+## Tutorial-Video Automation
+
+An experimental toolkit under `src/test/java/ch/epfl/biop/docs/videos/` drives Fiji's UI from Java using `java.awt.Robot` so tutorial videos can be recorded reproducibly: the IJ window is placed at a fixed position on a chosen monitor, the cursor eases (sin in/out) onto each target, and Fiji commands are invoked via the legacy search bar to bypass the AWT-menu limitation. See `src/test/java/ch/epfl/biop/docs/videos/AUTOMATION.md` for the current capabilities, limitations and how to extend it.
