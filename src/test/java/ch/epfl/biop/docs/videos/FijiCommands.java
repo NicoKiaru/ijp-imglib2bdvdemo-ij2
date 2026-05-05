@@ -4,6 +4,7 @@ import ch.epfl.biop.demos.DemoHelper;
 import ij.IJ;
 import net.imagej.ImageJ;
 import net.imagej.patcher.LegacyInjector;
+import org.scijava.Context;
 
 import javax.swing.SwingUtilities;
 import java.awt.Frame;
@@ -17,12 +18,24 @@ public class FijiCommands {
 
     static { LegacyInjector.preinit(); }
 
+    /** The SciJava {@link ImageJ} instance booted by {@link #startFiji()} (set on first call). */
+    public static ImageJ IJ_INSTANCE;
+
+    /** Convenience: the SciJava {@link Context} from {@link #IJ_INSTANCE}. */
+    public static Context context() {
+        if (IJ_INSTANCE == null) {
+            throw new IllegalStateException("Fiji not started yet — call FijiCommands.startFiji() first");
+        }
+        return IJ_INSTANCE.getContext();
+    }
+
     /**
      * Starts Fiji, waits for the legacy IJ main frame, places it on the
      * target screen via {@link RobotHelper#placeFrame(Frame)}, and returns it.
      */
     public static Frame startFiji() {
         ImageJ ij = new ImageJ();
+        IJ_INSTANCE = ij;
         DemoHelper.startFiji(ij);
         Frame frame = waitForIJFrame(Timings.FRAME_WAIT_TIMEOUT_MS);
         if (frame == null) throw new IllegalStateException("ImageJ main frame not available after "

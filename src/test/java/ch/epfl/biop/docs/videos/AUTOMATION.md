@@ -13,9 +13,12 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 | `Timings` | Central timing constants + `GLOBAL_SPEED`. One knob to speed every video pace up or down. |
 | `RobotHelper` | Robot wrapper: target-screen handling, frame placement, sin-eased `moveTo`, click/key/`type(String)`, `pause`. |
 | `ComponentInspector` | Recursive AWT/Swing tree walker. Returns a `LinkedHashMap<String, ComponentInfo>` with hierarchical path keys, local bounds and absolute screen positions. Includes `prettyPrint`. |
-| `FijiCommands` | Fiji-specific actions: `startFiji()` (boots Fiji + places the IJ frame), `searchAndRun(String query)` (drives the legacy search bar). Holds the `LegacyInjector.preinit()` static block. |
+| `FijiCommands` | Fiji-specific actions: `startFiji()` (boots Fiji + places the IJ frame, exposes the SciJava `ImageJ`/`Context`), `searchAndRun(String query)` (drives the legacy search bar). Holds the `LegacyInjector.preinit()` static block. |
+| `RobotCommands` | `CommandService`-style runner that drives a SciJava command's harvester dialog by reflecting `@Parameter` labels and filling each widget via Robot. `run(Class, ...)` (direct) and `runViaSearch(Class, query, ...)` (via the IJ search bar). Currently supports `boolean` (JCheckBox) and `String` (JTextField) parameters. |
+| `RobotDemoCommand` | Trivial SciJava `Command` with one boolean + one string `@Parameter` and a string output — fixture for `RobotCommands` tests. |
 | `InspectMainFrame` | Driver: starts Fiji, dumps the IJ main frame's component tree to stdout. |
 | `SearchBarTest` | Driver: starts Fiji, runs `"show bdv play"` via the search bar. |
+| `RobotDemoTest` | Driver: runs `RobotDemoCommand` twice — once via `RobotCommands.run` (reads its output) and once via `RobotCommands.runViaSearch("robot dem", ...)`. |
 
 ## What works today
 
@@ -69,6 +72,34 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
   focuses the legacy search bar, types, and presses Enter. This sidesteps
   the AWT-menu limitation (see below) and works for anything reachable via
   Fiji's command finder.
+- **Filling a SciJava command dialog by parameter name.**
+  `RobotCommands.run(MyCommand.class, "doIt", true, "name", "hello")` mirrors
+  `cs.run(...)` ergonomics: invokes the command via the `CommandService`,
+  waits for the harvester dialog, reflects each `@Parameter`'s `label()` on
+  the class, locates the matching JLabel in the dialog and walks forward
+  through its siblings to the input widget, drives it via Robot, then
+  clicks **OK**. Returns the `Future<CommandModule>` so you can read
+  outputs (`future.get().getOutput("name")`). Currently handles
+  `boolean` (`JCheckBox`) and `String` (`JTextField`); other widget types
+  throw `UnsupportedOperationException` for now.
+- **Same, but launched naturally via the search bar.**
+  `RobotCommands.runViaSearch(MyCommand.class, "robot dem", "doIt", true)`
+  reproduces the user gesture of typing into the IJ search box and
+  pressing Enter, then drives the resulting dialog the same way. Returns
+  `void` — outputs aren't recoverable through the legacy search pipeline,
+  so use the direct `run(...)` when you need them. The query should be a
+  short, unambiguous prefix of the command's display name; the human
+  supervisor checks visually that the right command was launched.
+- **Visually correct checkbox clicks.** `RobotCommands` aims at
+  `loc.x + CHECKBOX_CLICK_OFFSET_X` (default `9` px) instead of the
+  geometric centre — the `JCheckBox` component spans the entire row but
+  the visible square sits on the left, so a centred click toggles the box
+  but reads strangely on video. Tweak `CHECKBOX_CLICK_OFFSET_X` for
+  non-FlatLaf themes.
+- **Idempotent checkbox state.** `RobotCommands` reads `JCheckBox.isSelected()`
+  on the live component reference and only clicks when the desired state
+  differs from the current one — so passing the existing value is a no-op
+  rather than a toggle in the wrong direction.
 
 ## Known limitations
 
@@ -94,6 +125,9 @@ From the IDE, right-click → `Run 'main()'`:
   scripting a new interaction.
 - `SearchBarTest.main()` — sanity check that `searchAndRun` opens the
   BDV-Playground tree view.
+- `RobotDemoTest.main()` — exercises `RobotCommands` end-to-end on the
+  `RobotDemoCommand` fixture, both via direct `CommandService` invocation
+  (with output assertion) and via the search bar.
 
 ## Extending
 
@@ -101,6 +135,12 @@ From the IDE, right-click → `Run 'main()'`:
   routing through `searchAndRun` over hunting screen coordinates.
 - New low-level Robot primitive (drag, scroll, modifier combo) → add to
   `RobotHelper`.
+- New SciJava-widget support (combo box, slider, file chooser, …) → extend
+  `RobotCommands.fillWidget` and `isInputWidget`. Same locator pattern
+  applies: find JLabel by parameter label, then the next sibling input
+  widget. For widgets without a clean Robot-driveable centre (e.g. combo
+  boxes, where you'd need to open the popup and click an item), add a
+  per-type helper rather than overloading `centerOnScreen`.
 - Targeting a non-IJ Swing window (BDV, Labkit, dialogs) → call
   `ComponentInspector.inspect(window)` to find the component, then
   `RobotHelper.moveTo(info.screenCenter())` + `click()`.
