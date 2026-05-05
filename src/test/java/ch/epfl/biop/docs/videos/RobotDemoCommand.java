@@ -5,6 +5,8 @@ import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
+import java.io.File;
+
 /**
  * Trivial SciJava command used to exercise {@link RobotCommands#run(Class, Object...)}.
  *
@@ -20,6 +22,9 @@ public class RobotDemoCommand implements Command {
 
     @Parameter(label = "Name")
     String name = "";
+
+    @Parameter(label = "A file")
+    File file;
 
     @Parameter(type = ItemIO.OUTPUT)
     String result;

@@ -2,37 +2,39 @@ package ch.epfl.biop.docs.videos;
 
 import org.scijava.command.CommandModule;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.util.concurrent.Future;
 
 /**
  * Drives {@link RobotDemoCommand} via {@link RobotCommands#run(Class, Object...)}
- * to verify the harvester-dialog-driving pipeline end to end:
- * <ol>
- *   <li>Boot Fiji and place its main frame.</li>
- *   <li>Launch the command via the CommandService — its dialog appears.</li>
- *   <li>Robot fills the boolean and string parameters by label, then clicks OK.</li>
- *   <li>The returned Future yields a {@link CommandModule}; we read the
- *       {@code result} output and confirm it reflects the values typed.</li>
- * </ol>
+ * to verify the harvester-dialog-driving pipeline end to end on the three
+ * currently-supported parameter types: boolean, string, file.
  */
 public class RobotDemoTest {
 
     public static void main(String[] args) throws Exception {
         FijiCommands.startFiji();
 
-        // 1) Direct via CommandService — returns a Future so we can pull the output.
+        // A real file on disk so the file-chooser's "Open" actually has
+        // something to select. Created in the system temp dir.
+        File tmp = File.createTempFile("robot-demo-", ".txt");
+        tmp.deleteOnExit();
+        Files.write(tmp.toPath(), "hi from RobotDemoTest".getBytes());
+        System.out.println("[RobotDemoTest] tmp file = " + tmp.getAbsolutePath());
+
         Future<CommandModule> future = RobotCommands.run(RobotDemoCommand.class,
                 "doIt", true,
-                "name", "hello robot");
+                "name", "hello robot",
+                "file", tmp);
+
         CommandModule module = future.get();
-        System.out.println("[RobotDemoTest][direct] result = " + module.getOutput("result"));
+        System.out.println("[RobotDemoTest] result = " + module.getOutput("result"));
+        System.out.println("[RobotDemoTest] file   = " + module.getInput("file"));
 
-        RobotHelper.pause(800);
+        RobotCommands.runViaSearch(RobotDemoCommand.class, "robot dem", "doIt", true,
+                "name", "hello robot",
+                "file", tmp);
 
-        // 2) Natural via the IJ search bar — what a viewer sees in a tutorial video.
-        // No Future is returned (the launch goes through legacy plumbing).
-        RobotCommands.runViaSearch(RobotDemoCommand.class, "robot dem",
-                "doIt", false,
-                "name", "via search");
     }
 }

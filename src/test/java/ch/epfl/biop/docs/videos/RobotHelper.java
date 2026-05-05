@@ -11,7 +11,9 @@ import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Robot;
+import java.awt.Toolkit;
 import java.awt.Window;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 
@@ -363,9 +365,37 @@ public class RobotHelper {
     }
 
     /**
+     * Sets the system clipboard to {@code s} and sends {@code Ctrl+V} — a
+     * layout-independent way to inject any string into the focused text
+     * widget. Use this for paths, non-US-layout text, or anything that
+     * mixes characters {@link #type(String)} can't reliably reproduce.
+     *
+     * The whole string lands at once (no per-character animation), which
+     * for video usually reads as a natural copy-paste from Explorer.
+     */
+    public static void paste(String s) {
+        Toolkit.getDefaultToolkit().getSystemClipboard()
+                .setContents(new StringSelection(s), null);
+        rawPause(50); // give the clipboard a beat to settle before Ctrl+V
+        Robot r = robot();
+        r.keyPress(KeyEvent.VK_CONTROL);
+        r.delay(Timings.KEY_HOLD_MS);
+        r.keyPress(KeyEvent.VK_V);
+        r.delay(Timings.KEY_HOLD_MS);
+        r.keyRelease(KeyEvent.VK_V);
+        r.keyRelease(KeyEvent.VK_CONTROL);
+        rawPause(100); // let the paste complete before the next action
+    }
+
+    /**
      * Types an ASCII string. Handles letters (with shift for uppercase),
      * digits, space, and a small set of common symbols. Throws if a character
      * has no mapping — extend {@link #keyCodeFor(char)} as needed.
+     *
+     * Note: per-character {@link Robot#keyPress} is keyboard-layout-dependent.
+     * On non-US layouts even mapped symbols (e.g. {@code \\}, {@code :}) may
+     * be rejected by the native peer with "Invalid key code". For those,
+     * use {@link #paste(String)} instead.
      */
     public static void type(String s) {
         Robot r = robot();
@@ -390,6 +420,7 @@ public class RobotHelper {
             case '^': case '&': case '*': case '(': case ')':
             case '_': case '+': case '{': case '}': case ':':
             case '"': case '<': case '>': case '?': case '~':
+            case '|':
                 return true;
             default:
                 return false;
@@ -416,6 +447,27 @@ public class RobotHelper {
             case '"':  return KeyEvent.VK_QUOTE;     // shift
             case '\t': return KeyEvent.VK_TAB;
             case '\n': return KeyEvent.VK_ENTER;
+            case '\\': return KeyEvent.VK_BACK_SLASH;
+            case '|':  return KeyEvent.VK_BACK_SLASH; // shift
+            case '`':  return KeyEvent.VK_BACK_QUOTE;
+            case '~':  return KeyEvent.VK_BACK_QUOTE; // shift
+            case '[':  return KeyEvent.VK_OPEN_BRACKET;
+            case '{':  return KeyEvent.VK_OPEN_BRACKET; // shift
+            case ']':  return KeyEvent.VK_CLOSE_BRACKET;
+            case '}':  return KeyEvent.VK_CLOSE_BRACKET; // shift
+            case '<':  return KeyEvent.VK_COMMA;     // shift
+            case '>':  return KeyEvent.VK_PERIOD;    // shift
+            // Shifted-digit symbols: emit the digit key with shift.
+            case '!':  return KeyEvent.VK_1;         // shift
+            case '@':  return KeyEvent.VK_2;         // shift
+            case '#':  return KeyEvent.VK_3;         // shift
+            case '$':  return KeyEvent.VK_4;         // shift
+            case '%':  return KeyEvent.VK_5;         // shift
+            case '^':  return KeyEvent.VK_6;         // shift
+            case '&':  return KeyEvent.VK_7;         // shift
+            case '*':  return KeyEvent.VK_8;         // shift
+            case '(':  return KeyEvent.VK_9;         // shift
+            case ')':  return KeyEvent.VK_0;         // shift
         }
         throw new IllegalArgumentException("No key mapping for character: '" + c + "' (0x"
                 + Integer.toHexString(c) + ")");

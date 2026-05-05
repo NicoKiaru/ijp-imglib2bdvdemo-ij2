@@ -14,9 +14,12 @@ import java.awt.Container;
 import java.awt.Dialog;
 import java.awt.Point;
 import java.awt.event.KeyEvent;
+import java.io.File;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 
@@ -29,10 +32,15 @@ import java.util.concurrent.Future;
  * {@link Parameter#label() label} (falling back to the field name) to locate
  * the corresponding widget in the dialog, then visibly fills it.
  *
- * Currently supported widget types:
+ * Currently supported parameter types:
  * <ul>
- *   <li>{@link JCheckBox} (boolean parameters)</li>
- *   <li>{@link JTextField} (string parameters)</li>
+ *   <li>{@link Boolean} → {@link JCheckBox}.</li>
+ *   <li>{@link String} → {@link JTextField}. Also used for {@code File}
+ *       parameters when the value is passed as a {@code String}: types the
+ *       path straight into the path field next to "Browse…".</li>
+ *   <li>{@link File} → clicks the {@code Browse} button, then drives the
+ *       file chooser by typing the folder path + Enter, then the file name
+ *       + Enter. Looks like a real user picking a file.</li>
  * </ul>
  */
 public class RobotCommands {
@@ -109,14 +117,13 @@ public class RobotCommands {
                 throw new IllegalArgumentException("No @Parameter found for field '"
                         + fieldName + "' on " + cmdClass.getSimpleName());
             }
-            Component widget = findWidgetForLabel(dialog, label);
-            if (widget == null) {
-                throw new IllegalStateException("No widget found for parameter '"
+            Container inputContainer = findInputContainerForLabel(dialog, label);
+            if (inputContainer == null) {
+                throw new IllegalStateException("No input container found for parameter '"
                         + fieldName + "' (label: '" + label + "')");
             }
-            System.out.println("[RobotCommands] " + fieldName + " (" + label + ") <- " + e.getValue()
-                    + " via " + widget.getClass().getSimpleName());
-            fillWidget(widget, e.getValue());
+            System.out.println("[RobotCommands] " + fieldName + " (" + label + ") <- " + e.getValue());
+            fillWidget(inputContainer, e.getValue());
         }
 
         clickOk(dialog);
@@ -139,13 +146,16 @@ public class RobotCommands {
     // ===== Widget location =======================================================
 
     /**
-     * Locates the input widget bound to a SciJava parameter label inside the
-     * harvester dialog. SwingInputHarvester emits a {@link JLabel} with the
-     * parameter's label text, followed by sibling components that contain the
-     * actual widget — so we find the JLabel, then walk forward through its
-     * siblings until we reach a non-label container holding an input widget.
+     * Locates the input <em>container</em> bound to a SciJava parameter label
+     * inside the harvester dialog. SwingInputHarvester emits a {@link JLabel}
+     * with the parameter's label text, followed by a sibling {@link Container}
+     * that holds the actual widget(s) — sometimes a single {@link JCheckBox}
+     * or {@link JTextField}, sometimes a {@code File} widget combining a path
+     * field and a "Browse" button. We return that sibling container so the
+     * dispatcher can pick the right component to drive based on the value's
+     * Java type.
      */
-    static Component findWidgetForLabel(Dialog dialog, String label) {
+    static Container findInputContainerForLabel(Dialog dialog, String label) {
         JLabel jl = findLabel(dialog, label);
         if (jl == null) return null;
         Container parent = jl.getParent();
@@ -159,8 +169,7 @@ public class RobotCommands {
         for (int i = idx + 1; i < siblings.length; i++) {
             Component c = siblings[i];
             if (c instanceof JLabel) break; // hit the next parameter — stop searching
-            Component widget = firstInputWidget(c);
-            if (widget != null) return widget;
+            if (c instanceof Container) return (Container) c;
         }
         return null;
     }
@@ -179,32 +188,66 @@ public class RobotCommands {
         return null;
     }
 
-    private static Component firstInputWidget(Component c) {
-        if (isInputWidget(c)) return c;
-        if (c instanceof Container) {
-            for (Component child : ((Container) c).getComponents()) {
-                Component w = firstInputWidget(child);
-                if (w != null) return w;
-            }
-        }
-        return null;
+    /** Recursively collect all components of {@code type} under {@code root}. */
+    private static <T extends Component> List<T> findAll(Container root, Class<T> type) {
+        List<T> out = new ArrayList<>();
+        collect(root, type, out);
+        return out;
     }
 
-    private static boolean isInputWidget(Component c) {
-        return c instanceof JTextField || c instanceof JCheckBox;
+    private static <T extends Component> void collect(Container c, Class<T> type, List<T> out) {
+        for (Component child : c.getComponents()) {
+            if (type.isInstance(child)) out.add(type.cast(child));
+            if (child instanceof Container) collect((Container) child, type, out);
+        }
     }
 
     // ===== Widget driving (Robot) ================================================
 
-    private static void fillWidget(Component widget, Object value) {
-        if (widget instanceof JCheckBox) {
-            fillCheckBox((JCheckBox) widget, asBoolean(value));
-        } else if (widget instanceof JTextField) {
-            fillTextField((JTextField) widget, String.valueOf(value));
+    /**
+     * Pick a driver based on the value's Java type. The same input container
+     * may legitimately hold several widgets (e.g. {@code File} → JTextField +
+     * Browse button); the value type tells us which one the caller wants to
+     * drive.
+     */
+    private static void fillWidget(Container inputContainer, Object value) {
+        if (value instanceof Boolean) {
+            JCheckBox cb = firstOf(inputContainer, JCheckBox.class, "JCheckBox");
+            fillCheckBox(cb, (Boolean) value);
+        } else if (value instanceof File) {
+            AbstractButton browse = findBrowseButton(inputContainer);
+            if (browse == null) {
+                throw new IllegalStateException("No Browse button found for File parameter");
+            }
+            fillFile(browse, (File) value);
         } else {
-            throw new UnsupportedOperationException(
-                    "Widget type not yet supported: " + widget.getClass().getName());
+            JTextField tf = firstOf(inputContainer, JTextField.class, "JTextField");
+            fillTextField(tf, String.valueOf(value));
         }
+    }
+
+    private static <T extends Component> T firstOf(Container c, Class<T> type, String human) {
+        List<T> all = findAll(c, type);
+        if (all.isEmpty()) {
+            throw new IllegalStateException("No " + human + " found in input container");
+        }
+        return all.get(0);
+    }
+
+    /**
+     * Find the file-chooser-trigger button. Matches any {@link AbstractButton}
+     * whose text contains "browse" (case-insensitive); falls back to the
+     * first button found if no explicit match — the SciJava {@code File}
+     * widget historically only ever has one button in the input container,
+     * so the fallback is safe.
+     */
+    private static AbstractButton findBrowseButton(Container root) {
+        List<AbstractButton> buttons = findAll(root, AbstractButton.class);
+        for (AbstractButton b : buttons) {
+            String t = b.getText();
+            if (t != null && t.toLowerCase().contains("browse")) return b;
+        }
+        return buttons.isEmpty() ? null : buttons.get(0);
     }
 
     private static void fillCheckBox(JCheckBox cb, boolean target) {
@@ -252,9 +295,42 @@ public class RobotCommands {
         r.keyRelease(KeyEvent.VK_DELETE);
     }
 
-    private static boolean asBoolean(Object value) {
-        if (value instanceof Boolean) return (Boolean) value;
-        throw new IllegalArgumentException("Expected Boolean, got " + value.getClass().getSimpleName());
+    /**
+     * Click Browse, then drive the resulting file chooser by pasting the
+     * folder path + Enter (navigates into the folder), then pasting the
+     * file name + Enter (selects the file and closes the chooser). The
+     * mouse is not moved inside the chooser — focus is on the file-name
+     * field by default and the paste reaches it directly. The harvester's
+     * path JTextField is updated by SciJava once the chooser closes.
+     *
+     * Pasting (rather than per-character typing) avoids
+     * {@code Robot.keyPress}'s keyboard-layout dependency, which otherwise
+     * rejects characters like {@code \\} or {@code :} on non-US layouts.
+     */
+    private static void fillFile(AbstractButton browse, File file) {
+        File abs = file.getAbsoluteFile();
+        File dir = abs.getParentFile();
+        String dirPath = dir == null ? "" : dir.getAbsolutePath();
+        String name = abs.getName();
+
+        Point center = centerOnScreen(browse);
+        RobotHelper.moveTo(center);
+        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        RobotHelper.click();
+        RobotHelper.pause(Timings.PAUSE_AFTER_FILE_CHOOSER_OPEN_MS);
+
+        if (!dirPath.isEmpty()) {
+            RobotHelper.paste(dirPath);
+            RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
+            RobotHelper.enter();
+            RobotHelper.pause(Timings.PAUSE_AFTER_FOLDER_NAV_MS);
+        }
+        // Filename is short and ASCII — type it for the visible cadence
+        // (paths get pasted because of the layout-dependent symbols).
+        RobotHelper.type(name);
+        RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
+        RobotHelper.enter();
+        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
     }
 
     // ===== OK button =============================================================

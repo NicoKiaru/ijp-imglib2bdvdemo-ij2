@@ -57,6 +57,11 @@ public class Timings {
     public static long PAUSE_AFTER_TYPING_MS = 800;
     public static long PAUSE_AFTER_FRAME_PLACEMENT_MS = 800;
 
+    /** Wait after clicking Browse, to let the file chooser open and gain focus. */
+    public static long PAUSE_AFTER_FILE_CHOOSER_OPEN_MS = 800;
+    /** Wait after pressing Enter on the folder path inside the file chooser. */
+    public static long PAUSE_AFTER_FOLDER_NAV_MS = 500;
+
     // ===== Polling / timeouts (NOT scaled) ========================================
 
     public static long FRAME_POLL_INTERVAL_MS = 100;
