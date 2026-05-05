@@ -5,6 +5,7 @@ import ij.IJ;
 import net.imagej.ImageJ;
 import net.imagej.patcher.LegacyInjector;
 
+import javax.swing.SwingUtilities;
 import java.awt.Frame;
 import java.awt.Point;
 import java.util.Map;
@@ -46,6 +47,8 @@ public class FijiCommands {
             throw new IllegalStateException("LegacySearchBar has no screen position — "
                     + "is the IJ frame realized and on screen?");
         }
+        SwingUtilities.invokeLater(() -> { ij.toFront(); ij.requestFocus(); });
+        RobotHelper.rawPause(150);
         RobotHelper.moveTo(center);
         RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
         RobotHelper.click();

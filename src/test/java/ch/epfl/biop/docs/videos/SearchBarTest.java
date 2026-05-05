@@ -19,12 +19,15 @@ public class SearchBarTest {
         //bdvSources.setSize(450, 600);
 
         // Place BDV Sources on the target screen, just below the IJ main frame.
-        RobotHelper.dragFrame(bdvSources, RobotHelper.DEFAULT_FRAME_X, RobotHelper.DEFAULT_FRAME_Y);
+        assert bdvSources != null;
         RobotHelper.resizeFrame(bdvSources, 450, 600);
+        RobotHelper.dragFrame(bdvSources, RobotHelper.DEFAULT_FRAME_X, RobotHelper.DEFAULT_FRAME_Y + 150);
         //RobotHelper.placeFrame(bdvSources, RobotHelper.DEFAULT_FRAME_X, RobotHelper.DEFAULT_FRAME_Y);
 
         // Demo: visibly minimize Fiji's main frame by clicking its title-bar minimize button.
         RobotHelper.pause(500);
-        RobotHelper.minimizeWithMouse(IJ.getInstance());
+        //RobotHelper.minimizeWithMouse(IJ.getInstance());
+
+        FijiCommands.searchAndRun("bio for create");
     }
 }
