@@ -16,7 +16,7 @@ package ch.epfl.biop.docs.videos;
 public class Timings {
 
     /** Multiplier on every {@link #scaled(long)} call. >1 = faster, <1 = slower. */
-    public static double GLOBAL_SPEED = 0.33;
+    public static double GLOBAL_SPEED = 0.7;
 
     // ===== Mouse motion (scaled) ==================================================
 
@@ -41,6 +41,9 @@ public class Timings {
     public static int DOUBLE_CLICK_GAP_MS = 60;
     public static int KEY_HOLD_MS = 40;
     public static int TYPE_KEY_HOLD_MS = 30;
+
+    /** Pause between mouse-press and drag-start, and between drag-end and release. */
+    public static long DRAG_GRAB_DELAY_MS = 120;
 
     // ===== Typing rhythm (scaled — perceptual) ====================================
 

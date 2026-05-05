@@ -42,6 +42,13 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
   `Insets` (Windows 10/11 native title bar) and clicks it visibly — useful
   to look natural on video. Does not work for borderless / undecorated
   frames or non-native LAFs that paint their own title bar.
+- **Dragging a frame "by hand".** `RobotHelper.dragFrame(frame, dx, dy)`
+  grabs the title bar (away from the right-side buttons) and drags the
+  frame to `(dx, dy)` relative to the target screen — same convention as
+  `placeFrame`, but visible.
+- **Resizing a frame "by hand".** `RobotHelper.resizeFrame(frame, w, h)`
+  drags the bottom-right corner so the frame ends up at `w × h`. Requires
+  the native resize border (won't work for borderless or fixed-size frames).
 - **Single speed knob.** `Timings.GLOBAL_SPEED = 2.0` makes every visible
   motion / pause go twice as fast; `0.5` halves the speed. Mouse motion,
   inter-character typing rhythm, and any `RobotHelper.pause(ms)` are

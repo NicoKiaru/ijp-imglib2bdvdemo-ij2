@@ -16,10 +16,12 @@ public class SearchBarTest {
         FijiCommands.searchAndRun("show bdv play");
 
         Frame bdvSources = RobotHelper.waitForFrame("BDV Sources", Timings.FRAME_WAIT_TIMEOUT_MS);
-        bdvSources.setSize(450, 600);
+        //bdvSources.setSize(450, 600);
 
         // Place BDV Sources on the target screen, just below the IJ main frame.
-        RobotHelper.placeFrame(bdvSources, RobotHelper.DEFAULT_FRAME_X, RobotHelper.DEFAULT_FRAME_Y);
+        RobotHelper.dragFrame(bdvSources, RobotHelper.DEFAULT_FRAME_X, RobotHelper.DEFAULT_FRAME_Y);
+        RobotHelper.resizeFrame(bdvSources, 450, 600);
+        //RobotHelper.placeFrame(bdvSources, RobotHelper.DEFAULT_FRAME_X, RobotHelper.DEFAULT_FRAME_Y);
 
         // Demo: visibly minimize Fiji's main frame by clicking its title-bar minimize button.
         RobotHelper.pause(500);

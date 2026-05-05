@@ -154,6 +154,58 @@ public class RobotHelper {
     }
 
     /**
+     * Visibly drags the given frame by its title bar to a new position,
+     * specified relative to the target screen's top-left (same convention as
+     * {@link #placeFrame(Frame, int, int)}).
+     *
+     * The grab point is on the title bar, well left of the right-side
+     * window buttons. Requires the native title bar (Windows-style); will
+     * not work for borderless / undecorated frames.
+     */
+    public static void dragFrame(Frame frame, int dxOnTargetScreen, int dyOnTargetScreen) {
+        Rectangle screen = targetScreenBounds();
+        int newAbsX = screen.x + dxOnTargetScreen;
+        int newAbsY = screen.y + dyOnTargetScreen;
+
+        Insets insets = frame.getInsets();
+        int titleBarHeight = Math.max(insets.top, 24);
+        int grabOffsetX = Math.min(60, Math.max(20, frame.getWidth() / 4));
+        int grabOffsetY = titleBarHeight / 2;
+
+        int startX = frame.getX() + grabOffsetX;
+        int startY = frame.getY() + grabOffsetY;
+        int endX   = newAbsX + grabOffsetX;
+        int endY   = newAbsY + grabOffsetY;
+
+        drag(startX, startY, endX, endY);
+    }
+
+    /**
+     * Visibly resizes the given frame by dragging its bottom-right corner so
+     * the frame ends up at {@code width × height}. Requires native resize
+     * borders.
+     */
+    public static void resizeFrame(Frame frame, int width, int height) {
+        int startX = frame.getX() + frame.getWidth() - 1;
+        int startY = frame.getY() + frame.getHeight() - 1;
+        int endX   = frame.getX() + width - 1;
+        int endY   = frame.getY() + height - 1;
+
+        drag(startX, startY, endX, endY);
+    }
+
+    /** Press at {@code (startX, startY)}, smooth-drag to {@code (endX, endY)}, release. */
+    private static void drag(int startX, int startY, int endX, int endY) {
+        moveTo(startX, startY);
+        pause(Timings.PAUSE_AFTER_MOVE_MS);
+        robot().mousePress(InputEvent.BUTTON1_DOWN_MASK);
+        rawPause(Timings.DRAG_GRAB_DELAY_MS);
+        moveTo(endX, endY);
+        rawPause(Timings.DRAG_GRAB_DELAY_MS);
+        robot().mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+    }
+
+    /**
      * Move a frame to {@code (dxOnTargetScreen, dyOnTargetScreen)} relative to
      * the target screen's top-left corner, and bring it to front.
      */
