@@ -16,18 +16,28 @@ package ch.epfl.biop.docs.videos;
 public class Timings {
 
     /** Multiplier on every {@link #scaled(long)} call. >1 = faster, <1 = slower. */
-    public static double GLOBAL_SPEED = 1.0;
+    public static double GLOBAL_SPEED = 0.33;
 
     // ===== Mouse motion (scaled) ==================================================
 
-    /** Default duration of a smooth {@code moveTo}. */
-    public static long MOUSE_MOVE_MS = 700;
+    /**
+     * Cursor speed for the no-duration {@code moveTo} overloads, in pixels
+     * per millisecond. The duration is derived as {@code distance / speed},
+     * then clamped to [{@link #MOUSE_MOVE_MIN_MS}, {@link #MOUSE_MOVE_MAX_MS}],
+     * then scaled by {@link #GLOBAL_SPEED}.
+     */
+    public static double MOUSE_SPEED_PX_PER_MS = 1.5;
+
+    /** Lower / upper clamp on the displacement-derived mouse-move duration (pre-scaling). */
+    public static long MOUSE_MOVE_MIN_MS = 150;
+    public static long MOUSE_MOVE_MAX_MS = 1500;
+
     /** Default number of intermediate frames in a smooth {@code moveTo}. */
     public static int  MOUSE_MOVE_FRAMES = 60;
 
     // ===== Clicks / keys (NOT scaled — mechanical) ================================
 
-    public static int CLICK_HOLD_MS = 60;
+    public static int CLICK_HOLD_MS = 600;
     public static int DOUBLE_CLICK_GAP_MS = 60;
     public static int KEY_HOLD_MS = 40;
     public static int TYPE_KEY_HOLD_MS = 30;

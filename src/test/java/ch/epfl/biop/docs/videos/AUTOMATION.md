@@ -48,6 +48,11 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
   scaled. Mechanical timings (click hold, key hold) and polling intervals
   (`Timings.FRAME_POLL_INTERVAL_MS`) stay raw. Use `RobotHelper.rawPause`
   for waits that must NOT be affected by speed.
+- **Distance-aware mouse motion.** The single-arg
+  `RobotHelper.moveTo(x, y)` derives its duration from the actual cursor →
+  target distance via `Timings.MOUSE_SPEED_PX_PER_MS`, then clamps to
+  `[MOUSE_MOVE_MIN_MS, MOUSE_MOVE_MAX_MS]`, then applies `GLOBAL_SPEED`.
+  So short hops feel snappy and long sweeps stay readable.
 - **Running any Fiji command.** `FijiCommands.searchAndRun("show bdv play")`
   focuses the legacy search bar, types, and presses Enter. This sidesteps
   the AWT-menu limitation (see below) and works for anything reachable via

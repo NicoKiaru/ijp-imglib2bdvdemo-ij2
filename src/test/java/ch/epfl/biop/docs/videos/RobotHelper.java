@@ -198,9 +198,23 @@ public class RobotHelper {
         }
     }
 
-    /** Convenience: smooth move using {@link Timings#MOUSE_MOVE_MS} / {@link Timings#MOUSE_MOVE_FRAMES}. */
+    /**
+     * Smooth move whose duration is derived from the cursor → target distance
+     * (using {@link Timings#MOUSE_SPEED_PX_PER_MS}, clamped to
+     * [{@link Timings#MOUSE_MOVE_MIN_MS}, {@link Timings#MOUSE_MOVE_MAX_MS}])
+     * — so short hops are quick and long sweeps still feel deliberate.
+     * {@link Timings#GLOBAL_SPEED} is then applied on top.
+     */
     public static void moveTo(int x, int y) {
-        moveTo(x, y, Timings.MOUSE_MOVE_MS, Timings.MOUSE_MOVE_FRAMES);
+        Point start = MouseInfo.getPointerInfo().getLocation();
+        long dx = x - start.x;
+        long dy = y - start.y;
+        double distance = Math.sqrt((double) dx * dx + (double) dy * dy);
+        double speed = Math.max(1e-3, Timings.MOUSE_SPEED_PX_PER_MS);
+        long duration = (long) (distance / speed);
+        duration = Math.max(Timings.MOUSE_MOVE_MIN_MS,
+                            Math.min(Timings.MOUSE_MOVE_MAX_MS, duration));
+        moveTo(x, y, duration, Timings.MOUSE_MOVE_FRAMES);
     }
 
     /** Convenience: smooth move to a {@link Point}. */
