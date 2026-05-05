@@ -11,14 +11,14 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 | File | Role |
 |---|---|
 | `Timings` | Central timing constants + `GLOBAL_SPEED`. One knob to speed every video pace up or down. |
-| `RobotHelper` | Robot wrapper: target-screen handling, frame placement, sin-eased `moveTo`, click/key/`type(String)`, `pause`. |
+| `RobotHelper` | Robot wrapper: target-screen handling, frame placement, sin-eased `moveTo`, click/key/`type(String)`, `paste(String)` (clipboard-based, layout-independent), `pause`. |
 | `ComponentInspector` | Recursive AWT/Swing tree walker. Returns a `LinkedHashMap<String, ComponentInfo>` with hierarchical path keys, local bounds and absolute screen positions. Includes `prettyPrint`. |
 | `FijiCommands` | Fiji-specific actions: `startFiji()` (boots Fiji + places the IJ frame, exposes the SciJava `ImageJ`/`Context`), `searchAndRun(String query)` (drives the legacy search bar). Holds the `LegacyInjector.preinit()` static block. |
-| `RobotCommands` | `CommandService`-style runner that drives a SciJava command's harvester dialog by reflecting `@Parameter` labels and filling each widget via Robot. `run(Class, ...)` (direct) and `runViaSearch(Class, query, ...)` (via the IJ search bar). Currently supports `boolean` (JCheckBox) and `String` (JTextField) parameters. |
-| `RobotDemoCommand` | Trivial SciJava `Command` with one boolean + one string `@Parameter` and a string output — fixture for `RobotCommands` tests. |
+| `RobotCommands` | `CommandService`-style runner that drives a SciJava command's harvester dialog by reflecting `@Parameter` labels and filling each widget via Robot. `run(Class, ...)` (direct) and `runViaSearch(Class, query, ...)` (via the IJ search bar). Currently supports `boolean` (JCheckBox), `String` (JTextField) and `File` (Browse + file-chooser flow) parameters. |
+| `RobotDemoCommand` | Trivial SciJava `Command` with one boolean, one string and one `File` `@Parameter`, plus a string output — fixture for `RobotCommands` tests. |
 | `InspectMainFrame` | Driver: starts Fiji, dumps the IJ main frame's component tree to stdout. |
 | `SearchBarTest` | Driver: starts Fiji, runs `"show bdv play"` via the search bar. |
-| `RobotDemoTest` | Driver: runs `RobotDemoCommand` twice — once via `RobotCommands.run` (reads its output) and once via `RobotCommands.runViaSearch("robot dem", ...)`. |
+| `RobotDemoTest` | Driver: creates a temp file, then runs `RobotDemoCommand` once via `RobotCommands.run` (reads outputs) and once via `RobotCommands.runViaSearch("robot dem", ...)`, exercising boolean + string + File parameters end to end. |
 
 ## What works today
 
@@ -90,6 +90,22 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
   so use the direct `run(...)` when you need them. The query should be a
   short, unambiguous prefix of the command's display name; the human
   supervisor checks visually that the right command was launched.
+- **`File` parameters via the Browse-then-chooser flow.** Pass a
+  `java.io.File` value and `RobotCommands` clicks the SciJava `Browse`
+  button (matched case-insensitively, with a fallback to the only
+  button in the input container), waits for the chooser to open, pastes
+  the absolute folder path + Enter to navigate, then types the file
+  name + Enter to select. The chooser doesn't need the cursor — its
+  file-name field has focus by default. Pass a `String` instead of a
+  `File` if you'd rather skip the chooser and have the path typed
+  straight into the field next to Browse.
+- **Layout-independent text injection.** `RobotHelper.paste(String)`
+  sets the system clipboard and sends `Ctrl+V`. Use this for paths and
+  any other text that mixes characters `type(String)` can't reliably
+  reproduce on non-US keyboard layouts (`\\`, `:`, `[`, etc. all
+  go through the layout-dependent `Robot.keyPress`, which the Windows
+  native peer rejects with "Invalid key code" when no single-key
+  mapping exists for the current layout).
 - **Visually correct checkbox clicks.** `RobotCommands` aims at
   `loc.x + CHECKBOX_CLICK_OFFSET_X` (default `9` px) instead of the
   geometric centre — the `JCheckBox` component spans the entire row but
@@ -111,8 +127,13 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 - **Toolbar tools are painted, not separate components.** `ij.gui.Toolbar`
   exposes one set of bounds for the whole strip; per-tool offsets must be
   derived manually if needed.
-- **Typing is ASCII / US layout.** `RobotHelper.type` covers letters, digits,
-  space and common symbols. Non-ASCII or non-US layouts are not handled.
+- **`type(String)` is ASCII / US layout.** `RobotHelper.type` covers letters,
+  digits, space and a wider set of common symbols (now including
+  shifted-digit punctuation, brackets, backslash, backquote and tilde),
+  but it still goes through `Robot.keyPress` and so depends on the active
+  Windows keyboard layout — `\\`, `:`, etc. throw "Invalid key code" on a
+  Swiss/French/etc. layout. For any string that may contain those
+  characters use `RobotHelper.paste(String)` instead.
 - **HiDPI scaling.** Robot uses physical pixels while AWT bounds are
   logical. So far `searchAndRun` lands correctly; if a future click is off
   by a scale factor, suspect this.
