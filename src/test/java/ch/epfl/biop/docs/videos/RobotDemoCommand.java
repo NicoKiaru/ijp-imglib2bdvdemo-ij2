@@ -26,6 +26,9 @@ public class RobotDemoCommand implements Command {
     @Parameter(label = "A file")
     File file;
 
+    @Parameter(label = "Many files")
+    File[] files;
+
     @Parameter(type = ItemIO.OUTPUT)
     String result;
 

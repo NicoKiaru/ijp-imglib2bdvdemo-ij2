@@ -41,6 +41,9 @@ import java.util.concurrent.Future;
  *   <li>{@link File} → clicks the {@code Browse} button, then drives the
  *       file chooser by typing the folder path + Enter, then the file name
  *       + Enter. Looks like a real user picking a file.</li>
+ *   <li>{@code File[]} → SciJava's mutable file-list widget. Clicks
+ *       <em>Add files…</em> once per file, drives the chooser the same way
+ *       as the single-file case. Each file appears in the list as it's added.</li>
  * </ul>
  */
 public class RobotCommands {
@@ -214,6 +217,17 @@ public class RobotCommands {
         if (value instanceof Boolean) {
             JCheckBox cb = firstOf(inputContainer, JCheckBox.class, "JCheckBox");
             fillCheckBox(cb, (Boolean) value);
+        } else if (value instanceof File[]) {
+            AbstractButton addFiles = findAddFilesButton(inputContainer);
+            if (addFiles == null) {
+                throw new IllegalStateException("No 'Add files…' button found for File[] parameter");
+            }
+            // Clear any pre-existing entries first so the resulting list
+            // contains exactly the files we asked for. Skipped silently if
+            // the widget has no Clear button.
+            AbstractButton clear = findClearListButton(inputContainer);
+            if (clear != null) clickClearList(clear);
+            fillFileList(addFiles, (File[]) value);
         } else if (value instanceof File) {
             AbstractButton browse = findBrowseButton(inputContainer);
             if (browse == null) {
@@ -248,6 +262,37 @@ public class RobotCommands {
             if (t != null && t.toLowerCase().contains("browse")) return b;
         }
         return buttons.isEmpty() ? null : buttons.get(0);
+    }
+
+    /**
+     * Find the "Add files…" button in a SciJava {@code MutableFileListWidget}.
+     * Matches "add file" (singular contained, case-insensitive) — distinct
+     * from the sibling "Add folder content…" button. Returns {@code null}
+     * if no button matches; the {@code File[]} dispatch reports an error in
+     * that case rather than silently picking a wrong button.
+     */
+    private static AbstractButton findAddFilesButton(Container root) {
+        List<AbstractButton> buttons = findAll(root, AbstractButton.class);
+        for (AbstractButton b : buttons) {
+            String t = b.getText();
+            if (t != null && t.toLowerCase().contains("add file")) return b;
+        }
+        return null;
+    }
+
+    /**
+     * Find the "Clear list" button in a SciJava {@code MutableFileListWidget}.
+     * Returns {@code null} if no matching button exists — the {@code File[]}
+     * dispatch then proceeds without clearing, which is harmless on a list
+     * that's already empty.
+     */
+    private static AbstractButton findClearListButton(Container root) {
+        List<AbstractButton> buttons = findAll(root, AbstractButton.class);
+        for (AbstractButton b : buttons) {
+            String t = b.getText();
+            if (t != null && t.toLowerCase().contains("clear")) return b;
+        }
+        return null;
     }
 
     private static void fillCheckBox(JCheckBox cb, boolean target) {
@@ -324,6 +369,9 @@ public class RobotCommands {
             RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
             RobotHelper.enter();
             RobotHelper.pause(Timings.PAUSE_AFTER_FOLDER_NAV_MS);
+            // Enter navigates into the folder but leaves the path text in
+            // the file-name field — wipe it before typing the file name.
+            selectAllAndDelete();
         }
         // Filename is short and ASCII — type it for the visible cadence
         // (paths get pasted because of the layout-dependent symbols).
@@ -331,6 +379,53 @@ public class RobotCommands {
         RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
         RobotHelper.enter();
         RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+    }
+
+    /**
+     * Click "Clear list" once. Safe to call on an already-empty list — Swing
+     * routes the click to the disabled-button no-op and Robot still moves
+     * the cursor visibly, which reads as a deliberate reset gesture.
+     */
+    private static void clickClearList(AbstractButton clear) {
+        Point center = centerOnScreen(clear);
+        RobotHelper.moveTo(center);
+        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        RobotHelper.click();
+        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+    }
+
+    /**
+     * For each file: click "Add files…", drive the resulting chooser the
+     * same way as a single-file pick. One chooser cycle per file — slower
+     * than multi-select-via-quoted-names, but works whether or not the
+     * files share a parent directory, and reads naturally on video as the
+     * list grows entry by entry.
+     */
+    private static void fillFileList(AbstractButton addFiles, File[] files) {
+        for (File file : files) {
+            File abs = file.getAbsoluteFile();
+            File dir = abs.getParentFile();
+            String dirPath = dir == null ? "" : dir.getAbsolutePath();
+            String name = abs.getName();
+
+            Point center = centerOnScreen(addFiles);
+            RobotHelper.moveTo(center);
+            RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
+            RobotHelper.click();
+            RobotHelper.pause(Timings.PAUSE_AFTER_FILE_CHOOSER_OPEN_MS);
+
+            if (!dirPath.isEmpty()) {
+                RobotHelper.paste(dirPath);
+                RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
+                RobotHelper.enter();
+                RobotHelper.pause(Timings.PAUSE_AFTER_FOLDER_NAV_MS);
+                selectAllAndDelete();
+            }
+            RobotHelper.type(name);
+            RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
+            RobotHelper.enter();
+            RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        }
     }
 
     // ===== OK button =============================================================
