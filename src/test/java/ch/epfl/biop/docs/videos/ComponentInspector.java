@@ -14,6 +14,7 @@ import java.awt.MenuBar;
 import java.awt.MenuItem;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.Window;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -85,6 +86,19 @@ public class ComponentInspector {
         if (frame.getMenuBar() != null) {
             walkAwtMenuBar(map, rootName + " / [AwtMenuBar]", 1, frame.getMenuBar());
         }
+        return map;
+    }
+
+    /**
+     * Same as {@link #inspect(Frame)} but for any {@link Window} (e.g. a
+     * {@link Dialog} / {@code JDialog} such as a SciJava command dialog).
+     * Windows have no AWT {@code MenuBar}, so only the component tree is walked.
+     */
+    public static Map<String, ComponentInfo> inspect(Window window) {
+        Map<String, ComponentInfo> map = new LinkedHashMap<>();
+        String rootName = describe(window, 0);
+        putComponent(map, "", rootName, 0, Kind.COMPONENT, window);
+        walkContainer(map, rootName, 1, window);
         return map;
     }
 

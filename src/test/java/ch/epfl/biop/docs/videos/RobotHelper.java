@@ -2,6 +2,7 @@ package ch.epfl.biop.docs.videos;
 
 import javax.swing.SwingUtilities;
 import java.awt.AWTException;
+import java.awt.Dialog;
 import java.awt.Frame;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
@@ -10,6 +11,7 @@ import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Robot;
+import java.awt.Window;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 
@@ -121,6 +123,53 @@ public class RobotHelper {
         while (System.currentTimeMillis() < deadline) {
             Frame f = findFrame(titleSubstring);
             if (f != null) return f;
+            rawPause(Timings.FRAME_POLL_INTERVAL_MS);
+        }
+        return null;
+    }
+
+    /**
+     * Returns the first visible {@link Dialog} (e.g. SciJava command dialogs,
+     * which are {@link javax.swing.JDialog} — not {@link Frame}) whose title
+     * contains {@code titleSubstring} (case-insensitive), or {@code null}.
+     */
+    public static Dialog findDialog(String titleSubstring) {
+        String needle = titleSubstring == null ? "" : titleSubstring.toLowerCase();
+        for (Window w : Window.getWindows()) {
+            if (!(w instanceof Dialog) || !w.isVisible()) continue;
+            Dialog d = (Dialog) w;
+            String title = d.getTitle();
+            if (title != null && title.toLowerCase().contains(needle)) {
+                return d;
+            }
+        }
+        return null;
+    }
+
+    /** Polls {@link #findDialog(String)} for up to {@code timeoutMs} ms. */
+    public static Dialog waitForDialog(String titleSubstring, long timeoutMs) {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < deadline) {
+            Dialog d = findDialog(titleSubstring);
+            if (d != null) return d;
+            rawPause(Timings.FRAME_POLL_INTERVAL_MS);
+        }
+        return null;
+    }
+
+    /**
+     * Polls for the first visible {@link Dialog} regardless of title. Useful
+     * when only one dialog is expected at a time (e.g. a SciJava command's
+     * input harvester) and the title is not predictable.
+     *
+     * @return the visible dialog, or {@code null} on timeout
+     */
+    public static Dialog waitForActiveDialog(long timeoutMs) {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < deadline) {
+            for (Window w : Window.getWindows()) {
+                if (w instanceof Dialog && w.isVisible()) return (Dialog) w;
+            }
             rawPause(Timings.FRAME_POLL_INTERVAL_MS);
         }
         return null;

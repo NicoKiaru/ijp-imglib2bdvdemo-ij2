@@ -32,6 +32,11 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
   `waitForFrame(title, timeoutMs)` find a visible `Frame` by case-insensitive
   title substring — useful to grab a window opened as a side effect of a
   command, then inspect it.
+- **Locating dialogs.** SciJava command dialogs are `JDialog`s, not `Frame`s,
+  so `Frame.getFrames()` misses them. Use `RobotHelper.findDialog(title)` /
+  `waitForDialog(title, timeoutMs)` (which iterate `Window.getWindows()`),
+  or `waitForActiveDialog(timeoutMs)` to grab the single visible dialog when
+  the title isn't predictable. Inspect with `ComponentInspector.inspect(Window)`.
 - **Placing any frame on the target screen.**
   `RobotHelper.placeFrame(frame, dx, dy)` moves a frame to `(dx, dy)`
   *relative to the target screen's top-left*. The single-arg overload uses

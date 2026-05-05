@@ -1,8 +1,6 @@
 package ch.epfl.biop.docs.videos;
 
-import ij.IJ;
-
-import java.awt.Frame;
+import java.awt.*;
 
 /**
  * Drives Fiji's legacy search bar via Robot to run "show bdv play" —
@@ -29,5 +27,9 @@ public class SearchBarTest {
         //RobotHelper.minimizeWithMouse(IJ.getInstance());
 
         FijiCommands.searchAndRun("bio for create");
+        RobotHelper.pause(1000);
+
+        Dialog dialog = RobotHelper.waitForActiveDialog(1000);
+        System.out.println(ComponentInspector.prettyPrint(ComponentInspector.inspect(dialog)));
     }
 }
