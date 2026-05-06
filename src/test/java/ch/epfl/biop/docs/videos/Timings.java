@@ -38,6 +38,15 @@ public class Timings {
     // ===== Clicks / keys (NOT scaled — mechanical) ================================
 
     public static int CLICK_HOLD_MS = 600;
+    /**
+     * Per-click hold inside {@link RobotHelper#doubleClick()}. Must be short
+     * enough that press → release → gap → press fits inside the OS double-click
+     * threshold (~500 ms on Windows by default), otherwise the OS tags both
+     * events as {@code clickCount=1} and Swing never sees a double-click.
+     * Stays separate from {@link #CLICK_HOLD_MS} so the leisurely single-click
+     * pacing isn't disturbed.
+     */
+    public static int DOUBLE_CLICK_HOLD_MS = 50;
     public static int DOUBLE_CLICK_GAP_MS = 60;
     public static int KEY_HOLD_MS = 40;
     public static int TYPE_KEY_HOLD_MS = 30;
@@ -61,6 +70,8 @@ public class Timings {
     public static long PAUSE_AFTER_FILE_CHOOSER_OPEN_MS = 800;
     /** Wait after pressing Enter on the folder path inside the file chooser. */
     public static long PAUSE_AFTER_FOLDER_NAV_MS = 500;
+    /** Wait after a tree node is double-clicked, to let it expand and rows re-lay-out before re-fetching coords. */
+    public static long PAUSE_AFTER_TREE_EXPAND_MS = 350;
 
     // ===== Polling / timeouts (NOT scaled) ========================================
 

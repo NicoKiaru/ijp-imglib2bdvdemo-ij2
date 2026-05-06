@@ -338,10 +338,22 @@ public class RobotHelper {
         robot().mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
     }
 
+    /**
+     * Two quick mouse clicks at the current cursor position. Uses
+     * {@link Timings#DOUBLE_CLICK_HOLD_MS} (not {@link Timings#CLICK_HOLD_MS})
+     * so the press-to-press interval fits inside the OS double-click threshold
+     * — otherwise the second click arrives with {@code clickCount=1} and Swing
+     * sees two separate clicks instead of a double-click.
+     */
     public static void doubleClick() {
-        click();
-        robot().delay(Timings.DOUBLE_CLICK_GAP_MS);
-        click();
+        Robot r = robot();
+        r.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+        r.delay(Timings.DOUBLE_CLICK_HOLD_MS);
+        r.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+        r.delay(Timings.DOUBLE_CLICK_GAP_MS);
+        r.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+        r.delay(Timings.DOUBLE_CLICK_HOLD_MS);
+        r.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
     }
 
     public static void rightClick() {

@@ -14,11 +14,13 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 | `RobotHelper` | Robot wrapper: target-screen handling, frame placement, sin-eased `moveTo`, click/key/`type(String)`, `paste(String)` (clipboard-based, layout-independent), `pause`. |
 | `ComponentInspector` | Recursive AWT/Swing tree walker. Returns a `LinkedHashMap<String, ComponentInfo>` with hierarchical path keys, local bounds and absolute screen positions. Includes `prettyPrint`. |
 | `FijiCommands` | Fiji-specific actions: `startFiji()` (boots Fiji + places the IJ frame, exposes the SciJava `ImageJ`/`Context`), `searchAndRun(String query)` (drives the legacy search bar). Holds the `LegacyInjector.preinit()` static block. |
-| `RobotCommands` | `CommandService`-style runner that drives a SciJava command's harvester dialog by reflecting `@Parameter` labels and filling each widget via Robot. `run(Class, ...)` (direct) and `runViaSearch(Class, query, ...)` (via the IJ search bar). Currently supports `boolean` (JCheckBox), `String` (JTextField) and `File` (Browse + file-chooser flow) parameters. |
+| `RobotCommands` | `CommandService`-style runner that drives a SciJava command's harvester dialog by reflecting `@Parameter` labels and filling each widget via Robot. `run(Class, ...)` (direct) and `runViaSearch(Class, query, ...)` (via the IJ search bar). Currently supports `boolean` (JCheckBox), `String` (JTextField), `File` / `File[]` (Browse + file-chooser flow), and `String`-targeting-a-`JTree` (e.g. BDV-Playground `SwingSourceWidget`). |
 | `RobotDemoCommand` | Trivial SciJava `Command` with one boolean, one string and one `File` `@Parameter`, plus a string output — fixture for `RobotCommands` tests. |
+| `RobotSourceDemoCommand` | Trivial SciJava `Command` with one `SourceAndConverter` `@Parameter` (rendered as a `SwingSourceWidget` JTree), plus a string output — fixture for the tree-navigation branch of `RobotCommands`. |
 | `InspectMainFrame` | Driver: starts Fiji, dumps the IJ main frame's component tree to stdout. |
 | `SearchBarTest` | Driver: starts Fiji, runs `"show bdv play"` via the search bar. |
 | `RobotDemoTest` | Driver: creates a temp file, then runs `RobotDemoCommand` once via `RobotCommands.run` (reads outputs) and once via `RobotCommands.runViaSearch("robot dem", ...)`, exercising boolean + string + File parameters end to end. |
+| `RobotSourceDemoTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES`, prints the live `SourceService` tree, picks the first leaf programmatically and runs `RobotSourceDemoCommand` via `RobotCommands.run` with the corresponding `">"`-delimited path — exercises the `SwingSourceWidget` branch end to end. |
 
 ## What works today
 
@@ -116,6 +118,22 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
   on the live component reference and only clicks when the desired state
   differs from the current one — so passing the existing value is a no-op
   rather than a toggle in the wrong direction.
+- **Selecting a node in a SciJava `JTree` widget.** Passing a
+  `">"`-delimited path string (e.g. `"Sources>BrainSection-Tiles>tile_001"`)
+  to a parameter rendered as a `JTree` (BDV-Playground `SwingSourceWidget`,
+  `SwingSourceListWidget`, …) walks the tree model along the path,
+  double-clicks each intermediate node to expand it (skipping nodes that
+  are already expanded — otherwise a double-click would *collapse* them),
+  and single-clicks the leaf to select it. Path segments must match
+  `DefaultMutableTreeNode.toString()` exactly, including the root —
+  loud throw with sibling list on mismatch is preferred over silently
+  selecting the wrong source. Dispatch is by container shape: when the
+  parameter's input container holds a `JTree`, the tree branch is taken;
+  otherwise the value falls through to the `JTextField` branch as before.
+  Row pixel positions are computed at runtime from `tree.getRowBounds(row)`
+  + `tree.getLocationOnScreen()` (tree rows aren't Swing components and
+  don't appear in `ComponentInspector` output), and re-fetched after each
+  expansion since intervening rows may have been added or scrolled.
 
 ## Known limitations
 
@@ -149,6 +167,10 @@ From the IDE, right-click → `Run 'main()'`:
 - `RobotDemoTest.main()` — exercises `RobotCommands` end-to-end on the
   `RobotDemoCommand` fixture, both via direct `CommandService` invocation
   (with output assertion) and via the search bar.
+- `RobotSourceDemoTest.main()` — loads a multi-source dataset, prints the
+  live source tree, then drives `RobotSourceDemoCommand` selecting the
+  first leaf via a `">"`-delimited path. Exercises the `SwingSourceWidget`
+  branch of `RobotCommands`.
 
 ## Extending
 
