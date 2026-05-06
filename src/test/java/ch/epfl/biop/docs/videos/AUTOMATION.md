@@ -17,10 +17,12 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 | `RobotCommands` | `CommandService`-style runner that drives a SciJava command's harvester dialog by reflecting `@Parameter` labels and filling each widget via Robot. `run(Class, ...)` (direct) and `runViaSearch(Class, query, ...)` (via the IJ search bar). Currently supports `boolean` (JCheckBox), `String` (JTextField), `File` / `File[]` (Browse + file-chooser flow), and `String`-targeting-a-`JTree` (e.g. BDV-Playground `SwingSourceWidget`). |
 | `RobotDemoCommand` | Trivial SciJava `Command` with one boolean, one string and one `File` `@Parameter`, plus a string output — fixture for `RobotCommands` tests. |
 | `RobotSourceDemoCommand` | Trivial SciJava `Command` with one `SourceAndConverter` `@Parameter` (rendered as a `SwingSourceWidget` JTree), plus a string output — fixture for the tree-navigation branch of `RobotCommands`. |
+| `RobotSourceListDemoCommand` | Trivial SciJava `Command` with one `SourceAndConverter[]` `@Parameter` (rendered as a `SwingSourceListWidget` JTree, default unsorted style), plus name-list / count outputs — fixture for the multi-source variant of the tree branch. |
 | `InspectMainFrame` | Driver: starts Fiji, dumps the IJ main frame's component tree to stdout. |
 | `SearchBarTest` | Driver: starts Fiji, runs `"show bdv play"` via the search bar. |
 | `RobotDemoTest` | Driver: creates a temp file, then runs `RobotDemoCommand` once via `RobotCommands.run` (reads outputs) and once via `RobotCommands.runViaSearch("robot dem", ...)`, exercising boolean + string + File parameters end to end. |
 | `RobotSourceDemoTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES`, prints the live `SourceService` tree, picks the first leaf programmatically and runs `RobotSourceDemoCommand` via `RobotCommands.run` with the corresponding `">"`-delimited path — exercises the `SwingSourceWidget` branch end to end. |
+| `RobotSourceListDemoTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES`, single-clicks a parent node (`"Sources>BrainSection-Tiles>Channel>ch_0"`) via `RobotCommands.run` and asserts the command receives every descendant source — exercises the `SwingSourceListWidget` branch and the parent-node-selects-all-descendants behavior. |
 
 ## What works today
 
@@ -124,7 +126,7 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
   `SwingSourceListWidget`, …) walks the tree model along the path,
   double-clicks each intermediate node to expand it (skipping nodes that
   are already expanded — otherwise a double-click would *collapse* them),
-  and single-clicks the leaf to select it. Path segments must match
+  and single-clicks the final node to select it. Path segments must match
   `DefaultMutableTreeNode.toString()` exactly, including the root —
   loud throw with sibling list on mismatch is preferred over silently
   selecting the wrong source. Dispatch is by container shape: when the
@@ -134,6 +136,18 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
   + `tree.getLocationOnScreen()` (tree rows aren't Swing components and
   don't appear in `ComponentInspector` output), and re-fetched after each
   expansion since intervening rows may have been added or scrolled.
+- **Multi-source `SourceAndConverter[]` (default `SwingSourceListWidget`).**
+  The same `">"`-delimited path API works unchanged: aim the path at a
+  parent node (e.g. `"Sources>BrainSection-Tiles>Channel>ch_1"`) and
+  `SwingSourceListWidget.getValue()` recursively collects every descendant
+  source under that node — so a single click delivers all sources in a
+  group without needing Ctrl+click bookkeeping. Aiming at a leaf still
+  works and yields a single-element array. The path validator and the
+  expansion / single-click flow are shared with the single-source case;
+  no per-widget branching in `RobotCommands`. Multi-node selection (mixed
+  unrelated subtrees) and the sorted variant `SwingSourceSortedListWidget`
+  (where the user drags items from a tree into an ordered `JList`) are
+  not yet supported.
 
 ## Known limitations
 
@@ -171,6 +185,10 @@ From the IDE, right-click → `Run 'main()'`:
   live source tree, then drives `RobotSourceDemoCommand` selecting the
   first leaf via a `">"`-delimited path. Exercises the `SwingSourceWidget`
   branch of `RobotCommands`.
+- `RobotSourceListDemoTest.main()` — same dataset, but drives
+  `RobotSourceListDemoCommand` (a `SourceAndConverter[]` parameter)
+  pointing at a parent node and asserts the resulting array contains
+  every descendant source. Exercises `SwingSourceListWidget`.
 
 ## Extending
 

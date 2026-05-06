@@ -41,7 +41,7 @@ public class RobotSourceDemoTest {
         List<String> path = new ArrayList<>();
         firstLeafPath((DefaultMutableTreeNode) model.getRoot(), path);
         if (path.isEmpty()) throw new IllegalStateException("Source tree has no leaf");
-        String pathStr = "Sources>BrainSection-Tiles>Channel>ch_0>All Sources>TileScan 1-ch_0";//String.join(">", path);
+        String pathStr = "Sources>BrainSection-Tiles>Channel>ch_0>All Sources";//String.join(">", path);
         System.out.println("[RobotSourceDemoTest] picking leaf via path: " + pathStr);
 
         Future<CommandModule> future = RobotCommands.run(RobotSourceDemoCommand.class,

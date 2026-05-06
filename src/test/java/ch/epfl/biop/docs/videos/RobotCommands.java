@@ -50,11 +50,16 @@ import java.util.concurrent.Future;
  *       <em>Add files…</em> once per file, drives the chooser the same way
  *       as the single-file case. Each file appears in the list as it's added.</li>
  *   <li>{@link String} <em>targeting a {@link JTree}</em> (e.g. the
- *       BigDataViewer-Playground {@code SwingSourceWidget}) → walks the tree
- *       model along a {@code ">"}-delimited path, double-clicks each
- *       intermediate node to expand it, then single-clicks the leaf to
- *       select it. Path segments must match {@code DefaultMutableTreeNode.toString()}
- *       exactly, including the root.</li>
+ *       BigDataViewer-Playground {@code SwingSourceWidget} for a single
+ *       {@code SourceAndConverter}, or {@code SwingSourceListWidget} for
+ *       a {@code SourceAndConverter[]}) → walks the tree model along a
+ *       {@code ">"}-delimited path, double-clicks each intermediate node
+ *       to expand it, then single-clicks the final node to select it.
+ *       Aiming at a leaf selects that single source; aiming at a parent
+ *       node selects every descendant source (handled by the widget's
+ *       own {@code getValue()} recursion). Path segments must match
+ *       {@code DefaultMutableTreeNode.toString()} exactly, including
+ *       the root.</li>
  * </ul>
  */
 public class RobotCommands {
