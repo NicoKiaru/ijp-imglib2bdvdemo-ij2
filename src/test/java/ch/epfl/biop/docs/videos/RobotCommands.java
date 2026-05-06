@@ -10,14 +10,10 @@ import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
 import javax.swing.JTree;
-import javax.swing.SwingUtilities;
-import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.TreePath;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dialog;
 import java.awt.Point;
-import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.lang.reflect.Field;
@@ -456,122 +452,12 @@ public class RobotCommands {
     // ===== JTree (SourceWidget / SourceListWidget) ==============================
 
     /**
-     * Navigate {@code tree} along a {@code ">"}-delimited path of
-     * {@link DefaultMutableTreeNode#toString()} values, double-clicking each
-     * intermediate node to expand it (skipping nodes already expanded), then
-     * single-clicking the leaf to select it.
-     *
-     * <p>Segments must match exactly — the failure mode "the user mistyped a
-     * path and we silently selected the wrong source" is worse than a loud
-     * throw with a list of available siblings.</p>
-     *
-     * <p>Visible double-click expansion mirrors the pedagogy of the rest of
-     * this toolkit (visible chooser navigation, visible Browse, etc.) and
-     * relies on {@link JTree}'s default {@code toggleClickCount = 2}.
-     * {@link JTree#scrollPathToVisible} handles the scroll between rows; the
-     * cursor is then visibly moved to each row's centre.</p>
+     * Drive a JTree-bearing widget. Thin wrapper over {@link RobotTree#selectPath};
+     * the actual navigate / expand / select logic lives in {@link RobotTree}
+     * so it can also drive the standalone "BDV Sources" frame.
      */
     private static void fillTree(JTree tree, String path) {
-        if (path == null || path.isEmpty()) {
-            throw new IllegalArgumentException("Empty tree path");
-        }
-        String[] parts = path.split(">");
-
-        DefaultMutableTreeNode root = (DefaultMutableTreeNode) tree.getModel().getRoot();
-        if (root == null) {
-            throw new IllegalStateException("Tree has no root");
-        }
-        if (!parts[0].equals(root.toString())) {
-            throw new IllegalArgumentException("Tree root mismatch: expected '"
-                    + parts[0] + "', got '" + root.toString() + "'");
-        }
-
-        DefaultMutableTreeNode[] nodes = new DefaultMutableTreeNode[parts.length];
-        nodes[0] = root;
-        for (int i = 1; i < parts.length; i++) {
-            DefaultMutableTreeNode child = findChild(nodes[i - 1], parts[i]);
-            if (child == null) {
-                throw new IllegalArgumentException("Tree path mismatch at segment '"
-                        + parts[i] + "': children of '" + nodes[i - 1].toString()
-                        + "' are " + childNames(nodes[i - 1]));
-            }
-            nodes[i] = child;
-        }
-
-        TreePath[] ancestorPaths = new TreePath[parts.length];
-        ancestorPaths[0] = new TreePath(nodes[0]);
-        for (int i = 1; i < parts.length; i++) {
-            ancestorPaths[i] = ancestorPaths[i - 1].pathByAddingChild(nodes[i]);
-        }
-
-        // Expand every non-leaf ancestor (skip already-expanded ones, otherwise
-        // a double-click would collapse them).
-        for (int i = 0; i < parts.length - 1; i++) {
-            TreePath ap = ancestorPaths[i];
-            if (tree.isExpanded(ap)) continue;
-            clickRow(tree, ap, true);
-            RobotHelper.pause(Timings.PAUSE_AFTER_TREE_EXPAND_MS);
-            if (!tree.isExpanded(ap)) {
-                throw new IllegalStateException("Tree path did not expand after double-click: " + ap);
-            }
-        }
-
-        clickRow(tree, ancestorPaths[parts.length - 1], false);
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
-    }
-
-    private static DefaultMutableTreeNode findChild(DefaultMutableTreeNode parent, String name) {
-        for (int i = 0; i < parent.getChildCount(); i++) {
-            DefaultMutableTreeNode c = (DefaultMutableTreeNode) parent.getChildAt(i);
-            if (name.equals(c.toString())) return c;
-        }
-        return null;
-    }
-
-    private static List<String> childNames(DefaultMutableTreeNode parent) {
-        List<String> names = new ArrayList<>();
-        for (int i = 0; i < parent.getChildCount(); i++) {
-            names.add(parent.getChildAt(i).toString());
-        }
-        return names;
-    }
-
-    /**
-     * Visibly move to and click on the given tree row. {@code doubleClick = true}
-     * for expansion gestures, {@code false} for selection.
-     *
-     * <p>Coords are recomputed every call: an expansion above this row will
-     * have shifted its position, and {@link JTree#scrollPathToVisible} may
-     * have scrolled the viewport. Both reads happen after the EDT-bound scroll
-     * has completed.</p>
-     */
-    private static void clickRow(JTree tree, TreePath path, boolean doubleClick) {
-        try {
-            SwingUtilities.invokeAndWait(() -> tree.scrollPathToVisible(path));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        if (!tree.isShowing()) {
-            throw new IllegalStateException("JTree is not on screen");
-        }
-        int row = tree.getRowForPath(path);
-        if (row < 0) {
-            throw new IllegalStateException("Path not visible in tree (row=-1): " + path);
-        }
-        Rectangle b = tree.getRowBounds(row);
-        if (b == null) {
-            throw new IllegalStateException("getRowBounds returned null for row " + row);
-        }
-        Point loc = tree.getLocationOnScreen();
-        int x = loc.x + b.x + b.width / 2;
-        int y = loc.y + b.y + b.height / 2;
-        RobotHelper.moveTo(x, y);
-        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
-        if (doubleClick) {
-            RobotHelper.doubleClick();
-        } else {
-            RobotHelper.click();
-        }
+        RobotTree.selectPath(tree, path);
     }
 
     // ===== OK button =============================================================

@@ -15,6 +15,7 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 | `ComponentInspector` | Recursive AWT/Swing tree walker. Returns a `LinkedHashMap<String, ComponentInfo>` with hierarchical path keys, local bounds and absolute screen positions. Includes `prettyPrint`. |
 | `FijiCommands` | Fiji-specific actions: `startFiji()` (boots Fiji + places the IJ frame, exposes the SciJava `ImageJ`/`Context`), `searchAndRun(String query)` (drives the legacy search bar). Holds the `LegacyInjector.preinit()` static block. |
 | `RobotCommands` | `CommandService`-style runner that drives a SciJava command's harvester dialog by reflecting `@Parameter` labels and filling each widget via Robot. `run(Class, ...)` (direct) and `runViaSearch(Class, query, ...)` (via the IJ search bar). Currently supports `boolean` (JCheckBox), `String` (JTextField), `File` / `File[]` (Browse + file-chooser flow), and `String`-targeting-a-`JTree` (e.g. BDV-Playground `SwingSourceWidget`). |
+| `RobotTree` | Robot primitives for a `JTree` reachable on screen — `selectPath(JTree, String)` (navigate, expand ancestors via double-click, single-click final node) and `rightClickPath(JTree, String)` (same + right-click in place). Shared between the harvester JTree branch in `RobotCommands` and standalone tree frames like the "BDV Sources" panel. |
 | `RobotDemoCommand` | Trivial SciJava `Command` with one boolean, one string and one `File` `@Parameter`, plus a string output — fixture for `RobotCommands` tests. |
 | `RobotSourceDemoCommand` | Trivial SciJava `Command` with one `SourceAndConverter` `@Parameter` (rendered as a `SwingSourceWidget` JTree), plus a string output — fixture for the tree-navigation branch of `RobotCommands`. |
 | `RobotSourceListDemoCommand` | Trivial SciJava `Command` with one `SourceAndConverter[]` `@Parameter` (rendered as a `SwingSourceListWidget` JTree, default unsorted style), plus name-list / count outputs — fixture for the multi-source variant of the tree branch. |
@@ -23,6 +24,7 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 | `RobotDemoTest` | Driver: creates a temp file, then runs `RobotDemoCommand` once via `RobotCommands.run` (reads outputs) and once via `RobotCommands.runViaSearch("robot dem", ...)`, exercising boolean + string + File parameters end to end. |
 | `RobotSourceDemoTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES`, prints the live `SourceService` tree, picks the first leaf programmatically and runs `RobotSourceDemoCommand` via `RobotCommands.run` with the corresponding `">"`-delimited path — exercises the `SwingSourceWidget` branch end to end. |
 | `RobotSourceListDemoTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES`, single-clicks a parent node (`"Sources>BrainSection-Tiles>Channel>ch_0"`) via `RobotCommands.run` and asserts the command receives every descendant source — exercises the `SwingSourceListWidget` branch and the parent-node-selects-all-descendants behavior. |
+| `RobotSourceTreeRightClickTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES` (auto-shows the standalone "BDV Sources" frame), places the frame, navigates the tree with `RobotTree.rightClickPath` and opens the right-click popup on a parent node — exercises the `SourceTree` frame's right-click context menu. |
 
 ## What works today
 
@@ -136,6 +138,20 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
   + `tree.getLocationOnScreen()` (tree rows aren't Swing components and
   don't appear in `ComponentInspector` output), and re-fetched after each
   expansion since intervening rows may have been added or scrolled.
+- **Right-clicking a node in the standalone "BDV Sources" frame.** The
+  BDV-Playground `SourceTree` frame (auto-shown when sources land in the
+  `SourceService`) hosts the same model as the harvester widget. Reach its
+  live `JTree` via `bss.tree().getJTree()` and call
+  `RobotTree.rightClickPath(jtree, "Sources>...")` to navigate, single-click
+  to select, then right-click in place. The frame's mouse listener builds a
+  `SourcePopupMenu` against the current selection and shows it at the cursor
+  — so the popup operates on the node that was just selected (or all
+  descendant sources, if the path ends at a non-leaf). The path API and
+  expansion / select flow are the same as the widget branch
+  (`RobotTree.selectPath`); the only addition is the trailing `rightClick()`
+  in place. The toolkit currently doesn't drive the popup itself (clicking
+  menu items in a `JPopupMenu` would need a separate primitive — popup
+  items aren't `Component`s in the parent-window tree).
 - **Multi-source `SourceAndConverter[]` (default `SwingSourceListWidget`).**
   The same `">"`-delimited path API works unchanged: aim the path at a
   parent node (e.g. `"Sources>BrainSection-Tiles>Channel>ch_1"`) and
@@ -189,6 +205,11 @@ From the IDE, right-click → `Run 'main()'`:
   `RobotSourceListDemoCommand` (a `SourceAndConverter[]` parameter)
   pointing at a parent node and asserts the resulting array contains
   every descendant source. Exercises `SwingSourceListWidget`.
+- `RobotSourceTreeRightClickTest.main()` — same dataset, but drives the
+  standalone "BDV Sources" tree frame instead of a harvester widget:
+  finds the frame, places it on the target screen, navigates to a parent
+  node and right-clicks to open its context popup. Holds the popup
+  briefly, then dismisses with `Esc`.
 
 ## Extending
 
