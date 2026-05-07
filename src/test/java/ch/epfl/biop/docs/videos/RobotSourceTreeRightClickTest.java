@@ -10,22 +10,23 @@ import java.awt.Frame;
 
 /**
  * Drives the standalone BigDataViewer-Playground "BDV Sources" frame
- * ({@link sc.fiji.bdvpg.scijava.service.tree.SourceTree}) — finds it,
- * places it on the target screen, navigates the tree along a
- * {@code ">"}-delimited path, and right-clicks the selected node so its
- * {@link javax.swing.JPopupMenu} (built by
- * {@code SourcePopupMenu}) opens at the cursor.
+ * ({@link sc.fiji.bdvpg.scijava.service.tree.SourceTree}) end to end:
+ * places the frame, right-clicks a node to open the
+ * {@link javax.swing.JPopupMenu}, and walks a menu path through nested
+ * submenus to invoke a SciJava command pre-filled with the selected sources.
  *
- * <p>The popup operates on the <em>currently selected</em> sources — the
- * frame's right-click handler does not itself change the selection — so
- * {@link RobotTree#rightClickPath} left-clicks first, pauses, then right-clicks
- * in place. Aiming at a non-leaf node (e.g.
- * {@code "Sources>BrainSection-Tiles>Channel>ch_0"}) is the parent-selects-all
- * pattern: the popup will operate on every descendant source.</p>
+ * <p>Right-click semantics: the frame's mouse listener
+ * ({@code SourceTree.java:161}) shows a popup based on whatever is currently
+ * <em>selected</em> in the tree. {@link RobotTree#rightClickPath} therefore
+ * left-clicks first to set the selection, then right-clicks in place.
+ * Aiming at a non-leaf node (e.g. {@code "Sources>BrainSection-Tiles>Channel>ch_0"})
+ * is the parent-selects-all pattern: every descendant source feeds into the
+ * popup's command.</p>
  *
- * <p>The popup is held visible briefly (so it's apparent on video / screen)
- * then dismissed with {@code Esc}. Add {@code RobotHelper.pause(...)} to taste
- * if you want it to linger longer.</p>
+ * <p>Popup navigation: {@link RobotPopup#clickPath} hovers through each
+ * submenu (Swing auto-opens on mouse-enter) and clicks the final menu item.
+ * In this test that's {@code "Viewer>BDV>BDV - Show Sources"} — the
+ * resulting SciJava command opens a BDV viewer on every selected source.</p>
  */
 public class RobotSourceTreeRightClickTest {
 
@@ -45,23 +46,26 @@ public class RobotSourceTreeRightClickTest {
         }
 
         // Place the frame at a known position so the row coords are reproducible
-        // across runs / screens. Offset on the right side of the IJ frame.
-        RobotHelper.placeFrame(bdvSources, 700, 100);
+        // across runs / screens. Offset on the right side of the IJ frame so the
+        // cascading popup has room to grow rightward.
+        // RobotHelper.placeFrame(bdvSources, 700, 100);
         RobotHelper.pause(Timings.PAUSE_AFTER_FRAME_PLACEMENT_MS);
 
         SourceService bss = FijiCommands.context().service(SourceService.class);
         SourceTree sourceTree = bss.tree();
         JTree jtree = sourceTree.getJTree();
 
-        String pathStr = "Sources>BrainSection-Tiles>Channel>ch_0";
-        System.out.println("[RobotSourceTreeRightClickTest] right-clicking node at: " + pathStr);
+        String treePath = "Sources>BrainSection-Tiles>Channel>ch_0";
+        System.out.println("[RobotSourceTreeRightClickTest] right-clicking node at: " + treePath);
+        RobotTree.rightClickPath(jtree, treePath);
 
-        RobotTree.rightClickPath(jtree, pathStr);
+        String menuPath = "Display>BDV>BDV - Show Sources";
+        System.out.println("[RobotSourceTreeRightClickTest] navigating popup: " + menuPath);
+        RobotPopup.clickPath(menuPath);
 
-        // Hold the popup briefly so it's visible to the human / screen recorder,
-        // then dismiss it.
-        RobotHelper.pause(2500);
-        RobotHelper.escape();
+        // The command is now running — let it finish painting any UI it spawns
+        // (a BDV viewer, in this case) before the test driver exits.
+        RobotHelper.pause(2000);
         System.out.println("[RobotSourceTreeRightClickTest] OK");
     }
 }

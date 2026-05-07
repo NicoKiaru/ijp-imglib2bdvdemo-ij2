@@ -16,6 +16,7 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 | `FijiCommands` | Fiji-specific actions: `startFiji()` (boots Fiji + places the IJ frame, exposes the SciJava `ImageJ`/`Context`), `searchAndRun(String query)` (drives the legacy search bar). Holds the `LegacyInjector.preinit()` static block. |
 | `RobotCommands` | `CommandService`-style runner that drives a SciJava command's harvester dialog by reflecting `@Parameter` labels and filling each widget via Robot. `run(Class, ...)` (direct) and `runViaSearch(Class, query, ...)` (via the IJ search bar). Currently supports `boolean` (JCheckBox), `String` (JTextField), `File` / `File[]` (Browse + file-chooser flow), and `String`-targeting-a-`JTree` (e.g. BDV-Playground `SwingSourceWidget`). |
 | `RobotTree` | Robot primitives for a `JTree` reachable on screen — `selectPath(JTree, String)` (navigate, expand ancestors via double-click, single-click final node) and `rightClickPath(JTree, String)` (same + right-click in place). Shared between the harvester JTree branch in `RobotCommands` and standalone tree frames like the "BDV Sources" panel. |
+| `RobotPopup` | Robot navigation of an open Swing `JPopupMenu` — `clickPath(String)` finds the active popup via `MenuSelectionManager.defaultManager()`, hovers through intermediate submenus (Swing auto-opens on mouse-enter), and clicks the final menu item. Path syntax matches `RobotTree`: `">"`-delimited, exact `JMenuItem.getText()`. |
 | `RobotDemoCommand` | Trivial SciJava `Command` with one boolean, one string and one `File` `@Parameter`, plus a string output — fixture for `RobotCommands` tests. |
 | `RobotSourceDemoCommand` | Trivial SciJava `Command` with one `SourceAndConverter` `@Parameter` (rendered as a `SwingSourceWidget` JTree), plus a string output — fixture for the tree-navigation branch of `RobotCommands`. |
 | `RobotSourceListDemoCommand` | Trivial SciJava `Command` with one `SourceAndConverter[]` `@Parameter` (rendered as a `SwingSourceListWidget` JTree, default unsorted style), plus name-list / count outputs — fixture for the multi-source variant of the tree branch. |
@@ -24,7 +25,7 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 | `RobotDemoTest` | Driver: creates a temp file, then runs `RobotDemoCommand` once via `RobotCommands.run` (reads outputs) and once via `RobotCommands.runViaSearch("robot dem", ...)`, exercising boolean + string + File parameters end to end. |
 | `RobotSourceDemoTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES`, prints the live `SourceService` tree, picks the first leaf programmatically and runs `RobotSourceDemoCommand` via `RobotCommands.run` with the corresponding `">"`-delimited path — exercises the `SwingSourceWidget` branch end to end. |
 | `RobotSourceListDemoTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES`, single-clicks a parent node (`"Sources>BrainSection-Tiles>Channel>ch_0"`) via `RobotCommands.run` and asserts the command receives every descendant source — exercises the `SwingSourceListWidget` branch and the parent-node-selects-all-descendants behavior. |
-| `RobotSourceTreeRightClickTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES` (auto-shows the standalone "BDV Sources" frame), places the frame, navigates the tree with `RobotTree.rightClickPath` and opens the right-click popup on a parent node — exercises the `SourceTree` frame's right-click context menu. |
+| `RobotSourceTreeRightClickTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES` (auto-shows the standalone "BDV Sources" frame), places the frame, right-clicks a parent node with `RobotTree.rightClickPath`, then walks the popup with `RobotPopup.clickPath("Viewer>BDV>BDV - Show Sources")` to invoke a SciJava command pre-filled with all descendant sources. |
 
 ## What works today
 
@@ -149,9 +150,21 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
   descendant sources, if the path ends at a non-leaf). The path API and
   expansion / select flow are the same as the widget branch
   (`RobotTree.selectPath`); the only addition is the trailing `rightClick()`
-  in place. The toolkit currently doesn't drive the popup itself (clicking
-  menu items in a `JPopupMenu` would need a separate primitive — popup
-  items aren't `Component`s in the parent-window tree).
+  in place.
+- **Navigating an open `JPopupMenu`.** `RobotPopup.clickPath("Viewer>BDV>BDV - Show Sources")`
+  finds the currently-open popup via `MenuSelectionManager.defaultManager()`
+  (popups aren't part of the parent window's component tree —
+  `ComponentInspector` doesn't see them), then walks the path: hover onto
+  each intermediate `JMenu` (Swing auto-opens its submenu on mouse-enter),
+  wait for the sub-popup to actually become visible, recurse, and click the
+  final `JMenuItem`. Hover (not click) is used for intermediates because
+  clicking a `JMenu` can <em>toggle</em> its submenu open/closed depending
+  on selection state, while hover only ever opens. Segments must match
+  `JMenuItem.getText()` exactly; loud throw with the list of available
+  items at that level on mismatch. Pairs naturally with
+  `RobotTree.rightClickPath` to drive the BDV Sources popup actions, but
+  works for any open Swing popup (menu-bar dropdowns, context menus on
+  other components, etc.).
 - **Multi-source `SourceAndConverter[]` (default `SwingSourceListWidget`).**
   The same `">"`-delimited path API works unchanged: aim the path at a
   parent node (e.g. `"Sources>BrainSection-Tiles>Channel>ch_1"`) and
@@ -207,9 +220,10 @@ From the IDE, right-click → `Run 'main()'`:
   every descendant source. Exercises `SwingSourceListWidget`.
 - `RobotSourceTreeRightClickTest.main()` — same dataset, but drives the
   standalone "BDV Sources" tree frame instead of a harvester widget:
-  finds the frame, places it on the target screen, navigates to a parent
-  node and right-clicks to open its context popup. Holds the popup
-  briefly, then dismisses with `Esc`.
+  finds the frame, places it, right-clicks a parent node, then walks
+  `"Viewer>BDV>BDV - Show Sources"` through the popup to invoke a SciJava
+  command on every descendant source. Exercises both `RobotTree.rightClickPath`
+  and `RobotPopup.clickPath` end to end.
 
 ## Extending
 
