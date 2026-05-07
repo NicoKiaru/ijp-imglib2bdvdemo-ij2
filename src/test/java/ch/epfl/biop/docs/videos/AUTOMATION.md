@@ -14,18 +14,24 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 | `RobotHelper` | Robot wrapper: target-screen handling, frame placement, sin-eased `moveTo`, click/key/`type(String)`, `paste(String)` (clipboard-based, layout-independent), `pause`. |
 | `ComponentInspector` | Recursive AWT/Swing tree walker. Returns a `LinkedHashMap<String, ComponentInfo>` with hierarchical path keys, local bounds and absolute screen positions. Includes `prettyPrint`. |
 | `FijiCommands` | Fiji-specific actions: `startFiji()` (boots Fiji + places the IJ frame, exposes the SciJava `ImageJ`/`Context`), `searchAndRun(String query)` (drives the legacy search bar). Holds the `LegacyInjector.preinit()` static block. |
-| `RobotCommands` | `CommandService`-style runner that drives a SciJava command's harvester dialog by reflecting `@Parameter` labels and filling each widget via Robot. `run(Class, ...)` (direct) and `runViaSearch(Class, query, ...)` (via the IJ search bar). Currently supports `boolean` (JCheckBox), `String` (JTextField), `File` / `File[]` (Browse + file-chooser flow), and `String`-targeting-a-`JTree` (e.g. BDV-Playground `SwingSourceWidget`). |
+| `RobotCommands` | `CommandService`-style runner that drives a SciJava command's harvester dialog by reflecting `@Parameter` labels and filling each widget via Robot. `run(Class, ...)` (direct) and `runViaSearch(Class, query, ...)` (via the IJ search bar). Currently supports `boolean` (JCheckBox), `Number` (JSpinner / slider / scrollbar — drives the inner JFormattedTextField), `String` (JTextField), `String` targeting a `JComboBox` (choices, default style), `String` targeting a `JRadioButton` group (choices, radio styles), `File` / `File[]` (Browse + file-chooser flow), and `String` targeting a `JTree` (e.g. BDV-Playground `SwingSourceWidget`). |
 | `RobotTree` | Robot primitives for a `JTree` reachable on screen — `selectPath(JTree, String)` (navigate, expand ancestors via double-click, single-click final node) and `rightClickPath(JTree, String)` (same + right-click in place). Shared between the harvester JTree branch in `RobotCommands` and standalone tree frames like the "BDV Sources" panel. |
 | `RobotPopup` | Robot navigation of an open Swing `JPopupMenu` — `clickPath(String)` finds the active popup via `MenuSelectionManager.defaultManager()`, hovers through intermediate submenus (Swing auto-opens on mouse-enter), and clicks the final menu item. Path syntax matches `RobotTree`: `">"`-delimited, exact `JMenuItem.getText()`. |
 | `RobotDemoCommand` | Trivial SciJava `Command` with one boolean, one string and one `File` `@Parameter`, plus a string output — fixture for `RobotCommands` tests. |
 | `RobotSourceDemoCommand` | Trivial SciJava `Command` with one `SourceAndConverter` `@Parameter` (rendered as a `SwingSourceWidget` JTree), plus a string output — fixture for the tree-navigation branch of `RobotCommands`. |
 | `RobotSourceListDemoCommand` | Trivial SciJava `Command` with one `SourceAndConverter[]` `@Parameter` (rendered as a `SwingSourceListWidget` JTree, default unsorted style), plus name-list / count outputs — fixture for the multi-source variant of the tree branch. |
+| `RobotNumberDemoCommand` | Trivial SciJava `Command` with six numeric `@Parameter`s exercising every numeric style SciJava renders (unbounded int, bounded int, slider, scrollbar, float, bounded double) — fixture for the numeric branch of `RobotCommands`. Each renders as a `JSpinner` whose editor is a `JFormattedTextField`, which is what `RobotCommands` drives. |
+| `RobotChoiceDemoCommand` | Trivial SciJava `Command` with four `String` `@Parameter`s carrying a `choices` list, one per choice style (default = `JComboBox`, `listBox` which also falls back to a combo, `radioButtonVertical`, `radioButtonHorizontal`) — fixture for the combo / radio branches of `RobotCommands`. |
 | `InspectMainFrame` | Driver: starts Fiji, dumps the IJ main frame's component tree to stdout. |
+| `InspectNumberDialog` | Driver: starts Fiji, opens `RobotNumberDemoCommand`'s harvester dialog (without filling) and dumps its component tree — used to identify the exact Swing classes for each numeric style. |
+| `InspectChoiceDialog` | Driver: same as `InspectNumberDialog` but for `RobotChoiceDemoCommand` — used to identify the Swing classes for each choice style. |
 | `SearchBarTest` | Driver: starts Fiji, runs `"show bdv play"` via the search bar. |
 | `RobotDemoTest` | Driver: creates a temp file, then runs `RobotDemoCommand` once via `RobotCommands.run` (reads outputs) and once via `RobotCommands.runViaSearch("robot dem", ...)`, exercising boolean + string + File parameters end to end. |
 | `RobotSourceDemoTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES`, prints the live `SourceService` tree, picks the first leaf programmatically and runs `RobotSourceDemoCommand` via `RobotCommands.run` with the corresponding `">"`-delimited path — exercises the `SwingSourceWidget` branch end to end. |
 | `RobotSourceListDemoTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES`, single-clicks a parent node (`"Sources>BrainSection-Tiles>Channel>ch_0"`) via `RobotCommands.run` and asserts the command receives every descendant source — exercises the `SwingSourceListWidget` branch and the parent-node-selects-all-descendants behavior. |
 | `RobotSourceTreeRightClickTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES` (auto-shows the standalone "BDV Sources" frame), places the frame, right-clicks a parent node with `RobotTree.rightClickPath`, then walks the popup with `RobotPopup.clickPath("Viewer>BDV>BDV - Show Sources")` to invoke a SciJava command pre-filled with all descendant sources. |
+| `RobotNumberDemoTest` | Driver: drives `RobotNumberDemoCommand` via `RobotCommands.run` with six numeric values across all rendered styles (unbounded / bounded int, slider, scrollbar, float, double) and asserts the echoed `result` output matches — exercises the numeric-spinner branch end to end. |
+| `RobotChoiceDemoTest` | Driver: drives `RobotChoiceDemoCommand` via `RobotCommands.run`, picking a value for each of the four choice styles (combo, listBox-as-combo, radio vertical, radio horizontal), and asserts the echoed `result` output — exercises the combo and radio-group branches. |
 
 ## What works today
 
@@ -123,6 +129,48 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
   on the live component reference and only clicks when the desired state
   differs from the current one — so passing the existing value is a no-op
   rather than a toggle in the wrong direction.
+- **Numeric `@Parameter`s.** Any boxed `Number` value (`Integer`, `Long`,
+  `Float`, `Double`, …) drives the `JFormattedTextField` editor inside
+  SciJava's `JSpinner`. Covers the plain spinner, the `slider` style and
+  the `scroll bar` style alike: SciJava renders all three as a `JSpinner`
+  (the slider / scrollbar variants sit next to a sibling spinner that
+  shares the same `BoundedRangeModel`), so driving the spinner editor
+  also moves the slider / scrollbar visualisation. The driver clicks the
+  field, selects all, **pastes** `String.valueOf(value)` (typing fails on
+  non-US keyboard layouts because `"."` goes through the layout-dependent
+  `Robot.keyPress`), then presses **Enter** — `JFormattedTextField` only
+  commits the edit on Enter or focus loss; without it the spinner reverts
+  to the previous value when OK is clicked. Locale caveat: the receiving
+  formatter follows the JVM default locale, so a `fr_FR` JVM may reject
+  `"0.002"`; pre-format with `NumberFormat` at the call site if needed.
+- **Choice `@Parameter`s as `JComboBox`.** Default SciJava rendering for a
+  `String` parameter with a `choices` list. Pass the `String` value:
+  `RobotCommands` clicks the combo (visible drop-down gesture), reaches
+  the popup via `combo.getUI().getAccessibleChild(combo, 0)` (which
+  returns the `BasicComboPopup` — popups aren't part of the parent
+  dialog's component tree, same caveat as `RobotPopup` for menus), waits
+  for the popup's `JList` to be on screen, finds the row whose
+  `String.valueOf(model.getElementAt(i))` equals the value, computes its
+  screen position from `getCellBounds(row, row)` + `getLocationOnScreen()`
+  (rows aren't Swing components and don't appear in
+  `ComponentInspector` output, same trick as `RobotTree`), and clicks.
+  Loud throw with the list of available items on mismatch. Note: the
+  `listBox` style currently also renders as a `JComboBox` in this
+  scijava-ui-swing version, so the same driver covers it; if a future
+  version emits a real `JList` we'll need a separate branch.
+  No idempotent short-circuit — always shows the drop-down gesture, since
+  opening the combo is the primary read for the viewer of a tutorial video.
+- **Choice `@Parameter`s as `JRadioButton` group.** `radioButtonHorizontal`
+  / `radioButtonVertical` styles render as a `JPanel` of `JRadioButton`s
+  (one per choice; `ButtonGroup` is non-visual and doesn't show up in
+  `ComponentInspector`). Pass the `String` value: `RobotCommands` finds
+  the radio whose `getText()` equals the value and clicks at
+  `RADIO_CLICK_OFFSET_X` (default `9` px from the left edge — same
+  reasoning as `CHECKBOX_CLICK_OFFSET_X`, the visible dot sits on the
+  left of a row-spanning component). Idempotent: if the target radio is
+  already selected, the click is skipped — clicking a selected radio is
+  a visible no-op (radios in a `ButtonGroup` don't deselect on re-click)
+  and reads as a redundant gesture on video. Loud throw on mismatch.
 - **Selecting a node in a SciJava `JTree` widget.** Passing a
   `">"`-delimited path string (e.g. `"Sources>BrainSection-Tiles>tile_001"`)
   to a parameter rendered as a `JTree` (BDV-Playground `SwingSourceWidget`,
@@ -205,6 +253,12 @@ From the IDE, right-click → `Run 'main()'`:
 
 - `InspectMainFrame.main()` — dump the IJ main-frame tree, useful when
   scripting a new interaction.
+- `InspectNumberDialog.main()` — open `RobotNumberDemoCommand` and dump
+  its harvester dialog tree. Useful as a template when adding support
+  for a new numeric SciJava-widget style: copy the inspector pattern,
+  point it at a fixture, look at what Swing emits.
+- `InspectChoiceDialog.main()` — same but for `RobotChoiceDemoCommand`,
+  showing the combo / radio-group shapes.
 - `SearchBarTest.main()` — sanity check that `searchAndRun` opens the
   BDV-Playground tree view.
 - `RobotDemoTest.main()` — exercises `RobotCommands` end-to-end on the
@@ -224,6 +278,13 @@ From the IDE, right-click → `Run 'main()'`:
   `"Viewer>BDV>BDV - Show Sources"` through the popup to invoke a SciJava
   command on every descendant source. Exercises both `RobotTree.rightClickPath`
   and `RobotPopup.clickPath` end to end.
+- `RobotNumberDemoTest.main()` — drives `RobotNumberDemoCommand` with six
+  numeric values across all rendered styles and asserts the echoed
+  `result` matches; a silent reversion (e.g. missing Enter to commit a
+  `JFormattedTextField`) fails the run loudly.
+- `RobotChoiceDemoTest.main()` — drives `RobotChoiceDemoCommand`, picking
+  a value for each of the four choice styles, and asserts the echoed
+  `result`.
 
 ## Extending
 
@@ -231,12 +292,17 @@ From the IDE, right-click → `Run 'main()'`:
   routing through `searchAndRun` over hunting screen coordinates.
 - New low-level Robot primitive (drag, scroll, modifier combo) → add to
   `RobotHelper`.
-- New SciJava-widget support (combo box, slider, file chooser, …) → extend
-  `RobotCommands.fillWidget` and `isInputWidget`. Same locator pattern
-  applies: find JLabel by parameter label, then the next sibling input
-  widget. For widgets without a clean Robot-driveable centre (e.g. combo
-  boxes, where you'd need to open the popup and click an item), add a
-  per-type helper rather than overloading `centerOnScreen`.
+- New SciJava-widget support → extend `RobotCommands.fillWidget`. Same
+  locator pattern applies: find JLabel by parameter label, walk to the
+  next sibling input container, dispatch by value type (or by container
+  shape for `String` values). For widgets without a single clean
+  click-target — e.g. the existing `JComboBox` driver, which opens the
+  popup and walks the popup `JList` — add a per-type helper rather than
+  overloading `centerOnScreen`. The recommended workflow is the one
+  followed for the numeric and choice branches: write a fixture command
+  exercising every relevant style, mirror `InspectNumberDialog` /
+  `InspectChoiceDialog` to dump the harvester tree, identify the exact
+  Swing classes SciJava emits, then implement the driver and a test.
 - Targeting a non-IJ Swing window (BDV, Labkit, dialogs) → call
   `ComponentInspector.inspect(window)` to find the component, then
   `RobotHelper.moveTo(info.screenCenter())` + `click()`.
