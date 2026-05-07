@@ -7,6 +7,7 @@ import org.scijava.plugin.Parameter;
 
 import javax.swing.AbstractButton;
 import javax.swing.JCheckBox;
+import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
 import javax.swing.JTree;
@@ -36,6 +37,13 @@ import java.util.concurrent.Future;
  * Currently supported parameter types:
  * <ul>
  *   <li>{@link Boolean} → {@link JCheckBox}.</li>
+ *   <li>{@link Number} (any boxed numeric type — {@code Integer},
+ *       {@code Long}, {@code Float}, {@code Double}, …) → the
+ *       {@link JFormattedTextField} editor inside the SciJava
+ *       {@code JSpinner}. Works for plain spinners as well as the
+ *       slider / scrollbar variants, which all expose the same spinner
+ *       editor; the slider / scrollbar visualisation updates from the
+ *       spinner model.</li>
  *   <li>{@link String} → {@link JTextField}. Also used for {@code File}
  *       parameters when the value is passed as a {@code String}: types the
  *       path straight into the path field next to "Browse…".</li>
@@ -229,6 +237,15 @@ public class RobotCommands {
         if (value instanceof Boolean) {
             JCheckBox cb = firstOf(inputContainer, JCheckBox.class, "JCheckBox");
             fillCheckBox(cb, (Boolean) value);
+        } else if (value instanceof Number) {
+            // SciJava renders every numeric @Parameter as a JSpinner whose
+            // editor is a JFormattedTextField — true for the plain spinner
+            // and for the slider / scrollbar styles too (they sit next to
+            // a sibling spinner that shares the same model). Drive the
+            // formatted text field; the slider / scrollbar updates itself.
+            JFormattedTextField field = firstOf(inputContainer,
+                    JFormattedTextField.class, "JFormattedTextField (numeric spinner editor)");
+            fillNumberField(field, (Number) value);
         } else if (value instanceof File[]) {
             AbstractButton addFiles = findAddFilesButton(inputContainer);
             if (addFiles == null) {
@@ -335,6 +352,42 @@ public class RobotCommands {
 
     /** Pixels from the JCheckBox's left edge to the centre of the box icon (FlatLaf default ≈ 9). */
     public static int CHECKBOX_CLICK_OFFSET_X = 9;
+
+    /**
+     * Drive a SciJava numeric-spinner's {@link JFormattedTextField}: click,
+     * select all, paste {@code String.valueOf(value)}, then Enter.
+     *
+     * Two non-obvious choices:
+     * <ul>
+     *   <li><strong>Paste</strong> rather than {@link RobotHelper#type type} —
+     *       numeric strings include {@code "."}, which goes through
+     *       {@link java.awt.Robot#keyPress Robot.keyPress} and is rejected on
+     *       non-US keyboard layouts (Swiss / French / etc.). Same reason the
+     *       file flow pastes paths.</li>
+     *   <li><strong>Enter at the end</strong> — a {@code JFormattedTextField}
+     *       only commits its edit on Enter or focus loss. Without this final
+     *       Enter, the spinner reverts to its previous value when OK is
+     *       clicked and the command runs with the wrong input.</li>
+     * </ul>
+     *
+     * Locale caveat: {@code String.valueOf(0.002f)} always uses {@code "."}
+     * as decimal separator, but the formatter on the receiving field follows
+     * the JVM default locale. If a JVM running on a {@code fr_FR} locale
+     * rejects the value, pre-format with {@link java.text.NumberFormat} at
+     * the call site.
+     */
+    private static void fillNumberField(JFormattedTextField field, Number value) {
+        Point center = centerOnScreen(field);
+        RobotHelper.moveTo(center);
+        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        RobotHelper.click();
+        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        selectAllAndDelete();
+        RobotHelper.paste(String.valueOf(value));
+        RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
+        RobotHelper.enter();
+        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+    }
 
     private static void fillTextField(JTextField tf, String text) {
         Point center = centerOnScreen(tf);
