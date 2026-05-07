@@ -7,14 +7,20 @@ import org.scijava.plugin.Parameter;
 
 import javax.swing.AbstractButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JRadioButton;
 import javax.swing.JTextField;
 import javax.swing.JTree;
+import javax.swing.ListModel;
+import javax.swing.plaf.basic.BasicComboPopup;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dialog;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.lang.reflect.Field;
@@ -47,6 +53,17 @@ import java.util.concurrent.Future;
  *   <li>{@link String} → {@link JTextField}. Also used for {@code File}
  *       parameters when the value is passed as a {@code String}: types the
  *       path straight into the path field next to "Browse…".</li>
+ *   <li>{@link String} <em>targeting a {@link JComboBox}</em> (default
+ *       SciJava rendering for a {@code String} parameter with a
+ *       {@code choices} list) → clicks the combo to open its popup, then
+ *       clicks the matching item in the popup's {@link JList}. Match is by
+ *       {@code String.valueOf(item)} equals the value; loud throw with the
+ *       list of available items on mismatch.</li>
+ *   <li>{@link String} <em>targeting a group of {@link JRadioButton}s</em>
+ *       (SciJava {@code radioButtonHorizontal} / {@code radioButtonVertical}
+ *       styles) → clicks the radio whose {@link AbstractButton#getText() text}
+ *       equals the value. Idempotent: skips the click if that radio is
+ *       already selected.</li>
  *   <li>{@link File} → clicks the {@code Browse} button, then drives the
  *       file chooser by typing the folder path + Enter, then the file name
  *       + Enter. Looks like a real user picking a file.</li>
@@ -264,17 +281,28 @@ public class RobotCommands {
             }
             fillFile(browse, (File) value);
         } else {
-            // The container holds either a JTree (BDV-Playground SourceWidget /
-            // SourceListWidget) or a plain JTextField — pick whichever is
-            // present. Trees take precedence: a SciJava input panel that
-            // contains a tree never also exposes a free-text field.
+            // Dispatch by container shape. Each shape is mutually exclusive
+            // in practice — a SciJava input panel for a String @Parameter
+            // contains exactly one of: a JComboBox (choices, default style),
+            // a group of JRadioButtons (choices, radio styles), a JTree
+            // (BDV-Playground source widgets), or a plain JTextField.
+            List<JComboBox> combos = findAll(inputContainer, JComboBox.class);
+            if (!combos.isEmpty()) {
+                fillComboBox(combos.get(0), String.valueOf(value));
+                return;
+            }
+            List<JRadioButton> radios = findAll(inputContainer, JRadioButton.class);
+            if (!radios.isEmpty()) {
+                fillRadioGroup(radios, String.valueOf(value));
+                return;
+            }
             List<JTree> trees = findAll(inputContainer, JTree.class);
             if (!trees.isEmpty()) {
                 fillTree(trees.get(0), String.valueOf(value));
-            } else {
-                JTextField tf = firstOf(inputContainer, JTextField.class, "JTextField");
-                fillTextField(tf, String.valueOf(value));
+                return;
             }
+            JTextField tf = firstOf(inputContainer, JTextField.class, "JTextField");
+            fillTextField(tf, String.valueOf(value));
         }
     }
 
@@ -352,6 +380,117 @@ public class RobotCommands {
 
     /** Pixels from the JCheckBox's left edge to the centre of the box icon (FlatLaf default ≈ 9). */
     public static int CHECKBOX_CLICK_OFFSET_X = 9;
+
+    /** Pixels from the JRadioButton's left edge to the centre of the dot icon (FlatLaf default ≈ 9). */
+    public static int RADIO_CLICK_OFFSET_X = 9;
+
+    /**
+     * Drive a SciJava {@link JComboBox} choice widget: click the combo to
+     * open its popup, locate the popup's backing {@link JList} via the
+     * combo's UI delegate, find the row whose
+     * {@code String.valueOf(model.getElementAt(row))} equals {@code value},
+     * compute the row's screen position from
+     * {@link JList#getCellBounds getCellBounds} + {@link JList#getLocationOnScreen
+     * getLocationOnScreen}, and click. The popup closes on click and the
+     * combo's selection updates.
+     *
+     * The popup itself isn't part of the parent dialog's component tree
+     * (similar to the menu / context popups handled in {@link RobotPopup}),
+     * so we reach it through {@code combo.getUI().getAccessibleChild(combo, 0)}
+     * which returns the {@link BasicComboPopup}. Row positions are read
+     * from the live {@link JList} once it is on screen — they aren't Swing
+     * components and don't appear in {@link ComponentInspector} output.
+     *
+     * Always shows the visible gesture (open popup → click item) — no
+     * idempotent short-circuit when the value already matches the current
+     * selection, since the dropdown opening is the primary read for the
+     * viewer of a tutorial video.
+     */
+    private static void fillComboBox(JComboBox<?> combo, String value) {
+        Point center = centerOnScreen(combo);
+        RobotHelper.moveTo(center);
+        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        RobotHelper.click();
+        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+
+        Object accessible = combo.getUI().getAccessibleChild(combo, 0);
+        if (!(accessible instanceof BasicComboPopup)) {
+            throw new IllegalStateException("Expected BasicComboPopup from combo UI, got: "
+                    + (accessible == null ? "null" : accessible.getClass().getName()));
+        }
+        JList<?> list = ((BasicComboPopup) accessible).getList();
+
+        long deadline = System.currentTimeMillis() + Timings.FRAME_WAIT_TIMEOUT_MS;
+        while (!list.isShowing() && System.currentTimeMillis() < deadline) {
+            RobotHelper.rawPause(Timings.FRAME_POLL_INTERVAL_MS);
+        }
+        if (!list.isShowing()) {
+            throw new IllegalStateException("Combo popup did not open in time");
+        }
+
+        ListModel<?> model = list.getModel();
+        int found = -1;
+        for (int i = 0; i < model.getSize(); i++) {
+            if (value.equals(String.valueOf(model.getElementAt(i)))) { found = i; break; }
+        }
+        if (found < 0) {
+            StringBuilder available = new StringBuilder();
+            for (int i = 0; i < model.getSize(); i++) {
+                if (i > 0) available.append(", ");
+                available.append('"').append(model.getElementAt(i)).append('"');
+            }
+            throw new IllegalArgumentException("No item '" + value + "' in combo. Available: ["
+                    + available + "]");
+        }
+
+        Rectangle bounds = list.getCellBounds(found, found);
+        Point listLoc = list.getLocationOnScreen();
+        int x = listLoc.x + bounds.x + bounds.width / 2;
+        int y = listLoc.y + bounds.y + bounds.height / 2;
+        RobotHelper.moveTo(x, y);
+        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        RobotHelper.click();
+        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+    }
+
+    /**
+     * Drive a group of {@link JRadioButton}s rendered for a SciJava
+     * {@code radioButtonHorizontal} / {@code radioButtonVertical} choice
+     * style. Finds the radio whose {@code getText()} equals {@code value}
+     * and clicks it (using {@link #RADIO_CLICK_OFFSET_X} so the click lands
+     * on the visible dot, same trick as the checkbox flow).
+     *
+     * Idempotent: if the target radio is already selected, the click is
+     * skipped — clicking a selected radio is a visible no-op (radios are
+     * part of a {@code ButtonGroup} and don't deselect on re-click) and
+     * reads as a redundant gesture on video.
+     */
+    private static void fillRadioGroup(List<JRadioButton> radios, String value) {
+        JRadioButton target = null;
+        for (JRadioButton rb : radios) {
+            if (value.equals(rb.getText())) { target = rb; break; }
+        }
+        if (target == null) {
+            StringBuilder available = new StringBuilder();
+            for (int i = 0; i < radios.size(); i++) {
+                if (i > 0) available.append(", ");
+                available.append('"').append(radios.get(i).getText()).append('"');
+            }
+            throw new IllegalArgumentException("No radio button '" + value + "'. Available: ["
+                    + available + "]");
+        }
+        if (target.isSelected()) return;
+        if (!target.isShowing()) {
+            throw new IllegalStateException("JRadioButton '" + value + "' is not on screen");
+        }
+        Point loc = target.getLocationOnScreen();
+        int x = loc.x + RADIO_CLICK_OFFSET_X;
+        int y = loc.y + target.getHeight() / 2;
+        RobotHelper.moveTo(x, y);
+        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        RobotHelper.click();
+        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+    }
 
     /**
      * Drive a SciJava numeric-spinner's {@link JFormattedTextField}: click,
