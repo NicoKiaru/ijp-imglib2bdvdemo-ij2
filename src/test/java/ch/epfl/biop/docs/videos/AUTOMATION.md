@@ -17,21 +17,9 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 | `RobotCommands` | `CommandService`-style runner that drives a SciJava command's harvester dialog by reflecting `@Parameter` labels and filling each widget via Robot. `run(Class, ...)` (direct) and `runViaSearch(Class, query, ...)` (via the IJ search bar). Currently supports `boolean` (JCheckBox), `Number` (JSpinner / slider / scrollbar — drives the inner JFormattedTextField), `String` (JTextField), `String` targeting a `JComboBox` (choices, default style), `String` targeting a `JRadioButton` group (choices, radio styles), `File` / `File[]` (Browse + file-chooser flow), and `String` targeting a `JTree` (e.g. BDV-Playground `SwingSourceWidget`). |
 | `RobotTree` | Robot primitives for a `JTree` reachable on screen — `selectPath(JTree, String)` (navigate, expand ancestors via double-click, single-click final node) and `rightClickPath(JTree, String)` (same + right-click in place). Shared between the harvester JTree branch in `RobotCommands` and standalone tree frames like the "BDV Sources" panel. |
 | `RobotPopup` | Robot navigation of an open Swing `JPopupMenu` — `clickPath(String)` finds the active popup via `MenuSelectionManager.defaultManager()`, hovers through intermediate submenus (Swing auto-opens on mouse-enter), and clicks the final menu item. Path syntax matches `RobotTree`: `">"`-delimited, exact `JMenuItem.getText()`. |
-| `RobotDemoCommand` | Trivial SciJava `Command` with one boolean, one string and one `File` `@Parameter`, plus a string output — fixture for `RobotCommands` tests. |
-| `RobotSourceDemoCommand` | Trivial SciJava `Command` with one `SourceAndConverter` `@Parameter` (rendered as a `SwingSourceWidget` JTree), plus a string output — fixture for the tree-navigation branch of `RobotCommands`. |
-| `RobotSourceListDemoCommand` | Trivial SciJava `Command` with one `SourceAndConverter[]` `@Parameter` (rendered as a `SwingSourceListWidget` JTree, default unsorted style), plus name-list / count outputs — fixture for the multi-source variant of the tree branch. |
-| `RobotNumberDemoCommand` | Trivial SciJava `Command` with six numeric `@Parameter`s exercising every numeric style SciJava renders (unbounded int, bounded int, slider, scrollbar, float, bounded double) — fixture for the numeric branch of `RobotCommands`. Each renders as a `JSpinner` whose editor is a `JFormattedTextField`, which is what `RobotCommands` drives. |
-| `RobotChoiceDemoCommand` | Trivial SciJava `Command` with four `String` `@Parameter`s carrying a `choices` list, one per choice style (default = `JComboBox`, `listBox` which also falls back to a combo, `radioButtonVertical`, `radioButtonHorizontal`) — fixture for the combo / radio branches of `RobotCommands`. |
-| `InspectMainFrame` | Driver: starts Fiji, dumps the IJ main frame's component tree to stdout. |
-| `InspectNumberDialog` | Driver: starts Fiji, opens `RobotNumberDemoCommand`'s harvester dialog (without filling) and dumps its component tree — used to identify the exact Swing classes for each numeric style. |
-| `InspectChoiceDialog` | Driver: same as `InspectNumberDialog` but for `RobotChoiceDemoCommand` — used to identify the Swing classes for each choice style. |
-| `SearchBarTest` | Driver: starts Fiji, runs `"show bdv play"` via the search bar. |
-| `RobotDemoTest` | Driver: creates a temp file, then runs `RobotDemoCommand` once via `RobotCommands.run` (reads outputs) and once via `RobotCommands.runViaSearch("robot dem", ...)`, exercising boolean + string + File parameters end to end. |
-| `RobotSourceDemoTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES`, prints the live `SourceService` tree, picks the first leaf programmatically and runs `RobotSourceDemoCommand` via `RobotCommands.run` with the corresponding `">"`-delimited path — exercises the `SwingSourceWidget` branch end to end. |
-| `RobotSourceListDemoTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES`, single-clicks a parent node (`"Sources>BrainSection-Tiles>Channel>ch_0"`) via `RobotCommands.run` and asserts the command receives every descendant source — exercises the `SwingSourceListWidget` branch and the parent-node-selects-all-descendants behavior. |
-| `RobotSourceTreeRightClickTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES` (auto-shows the standalone "BDV Sources" frame), places the frame, right-clicks a parent node with `RobotTree.rightClickPath`, then walks the popup with `RobotPopup.clickPath("Viewer>BDV>BDV - Show Sources")` to invoke a SciJava command pre-filled with all descendant sources. |
-| `RobotNumberDemoTest` | Driver: drives `RobotNumberDemoCommand` via `RobotCommands.run` with six numeric values across all rendered styles (unbounded / bounded int, slider, scrollbar, float, double) and asserts the echoed `result` output matches — exercises the numeric-spinner branch end to end. |
-| `RobotChoiceDemoTest` | Driver: drives `RobotChoiceDemoCommand` via `RobotCommands.run`, picking a value for each of the four choice styles (combo, listBox-as-combo, radio vertical, radio horizontal), and asserts the echoed `result` output — exercises the combo and radio-group branches. |
+| `WidgetsTest` | JUnit 4 test class — boots Fiji once in `@BeforeClass` (also loads `BRAIN_SECTION_3DTILES` for the source tests), then one `@Test` per widget drives a nested `public static class XxxDemo implements Command` fixture via `RobotCommands.run` and asserts the echoed output. Covers `String`, `boolean`, `File`, `File[]`, all six numeric styles (grouped), all four choice styles (grouped), single `SourceAndConverter` and `SourceAndConverter[]`. The harvester dialog is the system-under-test; nested fixtures keep each widget's command and assertions co-located. `@After` disposes any leftover `Dialog` so a mid-dialog failure doesn't pollute the next test. |
+| `SearchBarTest` | Driver: starts Fiji, runs `"show bdv play"` via the search bar — smoke test for `FijiCommands.searchAndRun`. |
+| `RobotSourceTreeRightClickTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES` (auto-shows the standalone "BDV Sources" frame), places the frame, right-clicks a parent node with `RobotTree.rightClickPath`, then walks the popup with `RobotPopup.clickPath("Viewer>BDV>BDV - Show Sources")` to invoke a SciJava command pre-filled with all descendant sources. Not a widget test — it drives a standalone frame's popup, which is why it lives outside `WidgetsTest`. |
 
 ## What works today
 
@@ -249,42 +237,14 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 
 ## How to run
 
-From the IDE, right-click → `Run 'main()'`:
-
-- `InspectMainFrame.main()` — dump the IJ main-frame tree, useful when
-  scripting a new interaction.
-- `InspectNumberDialog.main()` — open `RobotNumberDemoCommand` and dump
-  its harvester dialog tree. Useful as a template when adding support
-  for a new numeric SciJava-widget style: copy the inspector pattern,
-  point it at a fixture, look at what Swing emits.
-- `InspectChoiceDialog.main()` — same but for `RobotChoiceDemoCommand`,
-  showing the combo / radio-group shapes.
+- `WidgetsTest` — JUnit 4. Run the whole class from the IDE (right-click →
+  `Run 'WidgetsTest'`) or a single `@Test` method to exercise one widget.
+  Fiji boots once per class.
 - `SearchBarTest.main()` — sanity check that `searchAndRun` opens the
   BDV-Playground tree view.
-- `RobotDemoTest.main()` — exercises `RobotCommands` end-to-end on the
-  `RobotDemoCommand` fixture, both via direct `CommandService` invocation
-  (with output assertion) and via the search bar.
-- `RobotSourceDemoTest.main()` — loads a multi-source dataset, prints the
-  live source tree, then drives `RobotSourceDemoCommand` selecting the
-  first leaf via a `">"`-delimited path. Exercises the `SwingSourceWidget`
-  branch of `RobotCommands`.
-- `RobotSourceListDemoTest.main()` — same dataset, but drives
-  `RobotSourceListDemoCommand` (a `SourceAndConverter[]` parameter)
-  pointing at a parent node and asserts the resulting array contains
-  every descendant source. Exercises `SwingSourceListWidget`.
-- `RobotSourceTreeRightClickTest.main()` — same dataset, but drives the
-  standalone "BDV Sources" tree frame instead of a harvester widget:
-  finds the frame, places it, right-clicks a parent node, then walks
-  `"Viewer>BDV>BDV - Show Sources"` through the popup to invoke a SciJava
-  command on every descendant source. Exercises both `RobotTree.rightClickPath`
-  and `RobotPopup.clickPath` end to end.
-- `RobotNumberDemoTest.main()` — drives `RobotNumberDemoCommand` with six
-  numeric values across all rendered styles and asserts the echoed
-  `result` matches; a silent reversion (e.g. missing Enter to commit a
-  `JFormattedTextField`) fails the run loudly.
-- `RobotChoiceDemoTest.main()` — drives `RobotChoiceDemoCommand`, picking
-  a value for each of the four choice styles, and asserts the echoed
-  `result`.
+- `RobotSourceTreeRightClickTest.main()` — drives the standalone
+  "BDV Sources" frame's right-click popup end to end (out of scope of
+  `WidgetsTest`, which only covers harvester widgets).
 
 ## Extending
 
@@ -298,11 +258,31 @@ From the IDE, right-click → `Run 'main()'`:
   shape for `String` values). For widgets without a single clean
   click-target — e.g. the existing `JComboBox` driver, which opens the
   popup and walks the popup `JList` — add a per-type helper rather than
-  overloading `centerOnScreen`. The recommended workflow is the one
-  followed for the numeric and choice branches: write a fixture command
-  exercising every relevant style, mirror `InspectNumberDialog` /
-  `InspectChoiceDialog` to dump the harvester tree, identify the exact
-  Swing classes SciJava emits, then implement the driver and a test.
+  overloading `centerOnScreen`. Workflow:
+
+  1. **Add a nested fixture.** In `WidgetsTest`, add a
+     `public static class XxxDemo implements Command` annotated
+     `@Plugin(type = Command.class)` with one `@Parameter` per style
+     you want to support. Echo the values into a `String result` output
+     so the test can assert end-to-end. SciJava skips the harvester
+     dialog when a command has only a single primitive input — if you
+     need the dialog to appear (e.g. for a single-`File` widget), add
+     a filler `@Parameter` like `boolean extra` to force it.
+  2. **Dump the harvester tree.** Throw-away inspection driver: in a
+     `main()` (or a one-shot scratch class), boot Fiji, do
+     `cs.run(XxxDemo.class, true)` *without* `.get()`, grab the dialog
+     with `RobotHelper.waitForActiveDialog(...)`, and print
+     `ComponentInspector.prettyPrint(ComponentInspector.inspect(dialog))`.
+     That reveals the exact Swing classes SciJava emits for each
+     style — copy the relevant subtree path into the driver. Delete
+     the inspection driver once the new widget works (`git log`
+     preserves the example for next time).
+  3. **Implement the driver branch** in `RobotCommands.fillWidget`,
+     dispatching on value type (or container shape if multiple widgets
+     share a value type, like `String` for `JTextField` vs `JComboBox`
+     vs `JTree`).
+  4. **Add an `@Test`** in `WidgetsTest` that runs the fixture via
+     `RobotCommands.run(...)` and asserts the echoed `result`.
 - Targeting a non-IJ Swing window (BDV, Labkit, dialogs) → call
   `ComponentInspector.inspect(window)` to find the component, then
   `RobotHelper.moveTo(info.screenCenter())` + `click()`.
