@@ -155,6 +155,24 @@ public class RobotTree {
      * has completed.</p>
      */
     static void clickRow(JTree tree, TreePath path, boolean doubleClick) {
+        Point center = rowScreenCenter(tree, path);
+        RobotHelper.moveTo(center.x, center.y);
+        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        if (doubleClick) {
+            RobotHelper.doubleClick();
+        } else {
+            RobotHelper.click();
+        }
+    }
+
+    /**
+     * Absolute screen-center of the row at {@code path}. Scrolls the row into
+     * view first (EDT-bound) so {@link JTree#getRowForPath} / {@link JTree#getRowBounds}
+     * return non-null values, then converts to absolute coordinates via
+     * {@link JTree#getLocationOnScreen}. Used by {@link #clickRow} and by the
+     * sorted-list drag-source flow in {@link RobotCommands}.
+     */
+    public static Point rowScreenCenter(JTree tree, TreePath path) {
         try {
             SwingUtilities.invokeAndWait(() -> tree.scrollPathToVisible(path));
         } catch (Exception e) {
@@ -172,14 +190,6 @@ public class RobotTree {
             throw new IllegalStateException("getRowBounds returned null for row " + row);
         }
         Point loc = tree.getLocationOnScreen();
-        int x = loc.x + b.x + b.width / 2;
-        int y = loc.y + b.y + b.height / 2;
-        RobotHelper.moveTo(x, y);
-        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
-        if (doubleClick) {
-            RobotHelper.doubleClick();
-        } else {
-            RobotHelper.click();
-        }
+        return new Point(loc.x + b.x + b.width / 2, loc.y + b.y + b.height / 2);
     }
 }

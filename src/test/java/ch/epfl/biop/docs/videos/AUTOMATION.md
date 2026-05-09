@@ -14,10 +14,10 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 | `RobotHelper` | Robot wrapper: target-screen handling, frame placement, sin-eased `moveTo`, click/key/`type(String)`, `paste(String)` (clipboard-based, layout-independent), `pause`. |
 | `ComponentInspector` | Recursive AWT/Swing tree walker. Returns a `LinkedHashMap<String, ComponentInfo>` with hierarchical path keys, local bounds and absolute screen positions. Includes `prettyPrint`. |
 | `FijiCommands` | Fiji-specific actions: `startFiji()` (boots Fiji + places the IJ frame, exposes the SciJava `ImageJ`/`Context`), `searchAndRun(String query)` (drives the legacy search bar). Holds the `LegacyInjector.preinit()` static block. |
-| `RobotCommands` | `CommandService`-style runner that drives a SciJava command's harvester dialog by reflecting `@Parameter` labels and filling each widget via Robot. `run(Class, ...)` (direct) and `runViaSearch(Class, query, ...)` (via the IJ search bar). Currently supports `boolean` (JCheckBox), `Number` (JSpinner / slider / scrollbar — drives the inner JFormattedTextField), `String` (JTextField), `String` targeting a `JComboBox` (choices, default style), `String` targeting a `JRadioButton` group (choices, radio styles), `File` / `File[]` (Browse + file-chooser flow), and `String` targeting a `JTree` (e.g. BDV-Playground `SwingSourceWidget`). |
+| `RobotCommands` | `CommandService`-style runner that drives a SciJava command's harvester dialog by reflecting `@Parameter` labels and filling each widget via Robot. `run(Class, ...)` (direct) and `runViaSearch(Class, query, ...)` (via the IJ search bar). Currently supports `boolean` (JCheckBox), `Number` (JSpinner / slider / scrollbar — drives the inner JFormattedTextField), `String` (JTextField), `String` targeting a `JComboBox` (choices, default style), `String` targeting a `JRadioButton` group (choices, radio styles), `File` / `File[]` (Browse + file-chooser flow), `String` targeting a `JTree` (e.g. BDV-Playground `SwingSourceWidget`), and `String` targeting a `JTree` paired with a `JList` (BDV-Playground `SwingSourceSortedListWidget` — drag tree row → list). |
 | `RobotTree` | Robot primitives for a `JTree` reachable on screen — `selectPath(JTree, String)` (navigate, expand ancestors via double-click, single-click final node) and `rightClickPath(JTree, String)` (same + right-click in place). Shared between the harvester JTree branch in `RobotCommands` and standalone tree frames like the "BDV Sources" panel. |
 | `RobotPopup` | Robot navigation of an open Swing `JPopupMenu` — `clickPath(String)` finds the active popup via `MenuSelectionManager.defaultManager()`, hovers through intermediate submenus (Swing auto-opens on mouse-enter), and clicks the final menu item. Path syntax matches `RobotTree`: `">"`-delimited, exact `JMenuItem.getText()`. |
-| `WidgetsTest` | JUnit 4 test class — boots Fiji once in `@BeforeClass` (also loads `BRAIN_SECTION_3DTILES` for the source tests), then one `@Test` per widget drives a nested `public static class XxxDemo implements Command` fixture via `RobotCommands.run` and asserts the echoed output. Covers `String`, `boolean`, `File`, `File[]`, all six numeric styles (grouped), all four choice styles (grouped), single `SourceAndConverter` and `SourceAndConverter[]`. The harvester dialog is the system-under-test; nested fixtures keep each widget's command and assertions co-located. `@After` disposes any leftover `Dialog` so a mid-dialog failure doesn't pollute the next test. |
+| `WidgetsTest` | JUnit 4 test class — boots Fiji once in `@BeforeClass` (also loads `BRAIN_SECTION_3DTILES` for the source tests), then one `@Test` per widget drives a nested `public static class XxxDemo implements Command` fixture via `RobotCommands.run` and asserts the echoed output. Covers `String`, `boolean`, `File`, `File[]`, all six numeric styles (grouped), all four choice styles (grouped), single `SourceAndConverter`, default `SourceAndConverter[]`, and the sorted `SourceAndConverter[]` variant (`style="sorted"`, drag tree → list). The harvester dialog is the system-under-test; nested fixtures keep each widget's command and assertions co-located. `@After` disposes any leftover `Dialog` so a mid-dialog failure doesn't pollute the next test. |
 | `SearchBarTest` | Driver: starts Fiji, runs `"show bdv play"` via the search bar — smoke test for `FijiCommands.searchAndRun`. |
 | `RobotSourceTreeRightClickTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES` (auto-shows the standalone "BDV Sources" frame), places the frame, right-clicks a parent node with `RobotTree.rightClickPath`, then walks the popup with `RobotPopup.clickPath("Viewer>BDV>BDV - Show Sources")` to invoke a SciJava command pre-filled with all descendant sources. Not a widget test — it drives a standalone frame's popup, which is why it lives outside `WidgetsTest`. |
 
@@ -210,9 +210,29 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
   works and yields a single-element array. The path validator and the
   expansion / single-click flow are shared with the single-source case;
   no per-widget branching in `RobotCommands`. Multi-node selection (mixed
-  unrelated subtrees) and the sorted variant `SwingSourceSortedListWidget`
-  (where the user drags items from a tree into an ordered `JList`) are
-  not yet supported.
+  unrelated subtrees) is not yet supported.
+- **Sorted `SourceAndConverter[]` (`SwingSourceSortedListWidget`,
+  `style="sorted"`).** Same `">"`-delimited path API, but the widget pairs
+  a source `JTree` (left) with a destination `JList` (right) and the user
+  is expected to drag from one to the other. `RobotCommands` disambiguates
+  by container shape — when the input container holds both a `JTree` and
+  a `JList`, it dispatches to the sorted-list driver, which navigates the
+  tree (expanding ancestors via the same `RobotTree.navigateAndExpand` as
+  the other tree widgets), computes the screen-centre of the matching row,
+  and visibly drags it onto the centre of the destination list. Swing's
+  built-in DnD pipeline does the rest: the tree has `setDragEnabled(true)`
+  and a `SourceServiceTreeTransferHandler`, the list has a
+  `JListTransferHandler`, and a `ListDataListener` pushes the new value
+  into the SciJava model on each `intervalAdded`. Single path only — aiming
+  at a leaf adds one source, aiming at a parent flattens to all descendant
+  sources (handled by the source-tree TransferHandler, same as the plain
+  list widget). The list isn't cleared first; if a known starting state
+  matters, do the clear gesture explicitly via the widget's "Clear
+  selection" button. Multi-path drops (and per-position ordering inside
+  the list) aren't yet supported. The drag uses the public
+  `RobotHelper.drag(startX, startY, endX, endY)` primitive — same one
+  `dragFrame` / `resizeFrame` use — so the smooth move crosses the
+  drag-recognition threshold and the DnD pipeline takes over.
 
 ## Known limitations
 

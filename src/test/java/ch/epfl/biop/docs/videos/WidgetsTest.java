@@ -274,6 +274,28 @@ public class WidgetsTest {
         @Override public void run() { count = sources == null ? 0 : sources.length; }
     }
 
+    // ─── SourceSortedList → SwingSourceSortedListWidget (drag tree → list) ──
+
+    @Test
+    public void testSourceSortedList() throws Exception {
+        SourceService bss = FijiCommands.context().service(SourceService.class);
+        TreeModel model = bss.tree().getTreeModel();
+
+        String pathStr = "Sources>BrainSection-Tiles>Channel>ch_0";
+        int expected = countLeavesAt((DefaultMutableTreeNode) model.getRoot(), pathStr.split(">"));
+
+        Future<CommandModule> future = RobotCommands.run(SourceSortedListDemo.class, "sources", pathStr);
+        int actual = (Integer) future.get().getOutput("count");
+        assertEquals(expected, actual);
+    }
+
+    @Plugin(type = Command.class)
+    public static class SourceSortedListDemo implements Command {
+        @Parameter(label = "Sorted sources", style = "sorted") SourceAndConverter<?>[] sources;
+        @Parameter(type = ItemIO.OUTPUT) int count;
+        @Override public void run() { count = sources == null ? 0 : sources.length; }
+    }
+
     // ─── helpers ────────────────────────────────────────────────────────────
 
     private static File makeTmp(String prefix, String suffix, String content) throws Exception {

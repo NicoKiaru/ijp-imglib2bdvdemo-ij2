@@ -245,8 +245,16 @@ public class RobotHelper {
         drag(startX, startY, endX, endY);
     }
 
-    /** Press at {@code (startX, startY)}, smooth-drag to {@code (endX, endY)}, release. */
-    private static void drag(int startX, int startY, int endX, int endY) {
+    /**
+     * Press at {@code (startX, startY)}, smooth-drag to {@code (endX, endY)},
+     * release. Triggers Swing DnD when the source component has
+     * {@code setDragEnabled(true)} (or an installed {@link javax.swing.TransferHandler}
+     * with non-NONE source actions): the smooth move crosses the drag-recognition
+     * threshold (~5 px) on the first frames, the DnD pipeline takes over from
+     * there, and the release fires the drop on whatever component is under the
+     * cursor.
+     */
+    public static void drag(int startX, int startY, int endX, int endY) {
         moveTo(startX, startY);
         pause(Timings.PAUSE_AFTER_MOVE_MS);
         robot().mousePress(InputEvent.BUTTON1_DOWN_MASK);

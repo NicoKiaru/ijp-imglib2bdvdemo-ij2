@@ -81,6 +81,13 @@ import java.util.concurrent.Future;
  *       own {@code getValue()} recursion). Path segments must match
  *       {@code DefaultMutableTreeNode.toString()} exactly, including
  *       the root.</li>
+ *   <li>{@link String} <em>targeting a {@link JTree} paired with a
+ *       {@link JList}</em> (BigDataViewer-Playground
+ *       {@code SwingSourceSortedListWidget}, the {@code style="sorted"}
+ *       variant of the {@code SourceAndConverter[]} widget) → navigates
+ *       the source tree the same way, then drags the matching row onto
+ *       the destination list. Single path only; the list isn't cleared
+ *       first.</li>
  * </ul>
  */
 public class RobotCommands {
@@ -304,6 +311,15 @@ public class RobotCommands {
             }
             List<JTree> trees = findAll(inputContainer, JTree.class);
             if (!trees.isEmpty()) {
+                // SwingSourceSortedListWidget pairs a source JTree with a
+                // destination JList in the same input container — disambiguate
+                // from the plain tree widgets (which have no JList) by the
+                // presence of a JList sibling.
+                List<JList> lists = findAll(inputContainer, JList.class);
+                if (!lists.isEmpty()) {
+                    fillSourceSortedList(trees.get(0), lists.get(0), String.valueOf(value));
+                    return;
+                }
                 fillTree(trees.get(0), String.valueOf(value));
                 return;
             }
@@ -656,6 +672,39 @@ public class RobotCommands {
      */
     private static void fillTree(JTree tree, String path) {
         RobotTree.selectPath(tree, path);
+    }
+
+    /**
+     * Drive the {@code SwingSourceSortedListWidget}: navigate the source
+     * {@link JTree} to {@code path} (expanding ancestors as needed), then
+     * drag the matching row onto the destination {@link JList}. The widget's
+     * JTree has {@code setDragEnabled(true)} and a
+     * {@code SourceServiceTreeTransferHandler}, so a normal Swing DnD gesture
+     * (press → smooth move → release) triggers the transfer; the JList's
+     * {@code JListTransferHandler} accepts the drop and a
+     * {@code ListDataListener} pushes the new value into the SciJava model.
+     *
+     * <p>The drop target is the centre of the destination JList. Aiming at a
+     * leaf path adds one source; aiming at a parent path adds every descendant
+     * source under it (the source-tree {@code TransferHandler} flattens to all
+     * descendant {@code SourceAndConverter}s).</p>
+     *
+     * <p>Single path only — multi-path / per-path-position drops aren't
+     * supported. The list isn't cleared first; callers that need a known
+     * starting state should do that explicitly (the widget exposes a "Clear
+     * selection" button).</p>
+     */
+    private static void fillSourceSortedList(JTree tree, JList<?> list, String path) {
+        javax.swing.tree.TreePath target = RobotTree.navigateAndExpand(tree, path);
+        Point src = RobotTree.rowScreenCenter(tree, target);
+        if (!list.isShowing()) {
+            throw new IllegalStateException("Sorted-list drop target JList is not on screen");
+        }
+        Point listLoc = list.getLocationOnScreen();
+        int dstX = listLoc.x + list.getWidth() / 2;
+        int dstY = listLoc.y + list.getHeight() / 2;
+        RobotHelper.drag(src.x, src.y, dstX, dstY);
+        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
     }
 
     // ===== OK button =============================================================
