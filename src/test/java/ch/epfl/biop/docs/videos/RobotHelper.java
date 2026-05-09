@@ -220,7 +220,7 @@ public class RobotHelper {
 
         Insets insets = frame.getInsets();
         int titleBarHeight = Math.max(insets.top, 24);
-        int grabOffsetX = Math.min(60, Math.max(20, frame.getWidth() / 4));
+        int grabOffsetX = frame.getWidth()/2;//Math.min(60, Math.max(20, frame.getWidth() / 2));
         int grabOffsetY = titleBarHeight / 2;
 
         int startX = frame.getX() + grabOffsetX;

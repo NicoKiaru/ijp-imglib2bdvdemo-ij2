@@ -103,6 +103,11 @@ public class RobotCommands {
         return future;
     }
 
+    public static <C extends Command> void runOpenDialog(Class<C> cmdClass, Object... namedInputs) {
+        Map<String, Object> values = parseValues(namedInputs);
+        driveDialog(cmdClass, values);
+    }
+
     /**
      * Same as {@link #run(Class, Object...)} but launches via the legacy IJ
      * search bar — i.e. reproduces the natural user gesture of typing into
@@ -145,7 +150,8 @@ public class RobotCommands {
 
         Dialog dialog = RobotHelper.waitForActiveDialog(Timings.FRAME_WAIT_TIMEOUT_MS);
         if (dialog == null) {
-            throw new IllegalStateException("No dialog appeared for " + cmdClass.getSimpleName());
+            // No other parameters - we're done
+            return;
         }
         // Let the dialog finish realizing before we touch screen positions.
         RobotHelper.pause(Timings.PAUSE_AFTER_FRAME_PLACEMENT_MS);
