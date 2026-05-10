@@ -40,7 +40,7 @@ public class Robot {
 
         // The command is now running — let it finish painting any UI it spawns
         // (a BDV viewer, in this case) before the test driver exits.
-        RobotHelper.pause(2000);
+        RobotHelper.pause(Timings.scaled(Timings.PAUSE_AFTER_CLICK_MS));
 
         RobotCommands.runOpenDialog(command, args);
 

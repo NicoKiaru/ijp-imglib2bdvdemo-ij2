@@ -1,7 +1,10 @@
 package ch.epfl.biop.docs.videos;
 
+import javax.swing.JScrollPane;
+import javax.swing.JViewport;
 import javax.swing.SwingUtilities;
 import java.awt.AWTException;
+import java.awt.Component;
 import java.awt.Dialog;
 import java.awt.Frame;
 import java.awt.GraphicsDevice;
@@ -265,6 +268,168 @@ public class RobotHelper {
     }
 
     /**
+     * Visibly mouse-wheel-scrolls a {@link JScrollPane} ancestor of
+     * {@code target} so that {@code target} ends up fully inside the
+     * viewport, ideally with its top edge at — or as close as one wheel
+     * notch allows to — the top of the viewport (so as much of the form
+     * below it as possible is also reachable in one scroll).
+     *
+     * <p><b>End-of-form clamp.</b> The scrollbar can never go past
+     * {@code view.height - viewport.height}, so a widget near the very
+     * bottom of a tall form cannot be brought to the viewport top. In
+     * that case the target is clamped to the maximum reachable scroll
+     * position; the widget then lands somewhere inside the viewport
+     * (visible, but not at the top edge) and the subsequent click still
+     * hits it. Without this clamp, the loop would keep wheeling against
+     * a saturated scrollbar, time out via the safety cap, and leave the
+     * widget below the visible region — its
+     * {@link Component#getLocationOnScreen() screen position} then sits
+     * outside the dialog and the click would land on whatever is below.</p>
+     *
+     * <p><b>EDT sync.</b> {@link Robot#waitForIdle()} is called after each
+     * wheel notch so that the next {@link JViewport#getViewRect()} read
+     * sees the post-event state. Without it, fast pause settings race the
+     * EDT and the {@code now.y == prev.y} guard mis-fires (false "scroll
+     * stuck" → premature exit).</p>
+     *
+     * <p><b>Two-step feel.</b> A {@link Timings#PAUSE_AFTER_SCROLL_MS}
+     * beat is added at the end of every actual scroll so the scroll and
+     * the next gesture (typically a click on the just-scrolled widget)
+     * read as two distinct steps on tutorial videos rather than blurring
+     * into one continuous motion. The cursor is also moved to the scroll
+     * pane only when it is not already over it, so the scroll gesture is
+     * anchored at one position rather than ping-ponging.</p>
+     *
+     * <p>Mouse-wheel only — no programmatic
+     * {@link JViewport#setViewPosition} fallback. If no
+     * {@link JScrollPane} ancestor is found, or {@code target} is already
+     * fully visible, this is a no-op. Tunables:
+     * {@link Timings#WHEEL_TICK_PAUSE_MS} (scaled, between-notch cadence),
+     * {@link Timings#PAUSE_AFTER_SCROLL_MS} (scaled, end-of-scroll beat),
+     * {@link Timings#MAX_WHEEL_TICKS} (safety cap).</p>
+     */
+    public static void scrollIntoView(Component target) {
+        if (target == null || !target.isShowing()) return;
+        JScrollPane sp = (JScrollPane) SwingUtilities.getAncestorOfClass(JScrollPane.class, target);
+        if (SCROLL_DEBUG) {
+            Point ts = target.isShowing() ? target.getLocationOnScreen() : null;
+            System.out.println("[scrollIntoView] target=" + target.getClass().getSimpleName()
+                    + " bounds=" + target.getBounds() + " screen=" + ts
+                    + " hasScrollPane=" + (sp != null));
+        }
+        if (sp == null || !sp.isShowing()) return;
+        JViewport viewport = sp.getViewport();
+        Component view = viewport == null ? null : viewport.getView();
+        if (view == null) return;
+
+        Point inView = SwingUtilities.convertPoint(target, 0, 0, view);
+        int widgetTop = inView.y;
+        int widgetBottom = widgetTop + target.getHeight();
+        Rectangle visible = viewport.getViewRect();
+        // Clamp to the scrollbar's reachable range — see the "end-of-form
+        // clamp" note in the Javadoc.
+        int maxScroll = Math.max(0, view.getHeight() - viewport.getHeight());
+        int targetY = Math.max(0, Math.min(widgetTop, maxScroll));
+        if (SCROLL_DEBUG) {
+            System.out.println("[scrollIntoView] widget y=[" + widgetTop + ".." + widgetBottom + "]"
+                    + " view.h=" + view.getHeight() + " vp.h=" + viewport.getHeight()
+                    + " maxScroll=" + maxScroll + " currentY=" + visible.y + " targetY=" + targetY);
+        }
+        boolean fullyVisible = widgetTop >= visible.y && widgetBottom <= visible.y + visible.height;
+        if (fullyVisible) return;
+        if (targetY == visible.y) return; // nothing to do
+
+        // Wheel events go to the component under the cursor — make sure that's
+        // the scroll pane (or one of its children). Skip the move if already in.
+        Point spLoc = sp.getLocationOnScreen();
+        Rectangle spOnScreen = new Rectangle(spLoc.x, spLoc.y, sp.getWidth(), sp.getHeight());
+        Point cursor = MouseInfo.getPointerInfo().getLocation();
+        if (!spOnScreen.contains(cursor)) {
+            moveTo(spLoc.x + sp.getWidth() / 2, spLoc.y + sp.getHeight() / 2);
+            pause(Timings.PAUSE_AFTER_MOVE_MS);
+        }
+
+        int direction = (visible.y < targetY) ? +1 : -1;
+        int notchesPerStep = Math.max(1, Timings.WHEEL_NOTCHES_PER_STEP);
+        int stagnation = 0;
+        int ticks = 0;
+
+        for (int i = 0; i < Timings.MAX_WHEEL_TICKS; i++) {
+            Rectangle prev = viewport.getViewRect();
+            if (direction > 0 && prev.y >= targetY) break;
+            if (direction < 0 && prev.y <= targetY) break;
+
+            mouseWheel(direction * notchesPerStep);
+            ticks++;
+            // waitForIdle pulls pending native events into AWT (via
+            // SunToolkit.flushPendingEvents) and drains the EDT — sufficient
+            // on its own at default settings. Re-add WHEEL_OS_DISPATCH_MS if
+            // a slow machine starts seeing pre-event reads.
+            if (Timings.WHEEL_OS_DISPATCH_MS > 0) {
+                robot().delay(Timings.WHEEL_OS_DISPATCH_MS);
+            }
+            robot().waitForIdle();
+            pause(Timings.WHEEL_TICK_PAUSE_MS);
+
+            Rectangle now = viewport.getViewRect();
+            if (now.y == prev.y) {
+                // Could be scrollbar saturated, or a stale read. Tolerate a
+                // few in a row before bailing so the loop doesn't exit early
+                // on a flaky read.
+                if (++stagnation >= Timings.WHEEL_STAGNATION_LIMIT) break;
+                continue;
+            }
+            stagnation = 0;
+
+            // Bulk overshoot: widget top now above viewport top, so the
+            // widget is partly clipped. Bundle = N notches scrolls up to
+            // N × pixels-per-notch past target, so back off in single
+            // notches until just under target rather than dumping a whole
+            // bundle back (which would risk undershooting). Cannot happen
+            // when targetY == maxScroll (the scrollbar can't go past it).
+            if (direction > 0 && now.y > targetY) {
+                int safety = notchesPerStep + 2;
+                while (safety-- > 0 && now.y > targetY) {
+                    mouseWheel(-1);
+                    if (Timings.WHEEL_OS_DISPATCH_MS > 0) {
+                        robot().delay(Timings.WHEEL_OS_DISPATCH_MS);
+                    }
+                    robot().waitForIdle();
+                    Rectangle prev2 = now;
+                    now = viewport.getViewRect();
+                    if (now.y == prev2.y) break;
+                }
+                pause(Timings.WHEEL_TICK_PAUSE_MS);
+                break;
+            }
+        }
+
+        if (SCROLL_DEBUG) {
+            Rectangle f = viewport.getViewRect();
+            Point ts = target.isShowing() ? target.getLocationOnScreen() : null;
+            System.out.println("[scrollIntoView] done ticks=" + ticks
+                    + " finalY=" + f.y + " widgetScreen=" + ts
+                    + " spScreen=" + spOnScreen);
+        }
+
+        // Visible beat between the scroll and the next gesture (typically
+        // the click on the widget that was just scrolled into view) so the
+        // two phases read as distinct on the recorded video.
+        pause(Timings.PAUSE_AFTER_SCROLL_MS);
+    }
+
+    /**
+     * Toggle for diagnostic prints inside {@link #scrollIntoView(Component)}.
+     * Prints widget bounds in view coords, view / viewport heights, the
+     * computed {@code maxScroll} / {@code targetY}, and the post-loop
+     * tick count + final scroll position. Useful when a widget refuses to
+     * land inside the viewport — the numbers tell you whether the loop
+     * exited early (EDT race) or hit a layout edge case (e.g.
+     * {@code view.height < widgetBottom}).
+     */
+    public static boolean SCROLL_DEBUG = true;
+
+    /**
      * Move a frame to {@code (dxOnTargetScreen, dyOnTargetScreen)} relative to
      * the target screen's top-left corner, and bring it to front.
      */
@@ -368,6 +533,17 @@ public class RobotHelper {
         robot().mousePress(InputEvent.BUTTON3_DOWN_MASK);
         robot().delay(Timings.CLICK_HOLD_MS);
         robot().mouseRelease(InputEvent.BUTTON3_DOWN_MASK);
+    }
+
+    /**
+     * Spin the mouse wheel by {@code notches} at the current cursor position.
+     * Positive values scroll DOWN (content moves up — viewport advances toward
+     * later content); negative values scroll UP. The wheel event is dispatched
+     * to whichever Swing component is under the cursor — position the cursor
+     * over the intended scroll target before calling.
+     */
+    public static void mouseWheel(int notches) {
+        robot().mouseWheel(notches);
     }
 
     public static void key(int keyCode) {

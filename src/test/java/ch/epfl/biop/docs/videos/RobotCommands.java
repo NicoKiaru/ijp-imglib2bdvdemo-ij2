@@ -176,6 +176,10 @@ public class RobotCommands {
                         + fieldName + "' (label: '" + label + "')");
             }
             System.out.println("[RobotCommands] " + fieldName + " (" + label + ") <- " + e.getValue());
+            // No-op when the harvester panel isn't wrapped in a JScrollPane.
+            // When it is, brings the widget to the top of the viewport so it
+            // (and as many subsequent widgets as possible) are reachable.
+            RobotHelper.scrollIntoView(inputContainer);
             fillWidget(inputContainer, e.getValue());
         }
 

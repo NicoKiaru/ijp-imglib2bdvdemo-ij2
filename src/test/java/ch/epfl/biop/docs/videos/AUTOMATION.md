@@ -11,13 +11,13 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 | File | Role |
 |---|---|
 | `Timings` | Central timing constants + `GLOBAL_SPEED`. One knob to speed every video pace up or down. |
-| `RobotHelper` | Robot wrapper: target-screen handling, frame placement, sin-eased `moveTo`, click/key/`type(String)`, `paste(String)` (clipboard-based, layout-independent), `pause`. |
+| `RobotHelper` | Robot wrapper: target-screen handling, frame placement, sin-eased `moveTo`, click/key/`type(String)`, `paste(String)` (clipboard-based, layout-independent), `mouseWheel(notches)` + `scrollIntoView(Component)` (mouse-wheel a `JScrollPane` ancestor until a target widget sits at the viewport top), `pause`. |
 | `ComponentInspector` | Recursive AWT/Swing tree walker. Returns a `LinkedHashMap<String, ComponentInfo>` with hierarchical path keys, local bounds and absolute screen positions. Includes `prettyPrint`. |
 | `FijiCommands` | Fiji-specific actions: `startFiji()` (boots Fiji + places the IJ frame, exposes the SciJava `ImageJ`/`Context`), `searchAndRun(String query)` (drives the legacy search bar). Holds the `LegacyInjector.preinit()` static block. |
 | `RobotCommands` | `CommandService`-style runner that drives a SciJava command's harvester dialog by reflecting `@Parameter` labels and filling each widget via Robot. `run(Class, ...)` (direct) and `runViaSearch(Class, query, ...)` (via the IJ search bar). Currently supports `boolean` (JCheckBox), `Number` (JSpinner / slider / scrollbar — drives the inner JFormattedTextField), `String` (JTextField), `String` targeting a `JComboBox` (choices, default style), `String` targeting a `JRadioButton` group (choices, radio styles), `File` / `File[]` (Browse + file-chooser flow), `String` targeting a `JTree` (e.g. BDV-Playground `SwingSourceWidget`), and `String` targeting a `JTree` paired with a `JList` (BDV-Playground `SwingSourceSortedListWidget` — drag tree row → list). |
 | `RobotTree` | Robot primitives for a `JTree` reachable on screen — `selectPath(JTree, String)` (navigate, expand ancestors via double-click, single-click final node) and `rightClickPath(JTree, String)` (same + right-click in place). Shared between the harvester JTree branch in `RobotCommands` and standalone tree frames like the "BDV Sources" panel. |
 | `RobotPopup` | Robot navigation of an open Swing `JPopupMenu` — `clickPath(String)` finds the active popup via `MenuSelectionManager.defaultManager()`, hovers through intermediate submenus (Swing auto-opens on mouse-enter), and clicks the final menu item. Path syntax matches `RobotTree`: `">"`-delimited, exact `JMenuItem.getText()`. |
-| `WidgetsTest` | JUnit 4 test class — boots Fiji once in `@BeforeClass` (also loads `BRAIN_SECTION_3DTILES` for the source tests), then one `@Test` per widget drives a nested `public static class XxxDemo implements Command` fixture via `RobotCommands.run` and asserts the echoed output. Covers `String`, `boolean`, `File`, `File[]`, all six numeric styles (grouped), all four choice styles (grouped), single `SourceAndConverter`, default `SourceAndConverter[]`, and the sorted `SourceAndConverter[]` variant (`style="sorted"`, drag tree → list). The harvester dialog is the system-under-test; nested fixtures keep each widget's command and assertions co-located. `@After` disposes any leftover `Dialog` so a mid-dialog failure doesn't pollute the next test. |
+| `WidgetsTest` | JUnit 4 test class — boots Fiji once in `@BeforeClass` (also loads `BRAIN_SECTION_3DTILES` for the source tests), then one `@Test` per widget drives a nested `public static class XxxDemo implements Command` fixture via `RobotCommands.run` and asserts the echoed output. Covers `String`, `boolean`, `File`, `File[]`, all six numeric styles (grouped), all four choice styles (grouped), single `SourceAndConverter`, default `SourceAndConverter[]`, the sorted `SourceAndConverter[]` variant (`style="sorted"`, drag tree → list), and a 30-boolean `LongFormDemo` that forces the harvester into a `JScrollPane` and exercises `RobotHelper.scrollIntoView` at top / mid / bottom positions. The harvester dialog is the system-under-test; nested fixtures keep each widget's command and assertions co-located. `@After` disposes any leftover `Dialog` so a mid-dialog failure doesn't pollute the next test. |
 | `SearchBarTest` | Driver: starts Fiji, runs `"show bdv play"` via the search bar — smoke test for `FijiCommands.searchAndRun`. |
 | `RobotSourceTreeRightClickTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES` (auto-shows the standalone "BDV Sources" frame), places the frame, right-clicks a parent node with `RobotTree.rightClickPath`, then walks the popup with `RobotPopup.clickPath("Viewer>BDV>BDV - Show Sources")` to invoke a SciJava command pre-filled with all descendant sources. Not a widget test — it drives a standalone frame's popup, which is why it lives outside `WidgetsTest`. |
 
@@ -91,6 +91,36 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
   so use the direct `run(...)` when you need them. The query should be a
   short, unambiguous prefix of the command's display name; the human
   supervisor checks visually that the right command was launched.
+- **Scrolling tall harvester dialogs into view.** When a SciJava command
+  has enough parameters that SwingInputHarvester wraps its panel in a
+  `JScrollPane`, widgets below the initial viewport were previously
+  clicked at off-screen coordinates (the cursor flew below the dialog
+  and the click landed on whatever was underneath). `RobotCommands` now
+  calls `RobotHelper.scrollIntoView(inputContainer)` before each widget:
+  it walks up to the enclosing `JScrollPane`, hovers the cursor over it
+  (skipped if already inside), and visibly mouse-wheels notch-by-notch
+  via `Robot.mouseWheel` toward a target viewport position of `widgetTop`
+  — bringing the widget to the top (rather than just inside the viewport)
+  maximises how many later widgets become reachable in one scroll.
+  Three subtleties worth calling out: (1) the target is **clamped to
+  `view.height - viewport.height`** (the scrollbar's max), so a widget
+  near the very bottom of a tall form can't be reached at the top — it
+  lands inside the viewport and the click still hits it; without the
+  clamp the loop wheels against a saturated scrollbar, exits late, and
+  leaves the widget below the dialog where `getLocationOnScreen()` would
+  return an off-dialog y. (2) `Robot.waitForIdle()` is called after each
+  notch so the post-event `viewport.getViewRect()` read isn't racing the
+  EDT — without it, a short `WHEEL_TICK_PAUSE_MS` lets the
+  `now.y == prev.y` "scrollbar at limit" guard mis-fire and exit early.
+  (3) A `Timings.PAUSE_AFTER_SCROLL_MS` beat is added at the end of every
+  actual scroll so the scroll and the following click read as two
+  distinct steps on the recorded video rather than blurring into one
+  motion. The down-direction one-notch overshoot back-off (`mouseWheel(-1)`
+  if `now.y > targetY`) only fires when the target is `widgetTop`, never
+  when it's `maxScroll`. Mouse-wheel only — no programmatic
+  `setViewPosition` fallback. Tunables: `Timings.WHEEL_TICK_PAUSE_MS`
+  (scaled, default 10), `Timings.PAUSE_AFTER_SCROLL_MS` (scaled, default
+  500), `Timings.MAX_WHEEL_TICKS` (safety cap, default 80).
 - **`File` parameters via the Browse-then-chooser flow.** Pass a
   `java.io.File` value and `RobotCommands` clicks the SciJava `Browse`
   button (matched case-insensitively, with a fallback to the only

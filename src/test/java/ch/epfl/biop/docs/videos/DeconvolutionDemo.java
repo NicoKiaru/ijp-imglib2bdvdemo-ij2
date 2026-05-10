@@ -4,7 +4,7 @@ import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateComman
 import ch.epfl.biop.command.process.deconvolve.SourcesDeconvolveCommand;
 import net.imagej.patcher.LegacyInjector;
 import sc.fiji.bdvpg.command.display.bdv.SingleBdvSourcesShowCommand;
-import sc.fiji.bdvpg.scijava.widget.SwingSourceSortedListWidget;
+import sc.fiji.bdvpg.command.display.bdv.settings.BdvTitleSetCommand;
 
 import javax.swing.*;
 import java.awt.*;
@@ -61,18 +61,35 @@ public class DeconvolutionDemo {
         RobotHelper.resizeFrame(bdvRaw, 800, 300);
         RobotHelper.dragFrame(bdvRaw, RobotHelper.DEFAULT_FRAME_X + 450, RobotHelper.DEFAULT_FRAME_Y + 150);
 
+        Robot.runFromBDVPlaygroundTree("Sources>Other Sources", BdvTitleSetCommand.class,
+                "title", "BDV - Raw Sources");
+
         Robot.runFromBDVPlaygroundTree("Sources>"+fileDataset.getName(), SourcesDeconvolveCommand.class,
+                "sources", "Sources>"+fileDataset.getName(),
                 "psf", "Sources>"+filePSF.getName(),
-                "num_iterations", 20,
+                "output_pixel_type", "Float",
+                "suffix", "_deconvolved",
                 "block_size_x", 256,
                 "block_size_y", 256,
                 "block_size_z", 64,
                 "overlap_size", 16,
+                "num_iterations", 20,
                 "non_circulant", true,
                 "regularization_factor", 0.002f,
-                "output_pixel_type", "Float",
-                "suffix", "_deconvolved",
                 "n_threads", 4);
+
+        Robot.runFromBDVPlaygroundTree("Sources>Other Sources", SingleBdvSourcesShowCommand.class,
+                "adjust_view", true,
+                "auto_contrast", false,
+                "interpolate", false,
+                "make_new_window", true);
+
+        Frame bdvDeconvolved = RobotHelper.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
+        RobotHelper.resizeFrame(bdvDeconvolved, 800, 300);
+        RobotHelper.dragFrame(bdvDeconvolved, RobotHelper.DEFAULT_FRAME_X + 450, RobotHelper.DEFAULT_FRAME_Y + 450);
+
+        Robot.runFromBDVPlaygroundTree("Sources>Other Sources", BdvTitleSetCommand.class,
+                "title", "BDV - Deconvolved Sources");
 
 
 

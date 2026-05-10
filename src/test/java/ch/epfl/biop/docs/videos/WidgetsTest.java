@@ -296,6 +296,72 @@ public class WidgetsTest {
         @Override public void run() { count = sources == null ? 0 : sources.length; }
     }
 
+    // ─── Long form → harvester wrapped in JScrollPane, scroll required ─────
+
+    /**
+     * Smoke-tests {@link RobotHelper#scrollIntoView}: a command with enough
+     * boolean parameters that {@code SwingInputHarvester} wraps its panel in
+     * a {@link javax.swing.JScrollPane}. Setting widgets at the top, the
+     * middle and the bottom exercises three regimes — already visible
+     * (no-op), needs a partial scroll, needs a further scroll. If the
+     * scroll path regresses, the click for {@code b15} / {@code b30} lands
+     * off-screen below the dialog, the box stays at its default
+     * {@code false}, and the assertion fails.
+     *
+     * <p>30 parameters reliably overflows on common CI / dev monitors
+     * (~25 px / row in FlatLaf → ~750 px, well past the harvester's
+     * preferred-size cap). On an unusually tall display the dialog may
+     * fit without scrolling — the test still passes (every click lands)
+     * but does not exercise the scroll path. Bump the parameter count
+     * if that becomes a problem.</p>
+     */
+    @Test
+    public void testScrollIntoView() throws Exception {
+        Future<CommandModule> future = RobotCommands.run(LongFormDemo.class,
+                "b01", true,
+                "b15", true,
+                "b30", true);
+        assertEquals("b01=true b15=true b30=true", future.get().getOutput("result"));
+    }
+
+    @Plugin(type = Command.class)
+    public static class LongFormDemo implements Command {
+        @Parameter(label = "Boolean 01", persist = false) boolean b01;
+        @Parameter(label = "Boolean 02") boolean b02;
+        @Parameter(label = "Boolean 03") boolean b03;
+        @Parameter(label = "Boolean 04") boolean b04;
+        @Parameter(label = "Boolean 05") boolean b05;
+        @Parameter(label = "Boolean 06") boolean b06;
+        @Parameter(label = "Boolean 07") boolean b07;
+        @Parameter(label = "Boolean 08") boolean b08;
+        @Parameter(label = "Boolean 09") boolean b09;
+        @Parameter(label = "Boolean 10") boolean b10;
+        @Parameter(label = "Boolean 11") boolean b11;
+        @Parameter(label = "Boolean 12") boolean b12;
+        @Parameter(label = "Boolean 13") boolean b13;
+        @Parameter(label = "Boolean 14") boolean b14;
+        @Parameter(label = "Boolean 15", persist = false) boolean b15;
+        @Parameter(label = "Boolean 16") boolean b16;
+        @Parameter(label = "Boolean 17") boolean b17;
+        @Parameter(label = "Boolean 18") boolean b18;
+        @Parameter(label = "Boolean 19") boolean b19;
+        @Parameter(label = "Boolean 20") boolean b20;
+        @Parameter(label = "Boolean 21") boolean b21;
+        @Parameter(label = "Boolean 22") boolean b22;
+        @Parameter(label = "Boolean 23") boolean b23;
+        @Parameter(label = "Boolean 24") boolean b24;
+        @Parameter(label = "Boolean 25") boolean b25;
+        @Parameter(label = "Boolean 26") boolean b26;
+        @Parameter(label = "Boolean 27") boolean b27;
+        @Parameter(label = "Boolean 28") boolean b28;
+        @Parameter(label = "Boolean 29") boolean b29;
+        @Parameter(label = "Boolean 30", persist = false) boolean b30;
+        @Parameter(type = ItemIO.OUTPUT) String result;
+        @Override public void run() {
+            result = "b01=" + b01 + " b15=" + b15 + " b30=" + b30;
+        }
+    }
+
     // ─── helpers ────────────────────────────────────────────────────────────
 
     private static File makeTmp(String prefix, String suffix, String content) throws Exception {

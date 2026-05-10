@@ -38,6 +38,42 @@ public class Timings {
     // ===== Clicks / keys (NOT scaled — mechanical) ================================
 
     public static int CLICK_HOLD_MS = 600;
+
+    /**
+     * Optional synchronous delay between {@code Robot.mouseWheel} and the
+     * subsequent {@code Robot.waitForIdle()} inside
+     * {@link RobotHelper#scrollIntoView}. Defaults to {@code 0} —
+     * {@code waitForIdle} already calls {@code SunToolkit.flushPendingEvents}
+     * which pulls pending native events into AWT, so on Windows this delay
+     * is normally unnecessary. Bump it (5–20 ms) only if a slow / loaded
+     * machine shows the post-tick {@code viewport.getViewRect()} read
+     * racing the EDT (false "scrollbar at limit" exits).
+     */
+    public static int WHEEL_OS_DISPATCH_MS = 0;
+
+    /**
+     * Notches per call to {@code Robot.mouseWheel} inside
+     * {@link RobotHelper#scrollIntoView}. Default {@code 5}. A single call
+     * sending {@code N} notches still triggers {@code N} individual
+     * {@code MouseWheelEvent}s on the EDT (so the scroll still reads as
+     * {@code N} small steps to the viewer), but the loop only pays one
+     * {@code waitForIdle} round-trip per iteration — at default Swing
+     * unit-increment ≈ 3 px / notch, this is the difference between
+     * ~13 s and ~250 ms for a 700 px scroll. Tradeoff: max overshoot
+     * grows to {@code bundle × pixels-per-notch} (~15 px at default
+     * settings) when the target is {@code widgetTop} (it cannot
+     * overshoot when the target is clamped to {@code maxScroll}).
+     */
+    public static int WHEEL_NOTCHES_PER_STEP = 5;
+
+    /**
+     * Number of consecutive {@code now.y == prev.y} reads
+     * {@link RobotHelper#scrollIntoView} tolerates before treating the
+     * scrollbar as saturated and bailing. A larger value is more
+     * forgiving of EDT races, at the cost of extra wheel ticks at the
+     * actual scroll limit.
+     */
+    public static int WHEEL_STAGNATION_LIMIT = 3;
     /**
      * Per-click hold inside {@link RobotHelper#doubleClick()}. Must be short
      * enough that press → release → gap → press fits inside the OS double-click
@@ -64,7 +100,7 @@ public class Timings {
     public static long PAUSE_AFTER_MOVE_MS = 200;
     public static long PAUSE_AFTER_CLICK_MS = 300;
     public static long PAUSE_AFTER_TYPING_MS = 800;
-    public static long PAUSE_AFTER_FRAME_PLACEMENT_MS = 800;
+    public static long PAUSE_AFTER_FRAME_PLACEMENT_MS = 300;
 
     /** Wait after clicking Browse, to let the file chooser open and gain focus. */
     public static long PAUSE_AFTER_FILE_CHOOSER_OPEN_MS = 800;
@@ -73,10 +109,25 @@ public class Timings {
     /** Wait after a tree node is double-clicked, to let it expand and rows re-lay-out before re-fetching coords. */
     public static long PAUSE_AFTER_TREE_EXPAND_MS = 350;
 
+    /** Pause between successive mouse-wheel notches when scrolling a widget into view. */
+    public static long WHEEL_TICK_PAUSE_MS = 2;
+
+    /**
+     * Beat at the end of {@link RobotHelper#scrollIntoView}, between the last
+     * wheel notch and whatever gesture follows (typically a click on the
+     * just-scrolled widget). Keeps the scroll and the click readable as two
+     * distinct steps on tutorial videos rather than blurring into one motion.
+     */
+    public static long PAUSE_AFTER_SCROLL_MS = 500;
+
     // ===== Polling / timeouts (NOT scaled) ========================================
 
+    /** Safety cap on the number of wheel notches issued by {@code scrollIntoView}. */
+    public static int MAX_WHEEL_TICKS = 800;
+
+
     public static long FRAME_POLL_INTERVAL_MS = 100;
-    public static long FRAME_WAIT_TIMEOUT_MS  = 5000;
+    public static long FRAME_WAIT_TIMEOUT_MS  = 7000;
 
     /**
      * Scale a duration by {@link #GLOBAL_SPEED}. Non-positive inputs return 0;
