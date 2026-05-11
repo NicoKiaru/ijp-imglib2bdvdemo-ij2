@@ -1,6 +1,7 @@
 package ch.epfl.biop.docs;
 
 import bdv.util.BdvHandle;
+import bdv.viewer.SourceAndConverter;
 import bdv.viewer.ViewerPanel;
 import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
 import ch.epfl.biop.docs.videos.FijiCommands;
@@ -15,6 +16,7 @@ import sc.fiji.bdvpg.service.SourceServices;
 import java.awt.Frame;
 import java.io.File;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -25,8 +27,13 @@ import java.util.Set;
  *   <li>{@link RobotBdv#setTimepoint(BdvHandle, int)} — drags the bottom
  *       timepoint slider through {@code max}, {@code 0}, {@code max / 2}.</li>
  *   <li>{@link RobotBdv#setCardPanelExpanded(BdvHandle, boolean)} — hovers
- *       the right-edge arrow and clicks to expand the card panel, pauses,
- *       then clicks again to collapse it.</li>
+ *       the right-edge arrow and clicks to expand the card panel.</li>
+ *   <li>{@link RobotBdv#selectSourceInCard(BdvHandle, String)} +
+ *       {@link RobotBdv#setDisplayRange(BdvHandle, double, double)} — clicks
+ *       each source in the Sources card and edits its min/max display range
+ *       via the {@code BoundedRangePanel} spinners.</li>
+ *   <li>{@link RobotBdv#setCardPanelExpanded(BdvHandle, boolean)} again to
+ *       collapse the card panel.</li>
  * </ol>
  */
 public class BdvSliderDemo {
@@ -86,6 +93,23 @@ public class BdvSliderDemo {
 
         RobotHelper.pause(Timings.scaled(600));
         RobotBdv.setCardPanelExpanded(bdv, true);
+        RobotHelper.pause(Timings.scaled(800));
+
+        // Walk the sources and adjust each one's display range. Source names
+        // come from the live ViewerState — no need to hardcode the
+        // BioFormats-derived naming.
+        List<SourceAndConverter<?>> sources = bdv.getViewerPanel().state().getSources();
+        for (int i = 0; i < sources.size(); i++) {
+            SourceAndConverter<?> s = sources.get(i);
+            String name = s.getSpimSource().getName();
+            RobotBdv.selectSourceInCard(bdv, name);
+            RobotHelper.pause(Timings.scaled(500));
+            // Different range per source so the spinner edits read distinctly
+            // on video.
+            RobotBdv.setDisplayRange(bdv, 100.0 * (i + 1), 2000.0 * (i + 1));
+            RobotHelper.pause(Timings.scaled(600));
+        }
+
         RobotHelper.pause(Timings.scaled(800));
         RobotBdv.setCardPanelExpanded(bdv, false);
     }

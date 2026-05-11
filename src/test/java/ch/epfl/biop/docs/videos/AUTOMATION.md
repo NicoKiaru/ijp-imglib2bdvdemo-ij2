@@ -17,7 +17,7 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 | `RobotCommands` | `CommandService`-style runner that drives a SciJava command's harvester dialog by reflecting `@Parameter` labels and filling each widget via Robot. `run(Class, ...)` (direct) and `runViaSearch(Class, query, ...)` (via the IJ search bar). Currently supports `boolean` (JCheckBox), `Number` (JSpinner / slider / scrollbar — drives the inner JFormattedTextField), `String` (JTextField), `String` targeting a `JComboBox` (choices, default style), `String` targeting a `JRadioButton` group (choices, radio styles), `File` / `File[]` (Browse + file-chooser flow), `String` targeting a `JTree` (e.g. BDV-Playground `SwingSourceWidget`), `String` targeting a `JTree` paired with a `JList` (BDV-Playground `SwingSourceSortedListWidget` — drag tree row → list), and `String[]` targeting a flat `JList` (BDV-Playground `SwingBdvHandleListWidget` / `SwingBvvHandleListWidget` — multi-select by display name; both widgets share the same Swing shape and dispatch branch). |
 | `RobotTree` | Robot primitives for a `JTree` reachable on screen — `selectPath(JTree, String)` (navigate, expand ancestors via double-click, single-click final node) and `rightClickPath(JTree, String)` (same + right-click in place). Shared between the harvester JTree branch in `RobotCommands` and standalone tree frames like the "BDV Sources" panel. |
 | `RobotPopup` | Robot navigation of an open Swing `JPopupMenu` — `clickPath(String)` finds the active popup via `MenuSelectionManager.defaultManager()`, hovers through intermediate submenus (Swing auto-opens on mouse-enter), and clicks the final menu item. Path syntax matches `RobotTree`: `">"`-delimited, exact `JMenuItem.getText()`. |
-| `RobotBdv` | Robot primitives for a live BigDataViewer window. Mixes two location strategies: Swing-component lookup via `BdvHandle` when a component exists (timepoint slider), pixel-aim at the display component's trigger region when only an overlay-painted control exists (card-panel arrow). Currently: `setTimepoint(BdvHandle, int)` — visibly drags `ViewerPanel`'s bottom timepoint `JSlider` (private `sliderTime`, added at `BorderLayout.SOUTH` only when the data has >1 timepoint), throws loudly on single-timepoint data or out-of-range value; `setCardPanelExpanded(BdvHandle, boolean)` — hovers the right-edge of `ViewerPanel.getDisplayComponent()` to materialize the one-touch arrow, pauses for the show animation, then clicks to forward through `SplitPaneOneTouchExpandTrigger` into `SplitPanel.setCollapsed`. Idempotent (no-op if already in the requested state). |
+| `RobotBdv` | Robot primitives for a live BigDataViewer window. Mixes two location strategies: Swing-component lookup via `BdvHandle` when a component exists (timepoint slider, sources table, range spinners), pixel-aim at the display component's trigger region when only an overlay-painted control exists (card-panel arrow). Methods: `setTimepoint(BdvHandle, int)` — visibly drags `ViewerPanel`'s bottom timepoint `JSlider` (private `sliderTime`, added at `BorderLayout.SOUTH` only when the data has >1 timepoint), throws loudly on single-timepoint data or out-of-range value; `setCardPanelExpanded(BdvHandle, boolean)` — hovers the right-edge of `ViewerPanel.getDisplayComponent()` to materialize the one-touch arrow, pauses for the show animation, then clicks to forward through `SplitPaneOneTouchExpandTrigger` into `SplitPanel.setCollapsed`, idempotent on `splitPanel.isCollapsed()`; `selectSourceInCard(BdvHandle, String)` — clicks the matching row of the Sources card's `SourceTable` (by `NAME_COLUMN` exact match), `scrollRectToVisible` first if needed, loud throw with available names on mismatch; `setDisplayRange(BdvHandle, double, double)` — walks from the unique `SourceTable` up to the enclosing `BorderLayout` table-panel, grabs the SOUTH `ConverterSetupEditPanel`, collects the two `JSpinner`s of the (package-private) `BoundedRangePanel` and fills each via the harvester's `fillNumberField` (click → select-all → paste → Enter). Both source-card methods guard that the split panel is already expanded (loud throw — visible expansion is the caller's gesture) and programmatically ensure the Sources card is expanded. |
 | `WidgetsTest` | JUnit 4 test class — boots Fiji once in `@BeforeClass` (also loads `BRAIN_SECTION_3DTILES` for the source tests, opens two empty BDVs with stable titles "BDV alpha" / "BDV beta" via `SourceServices.getBdvDisplayService().getNewBdv()`, and opens two empty BVVs "BVV alpha" / "BVV beta" by running `BvvCreateCommand` through the `CommandService` — its `BvvHandlePostprocessor` registers each handle in the `ObjectService`), then one `@Test` per widget drives a nested `public static class XxxDemo implements Command` fixture via `RobotCommands.run` and asserts the echoed output. Covers `String`, `boolean`, `File`, `File[]`, all six numeric styles (grouped), all four choice styles (grouped), single `SourceAndConverter`, default `SourceAndConverter[]`, the sorted `SourceAndConverter[]` variant (`style="sorted"`, drag tree → list), `BdvHandle[]` and `BvvHandle[]` (flat-`JList` multi-select, same dispatch), and a 30-boolean `LongFormDemo` that forces the harvester into a `JScrollPane` and exercises `RobotHelper.scrollIntoView` at top / mid / bottom positions. The harvester dialog is the system-under-test; nested fixtures keep each widget's command and assertions co-located. `@After` disposes any leftover `Dialog` so a mid-dialog failure doesn't pollute the next test. |
 | `SearchBarTest` | Driver: starts Fiji, runs `"show bdv play"` via the search bar — smoke test for `FijiCommands.searchAndRun`. |
 | `RobotSourceTreeRightClickTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES` (auto-shows the standalone "BDV Sources" frame), places the frame, right-clicks a parent node with `RobotTree.rightClickPath`, then walks the popup with `RobotPopup.clickPath("Viewer>BDV>BDV - Show Sources")` to invoke a SciJava command pre-filled with all descendant sources. Not a widget test — it drives a standalone frame's popup, which is why it lives outside `WidgetsTest`. |
@@ -315,6 +315,60 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
   `BdvSliderDemo` driver exercises this end to end: open LLS7 → show in BDV
   via the source-tree right-click flow → drag the slider to `max`, `0`,
   `max / 2`.
+- **Selecting a source in the BDV "Sources" card.**
+  `RobotBdv.selectSourceInCard(bdv, name)` clicks the matching row in
+  bdv-core's `SourceTable` (the only `JTable` reachable from the card panel —
+  the "Groups" card has a `JTree`, not a table). Row lookup is exact match
+  against `SourceTableModel.NAME_COLUMN` (column 0, `String`-typed,
+  non-editable — the only column without a side effect on click). The click
+  aims at the centre of the cell rectangle from
+  `table.getCellRect(row, NAME_COLUMN, true) + table.getLocationOnScreen()`
+  (row cells aren't Swing components — same trick as `RobotTree` and the
+  `JComboBox` driver). `JTable.scrollRectToVisible(cell)` is called
+  programmatically before the click to bring rows below the viewport into
+  view; visible mouse-wheel scrolling of the sources card isn't supported
+  yet, but tutorial datasets rarely have enough sources to need it. Loud
+  throw with the available names on a typo — beats silently selecting the
+  wrong source.
+- **Setting a source's display range (min / max).**
+  `RobotBdv.setDisplayRange(bdv, min, max)` drives the two `JSpinner`s of the
+  `BoundedRangePanel` inside the Sources card's `ConverterSetupEditPanel` to
+  edit the display range of the currently-selected source(s). Call
+  `selectSourceInCard` first to choose what the edit applies to. Three
+  geometry / API subtleties: (1) `BoundedRangePanel` is package-private in
+  `bdv.ui.convertersetupeditor`, so the class isn't importable from outside
+  bdv-core — instead we locate it structurally: walk from the unique
+  `SourceTable` up three parents (`viewport → scrollPane → tablePanel`,
+  matching how `BdvDefaultCards.setup` builds the card body), grab the
+  `BorderLayout.SOUTH` child, then collect the `JSpinner`s in that subtree
+  (exactly two — min then max in document order). (2) Each spinner is
+  filled via a typing-flavored sibling of the harvester's paste-based
+  driver — `RobotCommands.typeNumberField` (package-private, same package):
+  walk the spinner's editor for its `JFormattedTextField`, click →
+  select-all → `RobotHelper.type(String.valueOf(value))` (char-by-char so the
+  digits appear one at a time on the recorded video, rather than the value
+  materializing instantly as with the paste-based `fillNumberField`) → Enter.
+  Enter is load-bearing because a `JFormattedTextField` only commits on
+  Enter or focus loss. Layout caveat: each char goes through
+  `Robot.keyPress`, which is keyboard-layout-dependent — fine on US / Swiss
+  / French layouts for digits and `"."` (the unshifted period key), but if
+  a future layout rejects it, swap the call back to `fillNumberField`
+  (paste, layout-independent) at the cost of invisible typing on video. (3) Spinner
+  order doesn't matter for the final state: `BoundedRange.withMin` /
+  `withMax` both expand-to-accommodate (setting `min > current max` drags
+  `max` up, and vice versa), so a sequence of two spinner edits converges
+  on `(min, max)` regardless of order. The driver sets min then max for
+  readability. Both source-card methods (`selectSourceInCard` and
+  `setDisplayRange`) guard that the split panel is already expanded — loud
+  throw if not, since visible expansion is the caller's tutorial-video
+  gesture (`setCardPanelExpanded`), not something to fold into a
+  programmatic preroll. The Sources card itself is ensured expanded
+  programmatically via `cardPanel.setCardExpanded(DEFAULT_SOURCES_CARD, true)`
+  — default is already true, so this is a no-op on a fresh BDV; it covers
+  the case where the user collapsed the card manually. `BdvSliderDemo`
+  iterates `bdv.getViewerPanel().state().getSources()` and calls both
+  methods per source, picking distinct range values so the spinner edits
+  read distinctly on video.
 - **Expanding / collapsing the BDV card panel.**
   `RobotBdv.setCardPanelExpanded(bdv, expanded)` reproduces the natural user
   gesture: hover the right edge of `viewerPanel.getDisplayComponent()` to
@@ -369,9 +423,10 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
   "BDV Sources" frame's right-click popup end to end (out of scope of
   `WidgetsTest`, which only covers harvester widgets).
 - `BdvSliderDemo.main()` — opens the LLS7 dataset, shows it in a new BDV
-  window, then drags the bottom timepoint slider to exercise
-  `RobotBdv.setTimepoint`. First-pass driver for the BDV-window automation
-  branch.
+  window, drags the bottom timepoint slider, expands the card panel, walks
+  each source in the Sources card to edit its display range, then collapses
+  the card panel. Smoke driver for every `RobotBdv` primitive shipped so
+  far.
 
 ## Extending
 

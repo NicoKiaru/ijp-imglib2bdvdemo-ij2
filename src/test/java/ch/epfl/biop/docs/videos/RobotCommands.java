@@ -626,7 +626,7 @@ public class RobotCommands {
      * rejects the value, pre-format with {@link java.text.NumberFormat} at
      * the call site.
      */
-    private static void fillNumberField(JFormattedTextField field, Number value) {
+    static void fillNumberField(JFormattedTextField field, Number value) {
         Point center = centerOnScreen(field);
         RobotHelper.moveTo(center);
         RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
@@ -634,6 +634,41 @@ public class RobotCommands {
         RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
         selectAllAndDelete();
         RobotHelper.paste(String.valueOf(value));
+        RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
+        RobotHelper.enter();
+        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+    }
+
+    /**
+     * Visible sibling of {@link #fillNumberField}: types the value
+     * character-by-character via {@link RobotHelper#type} instead of pasting
+     * it in one shot. Used by the BDV-window automation
+     * ({@link RobotBdv#setDisplayRange}) where the digits appearing one at a
+     * time read better on a recorded tutorial than a value materializing
+     * instantly.
+     *
+     * <p>Trade-off vs {@link #fillNumberField}: each character goes through
+     * {@link java.awt.Robot#keyPress}, which is keyboard-layout-dependent.
+     * For the decimal point in {@code String.valueOf(value)} this is fine on
+     * US / Swiss / French layouts (all map {@code "."} to the unshifted period
+     * key), but if a future layout rejects it the paste-based
+     * {@link #fillNumberField} remains available as a fallback. Same locale
+     * caveat about the receiving formatter applies (pre-format with
+     * {@link java.text.NumberFormat} at the call site for {@code fr_FR}-style
+     * comma-decimal JVMs).</p>
+     *
+     * <p>Enter at the end is load-bearing for the same reason as
+     * {@link #fillNumberField} — a {@code JFormattedTextField} only commits
+     * the edit on Enter or focus loss.</p>
+     */
+    static void typeNumberField(JFormattedTextField field, Number value) {
+        Point center = centerOnScreen(field);
+        RobotHelper.moveTo(center);
+        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        RobotHelper.click();
+        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        selectAllAndDelete();
+        RobotHelper.type(String.valueOf(value));
         RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
         RobotHelper.enter();
         RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);

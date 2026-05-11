@@ -1,22 +1,31 @@
 package ch.epfl.biop.docs.videos;
 
+import bdv.ui.BdvDefaultCards;
 import bdv.ui.splitpanel.SplitPanel;
+import bdv.ui.sourcetable.SourceTable;
+import bdv.ui.sourcetable.SourceTableModel;
 import bdv.util.BdvHandle;
 import bdv.viewer.ViewerPanel;
 
+import javax.swing.JFormattedTextField;
 import javax.swing.JSlider;
+import javax.swing.JSpinner;
+import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Point;
+import java.awt.Rectangle;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Robot-driven primitives for a BigDataViewer window. Reaches live Swing
- * components through the {@link BdvHandle} rather than aiming at painted
- * regions of {@link ViewerPanel}, so the helpers stay robust across BDV
- * cosmetic changes.
- *
- * <p>Currently exposes a single primitive — {@link #setTimepoint(BdvHandle, int)}
- * — that visibly drags the bottom timepoint slider. More gestures (card-panel
- * toggle, mouse-wheel zoom, …) will land here as they are needed.</p>
+ * Robot-driven primitives for a BigDataViewer window. Mixes two location
+ * strategies: Swing-component lookup via the {@link BdvHandle} when a real
+ * component exists ({@link #setTimepoint setTimepoint},
+ * {@link #selectSourceInCard selectSourceInCard},
+ * {@link #setDisplayRange setDisplayRange}), and pixel-aim at the display
+ * component's trigger region when the control is only overlay-painted
+ * ({@link #setCardPanelExpanded setCardPanelExpanded}).
  */
 public class RobotBdv {
 
@@ -125,6 +134,192 @@ public class RobotBdv {
         RobotHelper.moveTo(x, y);
         RobotHelper.pause(Timings.scaled(CARD_ARROW_HOVER_PAUSE_MS));
         RobotHelper.click();
+    }
+
+    /**
+     * Visibly click a row in the BDV "Sources" card's {@link SourceTable} to
+     * select that source. The row is matched by exact
+     * {@link SourceTableModel#NAME_COLUMN} value (which echoes
+     * {@code SourceModel.getName()} — for sources opened via bdv-img-bioformats
+     * that's typically {@code "<dataset>-<series>-<channel>"}).
+     *
+     * <p>Preconditions guarded here: the {@link SplitPanel} must be expanded
+     * (call {@link #setCardPanelExpanded setCardPanelExpanded} first — a loud
+     * throw beats silently expanding the panel and hiding the gesture from the
+     * recorded video), and the "Sources" card must be expanded. The card
+     * defaults to expanded, but we ensure it programmatically via
+     * {@code cardPanel.setCardExpanded(DEFAULT_SOURCES_CARD, true)} so a
+     * previously-collapsed card doesn't throw off the click.</p>
+     *
+     * <p>The click lands in the centre of the {@link SourceTableModel#NAME_COLUMN}
+     * cell — the only non-editable column ({@code COLOR_COLUMN} opens a colour
+     * picker, {@code IS_ACTIVE_COLUMN} / {@code IS_CURRENT_COLUMN} toggle, so a
+     * misaimed click would have side effects). {@link javax.swing.JTable#scrollRectToVisible}
+     * is called programmatically before the click so the row sits inside the
+     * scroll pane's viewport — visible mouse-wheel scrolling of the sources
+     * card isn't supported yet, but tutorial datasets rarely have enough
+     * sources to need it. Loud throw with the available names on a typo.</p>
+     */
+    public static void selectSourceInCard(BdvHandle bdv, String sourceName) {
+        ensureSourcesCardReady(bdv);
+
+        SourceTable table = findSourceTable(bdv);
+        if (table == null) {
+            throw new IllegalStateException(
+                    "could not locate the Sources card's SourceTable inside the CardPanel");
+        }
+
+        int row = findRowByName(table, sourceName);
+        if (row < 0) {
+            throw new IllegalArgumentException(
+                    "no source named '" + sourceName + "' in the Sources card — available: "
+                            + listSourceNames(table));
+        }
+
+        Rectangle cell = table.getCellRect(row, SourceTableModel.NAME_COLUMN, true);
+        table.scrollRectToVisible(cell);
+        cell = table.getCellRect(row, SourceTableModel.NAME_COLUMN, true);
+
+        Point tableLoc = table.getLocationOnScreen();
+        int x = tableLoc.x + cell.x + cell.width / 2;
+        int y = tableLoc.y + cell.y + cell.height / 2;
+
+        RobotHelper.moveTo(x, y);
+        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        RobotHelper.click();
+        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+    }
+
+    /**
+     * Visibly drive the min/max spinners of the {@code BoundedRangePanel}
+     * inside the "Sources" card to set the display range of the currently
+     * selected source(s). Call {@link #selectSourceInCard selectSourceInCard}
+     * first to choose what the range edit applies to.
+     *
+     * <p>Geometry: walks the unique {@link SourceTable} up three parents
+     * ({@code viewport → scrollPane → tablePanel}) to reach the
+     * {@code BorderLayout}-laid {@code tablePanel} from
+     * {@code BdvDefaultCards.setup}, grabs the {@code BorderLayout.SOUTH} child
+     * (the {@code ConverterSetupEditPanel}), and collects all {@link JSpinner}s
+     * inside — exactly the min and max spinners of {@code BoundedRangePanel} in
+     * document order. {@code BoundedRangePanel} itself is package-private in
+     * {@code bdv.ui.convertersetupeditor}, so we can't import its class; this
+     * structural walk avoids the visibility issue.</p>
+     *
+     * <p>Spinner-order note: {@code BoundedRange.withMin} and
+     * {@code BoundedRange.withMax} both expand-to-accommodate (setting
+     * {@code min > max} drags {@code max} up, and vice versa), so we can set
+     * the two spinners in either order and the second one's value wins. We set
+     * {@code min} first then {@code max} for readability on video.</p>
+     *
+     * <p>Each spinner is filled with the same primitive the harvester uses
+     * ({@link RobotCommands#fillNumberField}): click the {@link JFormattedTextField}
+     * inside the spinner editor, select-all, paste {@code String.valueOf(value)},
+     * Enter. Paste (not type) for layout-independence; Enter is load-bearing
+     * because a {@code JFormattedTextField} only commits on Enter or focus
+     * loss.</p>
+     */
+    public static void setDisplayRange(BdvHandle bdv, double min, double max) {
+        ensureSourcesCardReady(bdv);
+
+        SourceTable table = findSourceTable(bdv);
+        if (table == null) {
+            throw new IllegalStateException(
+                    "could not locate the Sources card's SourceTable inside the CardPanel");
+        }
+
+        // table -> viewport -> scrollPane -> tablePanel (BorderLayout from BdvDefaultCards)
+        Container tablePanel = table.getParent().getParent().getParent();
+        if (!(tablePanel.getLayout() instanceof BorderLayout)) {
+            throw new IllegalStateException(
+                    "unexpected Sources card structure — table-panel layout is "
+                            + tablePanel.getLayout().getClass().getSimpleName()
+                            + ", expected BorderLayout");
+        }
+        Component editPanel = ((BorderLayout) tablePanel.getLayout())
+                .getLayoutComponent(BorderLayout.SOUTH);
+        if (!(editPanel instanceof Container)) {
+            throw new IllegalStateException(
+                    "no ConverterSetupEditPanel at SOUTH of the Sources card's table panel");
+        }
+
+        List<JSpinner> spinners = new ArrayList<>();
+        collectOfType((Container) editPanel, JSpinner.class, spinners);
+        if (spinners.size() < 2) {
+            throw new IllegalStateException(
+                    "expected 2 JSpinners (min, max) in BoundedRangePanel, found "
+                            + spinners.size());
+        }
+        fillSpinner(spinners.get(0), min);
+        fillSpinner(spinners.get(1), max);
+    }
+
+    /**
+     * Guard run before every "Sources" card interaction: the split panel must
+     * already be expanded (loud throw if not — the caller should expand it
+     * visibly via {@link #setCardPanelExpanded setCardPanelExpanded} as a
+     * tutorial-video gesture), and the "Sources" card itself is ensured
+     * programmatically (default-expanded, so usually a no-op).
+     */
+    private static void ensureSourcesCardReady(BdvHandle bdv) {
+        if (bdv.getSplitPanel().isCollapsed()) {
+            throw new IllegalStateException(
+                    "BDV split panel is collapsed — call RobotBdv.setCardPanelExpanded(bdv, true) first");
+        }
+        bdv.getCardPanel().setCardExpanded(BdvDefaultCards.DEFAULT_SOURCES_CARD, true);
+    }
+
+    private static SourceTable findSourceTable(BdvHandle bdv) {
+        Container root = (Container) bdv.getCardPanel().getComponent();
+        return firstOfType(root, SourceTable.class);
+    }
+
+    private static int findRowByName(SourceTable table, String name) {
+        for (int i = 0; i < table.getRowCount(); i++) {
+            Object v = table.getValueAt(i, SourceTableModel.NAME_COLUMN);
+            if (name.equals(String.valueOf(v))) return i;
+        }
+        return -1;
+    }
+
+    private static List<String> listSourceNames(SourceTable table) {
+        List<String> names = new ArrayList<>();
+        for (int i = 0; i < table.getRowCount(); i++) {
+            names.add(String.valueOf(table.getValueAt(i, SourceTableModel.NAME_COLUMN)));
+        }
+        return names;
+    }
+
+    private static void fillSpinner(JSpinner spinner, double value) {
+        Container editor = (Container) spinner.getEditor();
+        JFormattedTextField field = firstOfType(editor, JFormattedTextField.class);
+        if (field == null) {
+            throw new IllegalStateException(
+                    "JSpinner editor has no JFormattedTextField — non-standard editor?");
+        }
+        RobotCommands.typeNumberField(field, value);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T firstOfType(Container root, Class<T> type) {
+        for (Component child : root.getComponents()) {
+            if (type.isInstance(child)) return (T) child;
+            if (child instanceof Container) {
+                T found = firstOfType((Container) child, type);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> void collectOfType(Container root, Class<T> type, List<T> into) {
+        for (Component child : root.getComponents()) {
+            if (type.isInstance(child)) into.add((T) child);
+            if (child instanceof Container) {
+                collectOfType((Container) child, type, into);
+            }
+        }
     }
 
     /**
