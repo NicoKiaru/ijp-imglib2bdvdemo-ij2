@@ -1,8 +1,10 @@
 package ch.epfl.biop.docs.videos;
 
+import bdv.util.BdvHandle;
 import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
 import ch.epfl.biop.command.process.deconvolve.SourcesDeconvolveCommand;
 import net.imagej.patcher.LegacyInjector;
+import sc.fiji.bdvpg.command.display.ViewSynchronizeCommand;
 import sc.fiji.bdvpg.command.display.bdv.SingleBdvSourcesShowCommand;
 import sc.fiji.bdvpg.command.display.bdv.settings.BdvTitleSetCommand;
 
@@ -90,6 +92,10 @@ public class DeconvolutionDemo {
 
         Robot.runFromBDVPlaygroundTree("Sources>Other Sources", BdvTitleSetCommand.class,
                 "title", "BDV - Deconvolved Sources");
+
+        Robot.runFromBDVPlaygroundTree("Sources>Other Sources", ViewSynchronizeCommand.class,
+                "bdvhs", new String[]{"BDV - Deconvolved Sources", "BDV - Raw Sources"},
+                    "synchronizetime", true);
 
 
 

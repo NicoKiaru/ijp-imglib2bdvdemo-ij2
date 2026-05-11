@@ -1,5 +1,6 @@
 package ch.epfl.biop.docs.videos;
 
+import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import org.junit.After;
@@ -13,6 +14,8 @@ import org.scijava.plugin.Plugin;
 import org.scijava.widget.ChoiceWidget;
 import org.scijava.widget.NumberWidget;
 import sc.fiji.bdvpg.scijava.service.SourceService;
+import sc.fiji.bdvpg.service.SourceServices;
+import sc.fiji.bdvpg.viewer.bdv.BdvHandleHelper;
 
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreeModel;
@@ -43,12 +46,23 @@ import static org.junit.Assert.assertNotNull;
  */
 public class WidgetsTest {
 
+    /** BDV window titles used by {@link #testBdvHandleList()}. */
+    private static final String BDV_ALPHA_TITLE = "BDV alpha";
+    private static final String BDV_BETA_TITLE = "BDV beta";
+
     @BeforeClass
     public static void setUpClass() throws Exception {
         FijiCommands.startFiji();
         // Eager load: the source tests below need the SourceService populated.
         DemoDatasetHelper.getData(
                 DemoDatasetHelper.DemoDataset.BRAIN_SECTION_3DTILES, FijiCommands.context());
+        // Two empty BDVs registered in the ObjectService so the BdvHandleList
+        // test has something to multi-select. Stable, distinct titles so the
+        // assertion isn't sensitive to default-naming changes.
+        BdvHandle bdvAlpha = SourceServices.getBdvDisplayService().getNewBdv();
+        BdvHandleHelper.setWindowTitle(bdvAlpha, BDV_ALPHA_TITLE);
+        BdvHandle bdvBeta = SourceServices.getBdvDisplayService().getNewBdv();
+        BdvHandleHelper.setWindowTitle(bdvBeta, BDV_BETA_TITLE);
     }
 
     /**
@@ -294,6 +308,45 @@ public class WidgetsTest {
         @Parameter(label = "Sorted sources", style = "sorted") SourceAndConverter<?>[] sources;
         @Parameter(type = ItemIO.OUTPUT) int count;
         @Override public void run() { count = sources == null ? 0 : sources.length; }
+    }
+
+    // ─── BdvHandle[] → SwingBdvHandleListWidget (flat JList, multi-select) ──
+
+    /**
+     * Selects both BDV windows registered in {@link #setUpClass()} via the
+     * multi-select {@link javax.swing.JList} widget. Asserts that the output
+     * array contains both, identified by window title — which is what the
+     * widget displays (via {@code RenamableBdvHandle.toString()} →
+     * {@link BdvHandleHelper#getWindowTitle}).
+     */
+    @Test
+    public void testBdvHandleList() throws Exception {
+        String[] names = new String[] { BDV_ALPHA_TITLE, BDV_BETA_TITLE };
+        Future<CommandModule> future = RobotCommands.run(BdvHandleListDemo.class, "bdvs", names);
+        CommandModule module = future.get();
+        assertEquals(2, (int) (Integer) module.getOutput("count"));
+        String titles = (String) module.getOutput("titles");
+        // getSelectedValuesList() returns selected items in ascending index
+        // order, which here matches ObjectService registration order: alpha
+        // first, beta second.
+        assertEquals(BDV_ALPHA_TITLE + "," + BDV_BETA_TITLE, titles);
+    }
+
+    @Plugin(type = Command.class)
+    public static class BdvHandleListDemo implements Command {
+        @Parameter(label = "BDVs") BdvHandle[] bdvs;
+        @Parameter(type = ItemIO.OUTPUT) int count;
+        @Parameter(type = ItemIO.OUTPUT) String titles;
+        @Override public void run() {
+            count = bdvs == null ? 0 : bdvs.length;
+            if (bdvs == null) { titles = ""; return; }
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < bdvs.length; i++) {
+                if (i > 0) sb.append(",");
+                sb.append(BdvHandleHelper.getWindowTitle(bdvs[i]));
+            }
+            titles = sb.toString();
+        }
     }
 
     // ─── Long form → harvester wrapped in JScrollPane, scroll required ─────

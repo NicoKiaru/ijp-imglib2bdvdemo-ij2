@@ -88,6 +88,12 @@ import java.util.concurrent.Future;
  *       the source tree the same way, then drags the matching row onto
  *       the destination list. Single path only; the list isn't cleared
  *       first.</li>
+ *   <li>{@code String[]} <em>targeting a flat {@link JList}</em>
+ *       (BigDataViewer-Playground {@code SwingBdvHandleListWidget}, which
+ *       lists every registered {@code BdvHandle} for multi-selection) →
+ *       click + Ctrl+click each named row in turn. Names are matched
+ *       against {@code String.valueOf(model.getElementAt(i))} on the live
+ *       list model.</li>
  * </ul>
  */
 public class RobotCommands {
@@ -280,6 +286,14 @@ public class RobotCommands {
             JFormattedTextField field = firstOf(inputContainer,
                     JFormattedTextField.class, "JFormattedTextField (numeric spinner editor)");
             fillNumberField(field, (Number) value);
+        } else if (value instanceof String[]) {
+            // SciJava widgets backed by a flat JList (e.g. BDV-Playground
+            // SwingBdvHandleListWidget, which lists every registered BdvHandle
+            // for multi-selection). Match each name against the live list
+            // model's element toString(); click + Ctrl+click for additive
+            // multi-select.
+            JList<?> list = firstOf(inputContainer, JList.class, "JList");
+            fillListByNames(list, (String[]) value);
         } else if (value instanceof File[]) {
             AbstractButton addFiles = findAddFilesButton(inputContainer);
             if (addFiles == null) {
@@ -516,6 +530,74 @@ public class RobotCommands {
         RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
         RobotHelper.click();
         RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+    }
+
+    /**
+     * Drive a SciJava widget whose input container holds a flat
+     * {@link JList} — i.e. the BDV-Playground {@code SwingBdvHandleListWidget}
+     * (lists every registered {@code BdvHandle} for multi-selection). Each
+     * entry in {@code names} is matched against
+     * {@code String.valueOf(model.getElementAt(i))} on the live list model
+     * (for the BdvHandle widget that's the BDV window title, since
+     * {@code RenamableBdvHandle.toString()} returns {@code getWindowTitle}).
+     *
+     * <p>Visible gesture: plain click on the first row (replaces any prior
+     * selection), then Ctrl+click each subsequent row (additive selection
+     * under {@link javax.swing.ListSelectionModel#MULTIPLE_INTERVAL_SELECTION}).
+     * The widget's {@code ListSelectionListener} pushes
+     * {@code getSelectedValuesList()} into the SciJava model after every
+     * click — index-ordered, so click order doesn't determine output order.</p>
+     *
+     * <p>Indices are resolved up front so a typo throws before any visible
+     * action — avoids a half-driven list on the recorded video. Available
+     * items are listed in the error.</p>
+     */
+    private static void fillListByNames(JList<?> list, String[] names) {
+        if (!list.isShowing()) {
+            throw new IllegalStateException("JList is not on screen");
+        }
+        ListModel<?> model = list.getModel();
+        int[] indices = new int[names.length];
+        for (int n = 0; n < names.length; n++) {
+            int found = -1;
+            for (int i = 0; i < model.getSize(); i++) {
+                if (names[n].equals(String.valueOf(model.getElementAt(i)))) {
+                    found = i;
+                    break;
+                }
+            }
+            if (found < 0) {
+                StringBuilder available = new StringBuilder();
+                for (int i = 0; i < model.getSize(); i++) {
+                    if (i > 0) available.append(", ");
+                    available.append('"').append(model.getElementAt(i)).append('"');
+                }
+                throw new IllegalArgumentException("No item '" + names[n] + "' in JList. Available: ["
+                        + available + "]");
+            }
+            indices[n] = found;
+        }
+
+        java.awt.Robot r = RobotHelper.robot();
+        Point listLoc = list.getLocationOnScreen();
+        for (int k = 0; k < indices.length; k++) {
+            Rectangle bounds = list.getCellBounds(indices[k], indices[k]);
+            int x = listLoc.x + bounds.x + bounds.width / 2;
+            int y = listLoc.y + bounds.y + bounds.height / 2;
+            RobotHelper.moveTo(x, y);
+            RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
+            if (k == 0) {
+                RobotHelper.click();
+            } else {
+                // Ctrl+click → toggle into the existing selection. Plain click
+                // would replace it and we'd end up with only the last row.
+                r.keyPress(KeyEvent.VK_CONTROL);
+                r.delay(Timings.KEY_HOLD_MS);
+                RobotHelper.click();
+                r.keyRelease(KeyEvent.VK_CONTROL);
+            }
+            RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        }
     }
 
     /**
