@@ -89,11 +89,13 @@ import java.util.concurrent.Future;
  *       the destination list. Single path only; the list isn't cleared
  *       first.</li>
  *   <li>{@code String[]} <em>targeting a flat {@link JList}</em>
- *       (BigDataViewer-Playground {@code SwingBdvHandleListWidget}, which
- *       lists every registered {@code BdvHandle} for multi-selection) →
- *       click + Ctrl+click each named row in turn. Names are matched
- *       against {@code String.valueOf(model.getElementAt(i))} on the live
- *       list model.</li>
+ *       (BigDataViewer-Playground {@code SwingBdvHandleListWidget} /
+ *       {@code SwingBvvHandleListWidget}, which list every registered
+ *       {@code BdvHandle} / {@code BvvHandle} for multi-selection — same
+ *       Swing shape, same dispatch) → click + Ctrl+click each named row in
+ *       turn. Names are matched against
+ *       {@code String.valueOf(model.getElementAt(i))} on the live list
+ *       model.</li>
  * </ul>
  */
 public class RobotCommands {
@@ -288,10 +290,11 @@ public class RobotCommands {
             fillNumberField(field, (Number) value);
         } else if (value instanceof String[]) {
             // SciJava widgets backed by a flat JList (e.g. BDV-Playground
-            // SwingBdvHandleListWidget, which lists every registered BdvHandle
-            // for multi-selection). Match each name against the live list
-            // model's element toString(); click + Ctrl+click for additive
-            // multi-select.
+            // SwingBdvHandleListWidget / SwingBvvHandleListWidget, which
+            // list every registered BdvHandle / BvvHandle for
+            // multi-selection — same Swing shape, same dispatch). Match
+            // each name against the live list model's element toString();
+            // click + Ctrl+click for additive multi-select.
             JList<?> list = firstOf(inputContainer, JList.class, "JList");
             fillListByNames(list, (String[]) value);
         } else if (value instanceof File[]) {

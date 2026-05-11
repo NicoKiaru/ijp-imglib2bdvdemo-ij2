@@ -2,6 +2,7 @@ package ch.epfl.biop.docs.videos;
 
 import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
+import bvv.vistools.BvvHandle;
 import ch.epfl.biop.demos.utils.DemoDatasetHelper;
 import org.junit.After;
 import org.junit.BeforeClass;
@@ -9,13 +10,16 @@ import org.junit.Test;
 import org.scijava.ItemIO;
 import org.scijava.command.Command;
 import org.scijava.command.CommandModule;
+import org.scijava.command.CommandService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import org.scijava.widget.ChoiceWidget;
 import org.scijava.widget.NumberWidget;
+import sc.fiji.bdvpg.command.display.bvv.BvvCreateCommand;
 import sc.fiji.bdvpg.scijava.service.SourceService;
 import sc.fiji.bdvpg.service.SourceServices;
 import sc.fiji.bdvpg.viewer.bdv.BdvHandleHelper;
+import sc.fiji.bdvpg.viewer.bvv.BvvHandleHelper;
 
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreeModel;
@@ -50,6 +54,10 @@ public class WidgetsTest {
     private static final String BDV_ALPHA_TITLE = "BDV alpha";
     private static final String BDV_BETA_TITLE = "BDV beta";
 
+    /** BVV window titles used by {@link #testBvvHandleList()}. */
+    private static final String BVV_ALPHA_TITLE = "BVV alpha";
+    private static final String BVV_BETA_TITLE = "BVV beta";
+
     @BeforeClass
     public static void setUpClass() throws Exception {
         FijiCommands.startFiji();
@@ -63,6 +71,13 @@ public class WidgetsTest {
         BdvHandleHelper.setWindowTitle(bdvAlpha, BDV_ALPHA_TITLE);
         BdvHandle bdvBeta = SourceServices.getBdvDisplayService().getNewBdv();
         BdvHandleHelper.setWindowTitle(bdvBeta, BDV_BETA_TITLE);
+        // Two empty BVVs for the BvvHandleList test. BvvCreateCommand creates
+        // the window and BvvHandlePostprocessor registers it in the
+        // ObjectService as a side effect; passing windowtitle skips the
+        // harvester.
+        CommandService cs = FijiCommands.context().service(CommandService.class);
+        cs.run(BvvCreateCommand.class, true, "windowtitle", BVV_ALPHA_TITLE).get();
+        cs.run(BvvCreateCommand.class, true, "windowtitle", BVV_BETA_TITLE).get();
     }
 
     /**
@@ -344,6 +359,42 @@ public class WidgetsTest {
             for (int i = 0; i < bdvs.length; i++) {
                 if (i > 0) sb.append(",");
                 sb.append(BdvHandleHelper.getWindowTitle(bdvs[i]));
+            }
+            titles = sb.toString();
+        }
+    }
+
+    // ─── BvvHandle[] → SwingBvvHandleListWidget (same shape as BdvHandle[]) ─
+
+    /**
+     * Same flat-{@link javax.swing.JList} multi-select as
+     * {@link #testBdvHandleList()}, against the BVV (BigVolumeViewer) twin
+     * widget. Shares the {@code String[] → JList} dispatch branch in
+     * {@link RobotCommands} — no widget-specific code, just a different
+     * value type on the fixture.
+     */
+    @Test
+    public void testBvvHandleList() throws Exception {
+        String[] names = new String[] { BVV_ALPHA_TITLE+"_00", BVV_BETA_TITLE+"_00" }; // stupid thingy
+        Future<CommandModule> future = RobotCommands.run(BvvHandleListDemo.class, "bvvs", names);
+        CommandModule module = future.get();
+        assertEquals(2, (int) (Integer) module.getOutput("count"));
+        String titles = (String) module.getOutput("titles");
+        assertEquals(BVV_ALPHA_TITLE+"_00" + "," + BVV_BETA_TITLE+"_00", titles);
+    }
+
+    @Plugin(type = Command.class)
+    public static class BvvHandleListDemo implements Command {
+        @Parameter(label = "BVVs") BvvHandle[] bvvs;
+        @Parameter(type = ItemIO.OUTPUT) int count;
+        @Parameter(type = ItemIO.OUTPUT) String titles;
+        @Override public void run() {
+            count = bvvs == null ? 0 : bvvs.length;
+            if (bvvs == null) { titles = ""; return; }
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < bvvs.length; i++) {
+                if (i > 0) sb.append(",");
+                sb.append(BvvHandleHelper.getWindowTitle(bvvs[i]));
             }
             titles = sb.toString();
         }
