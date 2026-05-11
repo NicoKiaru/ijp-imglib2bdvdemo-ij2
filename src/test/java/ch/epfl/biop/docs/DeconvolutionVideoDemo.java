@@ -1,18 +1,21 @@
 package ch.epfl.biop.docs;
 
+import bdv.util.BdvHandle;
+import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
 import ch.epfl.biop.command.process.deconvolve.SourcesDeconvolveCommand;
-import ch.epfl.biop.docs.videos.FijiCommands;
+import ch.epfl.biop.docs.videos.*;
 import ch.epfl.biop.docs.videos.Robot;
-import ch.epfl.biop.docs.videos.RobotHelper;
-import ch.epfl.biop.docs.videos.Timings;
 import net.imagej.patcher.LegacyInjector;
 import sc.fiji.bdvpg.command.display.ViewSynchronizeCommand;
 import sc.fiji.bdvpg.command.display.bdv.SingleBdvSourcesShowCommand;
 import sc.fiji.bdvpg.command.display.bdv.settings.BdvTitleSetCommand;
+import sc.fiji.bdvpg.service.SourceServices;
+import sc.fiji.bdvpg.viewer.bdv.BdvHandleHelper;
 
 import java.awt.*;
 import java.io.File;
+import java.util.List;
 
 /**
  * Generates a demo for deconvolution. Should be used for video documentation.
@@ -62,16 +65,33 @@ public class DeconvolutionVideoDemo {
                 "make_new_window", true);
 
         Frame bdvRaw = RobotHelper.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
-        RobotHelper.resizeFrame(bdvRaw, 800, 300);
+        RobotHelper.resizeFrame(bdvRaw, 800, 600);
         RobotHelper.dragFrame(bdvRaw, RobotHelper.DEFAULT_FRAME_X + 450, RobotHelper.DEFAULT_FRAME_Y + 150);
 
         ch.epfl.biop.docs.videos.Robot.runFromBDVPlaygroundTree("Sources>Other Sources", BdvTitleSetCommand.class,
                 "title", "BDV - Raw Sources");
 
+        BdvHandle rawBdv = SourceServices.getBdvDisplayService().getActiveBdv();
+
+        RobotBdv.setTimepoint(rawBdv, 30);
+
+        RobotBdv.setCardPanelExpanded(rawBdv, true);
+        RobotHelper.pause(2000);
+
+        List<SourceAndConverter<?>> sources = rawBdv.getViewerPanel().state().getSources();
+        RobotBdv.selectSourceInCard(rawBdv, sources.get(0).getSpimSource().getName());
+        RobotBdv.setDisplayRange(rawBdv, 90, 1500);
+        RobotBdv.selectSourceInCard(rawBdv, sources.get(1).getSpimSource().getName());
+        RobotBdv.setDisplayRange(rawBdv, 90, 512);
+        RobotBdv.selectSourceInCard(rawBdv, sources.get(2).getSpimSource().getName());
+        RobotBdv.setDisplayRange(rawBdv, 90, 1000);
+
+        RobotBdv.setCardPanelExpanded(rawBdv, false);
+
         ch.epfl.biop.docs.videos.Robot.runFromBDVPlaygroundTree("Sources>"+fileDataset.getName(), SourcesDeconvolveCommand.class,
                 "sources", "Sources>"+fileDataset.getName(),
                 "psf", "Sources>"+filePSF.getName(),
-                "output_pixel_type", "Float",
+                "output_pixel_type", "Keep Pixel Type Of Original Image",
                 "suffix", "_deconvolved",
                 "block_size_x", 256,
                 "block_size_y", 256,
@@ -82,21 +102,24 @@ public class DeconvolutionVideoDemo {
                 "regularization_factor", 0.002f,
                 "n_threads", 4);
 
+        RobotHelper.resizeFrame(bdvRaw, 800, 400);
+
         ch.epfl.biop.docs.videos.Robot.runFromBDVPlaygroundTree("Sources>Other Sources", SingleBdvSourcesShowCommand.class,
                 "adjust_view", true,
                 "auto_contrast", false,
                 "interpolate", false,
                 "make_new_window", true);
 
+
         Frame bdvDeconvolved = RobotHelper.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
-        RobotHelper.resizeFrame(bdvDeconvolved, 800, 300);
+        RobotHelper.resizeFrame(bdvDeconvolved, 800, 400);
         RobotHelper.dragFrame(bdvDeconvolved, RobotHelper.DEFAULT_FRAME_X + 450, RobotHelper.DEFAULT_FRAME_Y + 450);
 
         ch.epfl.biop.docs.videos.Robot.runFromBDVPlaygroundTree("Sources>Other Sources", BdvTitleSetCommand.class,
                 "title", "BDV - Deconvolved Sources");
 
         Robot.runFromBDVPlaygroundTree("Sources>Other Sources", ViewSynchronizeCommand.class,
-                "bdvhs", new String[]{"BDV - Deconvolved Sources", "BDV - Raw Sources"},
+                "bdvhs", new String[]{"BDV - Raw Sources", "BDV - Deconvolved Sources"},
                     "synchronizetime", true);
     }
 }
