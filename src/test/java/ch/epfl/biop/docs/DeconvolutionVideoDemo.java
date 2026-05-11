@@ -11,7 +11,6 @@ import sc.fiji.bdvpg.command.display.ViewSynchronizeCommand;
 import sc.fiji.bdvpg.command.display.bdv.SingleBdvSourcesShowCommand;
 import sc.fiji.bdvpg.command.display.bdv.settings.BdvTitleSetCommand;
 import sc.fiji.bdvpg.service.SourceServices;
-import sc.fiji.bdvpg.viewer.bdv.BdvHandleHelper;
 
 import java.awt.*;
 import java.io.File;
@@ -49,7 +48,7 @@ public class DeconvolutionVideoDemo {
 
 
         File filePSF = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/14505724/files/psf-400nm.tif");
-        ch.epfl.biop.docs.videos.Robot.runFromBDVPlaygroundTree("Sources>Other Sources",
+        Robot.runFromBDVPlaygroundTree("Sources>Other Sources",
                 DatasetFromBioFormatsCreateCommand.class,
                 "datasetname", filePSF.getName(),
                 "unit", "MICROMETER",
@@ -58,7 +57,7 @@ public class DeconvolutionVideoDemo {
                 "auto_pyramidize", true,
                 "disable_memo", false);
 
-        ch.epfl.biop.docs.videos.Robot.runFromBDVPlaygroundTree("Sources>"+fileDataset.getName(), SingleBdvSourcesShowCommand.class,
+        Robot.runFromBDVPlaygroundTree("Sources>"+fileDataset.getName(), SingleBdvSourcesShowCommand.class,
                 "adjust_view", true,
                 "auto_contrast", true,
                 "interpolate", false,
@@ -68,7 +67,7 @@ public class DeconvolutionVideoDemo {
         RobotHelper.resizeFrame(bdvRaw, 800, 600);
         RobotHelper.dragFrame(bdvRaw, RobotHelper.DEFAULT_FRAME_X + 450, RobotHelper.DEFAULT_FRAME_Y + 150);
 
-        ch.epfl.biop.docs.videos.Robot.runFromBDVPlaygroundTree("Sources>Other Sources", BdvTitleSetCommand.class,
+        Robot.runFromBDVPlaygroundTree("Sources>Other Sources", BdvTitleSetCommand.class,
                 "title", "BDV - Raw Sources");
 
         BdvHandle rawBdv = SourceServices.getBdvDisplayService().getActiveBdv();
@@ -88,7 +87,7 @@ public class DeconvolutionVideoDemo {
 
         RobotBdv.setCardPanelExpanded(rawBdv, false);
 
-        ch.epfl.biop.docs.videos.Robot.runFromBDVPlaygroundTree("Sources>"+fileDataset.getName(), SourcesDeconvolveCommand.class,
+        Robot.runFromBDVPlaygroundTree("Sources>"+fileDataset.getName(), SourcesDeconvolveCommand.class,
                 "sources", "Sources>"+fileDataset.getName(),
                 "psf", "Sources>"+filePSF.getName(),
                 "output_pixel_type", "Keep Pixel Type Of Original Image",
@@ -104,7 +103,7 @@ public class DeconvolutionVideoDemo {
 
         RobotHelper.resizeFrame(bdvRaw, 800, 400);
 
-        ch.epfl.biop.docs.videos.Robot.runFromBDVPlaygroundTree("Sources>Other Sources", SingleBdvSourcesShowCommand.class,
+        Robot.runFromBDVPlaygroundTree("Sources>Other Sources", SingleBdvSourcesShowCommand.class,
                 "adjust_view", true,
                 "auto_contrast", false,
                 "interpolate", false,
@@ -115,7 +114,7 @@ public class DeconvolutionVideoDemo {
         RobotHelper.resizeFrame(bdvDeconvolved, 800, 400);
         RobotHelper.dragFrame(bdvDeconvolved, RobotHelper.DEFAULT_FRAME_X + 450, RobotHelper.DEFAULT_FRAME_Y + 450);
 
-        ch.epfl.biop.docs.videos.Robot.runFromBDVPlaygroundTree("Sources>Other Sources", BdvTitleSetCommand.class,
+        Robot.runFromBDVPlaygroundTree("Sources>Other Sources", BdvTitleSetCommand.class,
                 "title", "BDV - Deconvolved Sources");
 
         Robot.runFromBDVPlaygroundTree("Sources>Other Sources", ViewSynchronizeCommand.class,
