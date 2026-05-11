@@ -17,6 +17,7 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 | `RobotCommands` | `CommandService`-style runner that drives a SciJava command's harvester dialog by reflecting `@Parameter` labels and filling each widget via Robot. `run(Class, ...)` (direct) and `runViaSearch(Class, query, ...)` (via the IJ search bar). Currently supports `boolean` (JCheckBox), `Number` (JSpinner / slider / scrollbar — drives the inner JFormattedTextField), `String` (JTextField), `String` targeting a `JComboBox` (choices, default style), `String` targeting a `JRadioButton` group (choices, radio styles), `File` / `File[]` (Browse + file-chooser flow), `String` targeting a `JTree` (e.g. BDV-Playground `SwingSourceWidget`), `String` targeting a `JTree` paired with a `JList` (BDV-Playground `SwingSourceSortedListWidget` — drag tree row → list), and `String[]` targeting a flat `JList` (BDV-Playground `SwingBdvHandleListWidget` / `SwingBvvHandleListWidget` — multi-select by display name; both widgets share the same Swing shape and dispatch branch). |
 | `RobotTree` | Robot primitives for a `JTree` reachable on screen — `selectPath(JTree, String)` (navigate, expand ancestors via double-click, single-click final node) and `rightClickPath(JTree, String)` (same + right-click in place). Shared between the harvester JTree branch in `RobotCommands` and standalone tree frames like the "BDV Sources" panel. |
 | `RobotPopup` | Robot navigation of an open Swing `JPopupMenu` — `clickPath(String)` finds the active popup via `MenuSelectionManager.defaultManager()`, hovers through intermediate submenus (Swing auto-opens on mouse-enter), and clicks the final menu item. Path syntax matches `RobotTree`: `">"`-delimited, exact `JMenuItem.getText()`. |
+| `RobotBdv` | Robot primitives for a live BigDataViewer window. Mixes two location strategies: Swing-component lookup via `BdvHandle` when a component exists (timepoint slider), pixel-aim at the display component's trigger region when only an overlay-painted control exists (card-panel arrow). Currently: `setTimepoint(BdvHandle, int)` — visibly drags `ViewerPanel`'s bottom timepoint `JSlider` (private `sliderTime`, added at `BorderLayout.SOUTH` only when the data has >1 timepoint), throws loudly on single-timepoint data or out-of-range value; `setCardPanelExpanded(BdvHandle, boolean)` — hovers the right-edge of `ViewerPanel.getDisplayComponent()` to materialize the one-touch arrow, pauses for the show animation, then clicks to forward through `SplitPaneOneTouchExpandTrigger` into `SplitPanel.setCollapsed`. Idempotent (no-op if already in the requested state). |
 | `WidgetsTest` | JUnit 4 test class — boots Fiji once in `@BeforeClass` (also loads `BRAIN_SECTION_3DTILES` for the source tests, opens two empty BDVs with stable titles "BDV alpha" / "BDV beta" via `SourceServices.getBdvDisplayService().getNewBdv()`, and opens two empty BVVs "BVV alpha" / "BVV beta" by running `BvvCreateCommand` through the `CommandService` — its `BvvHandlePostprocessor` registers each handle in the `ObjectService`), then one `@Test` per widget drives a nested `public static class XxxDemo implements Command` fixture via `RobotCommands.run` and asserts the echoed output. Covers `String`, `boolean`, `File`, `File[]`, all six numeric styles (grouped), all four choice styles (grouped), single `SourceAndConverter`, default `SourceAndConverter[]`, the sorted `SourceAndConverter[]` variant (`style="sorted"`, drag tree → list), `BdvHandle[]` and `BvvHandle[]` (flat-`JList` multi-select, same dispatch), and a 30-boolean `LongFormDemo` that forces the harvester into a `JScrollPane` and exercises `RobotHelper.scrollIntoView` at top / mid / bottom positions. The harvester dialog is the system-under-test; nested fixtures keep each widget's command and assertions co-located. `@After` disposes any leftover `Dialog` so a mid-dialog failure doesn't pollute the next test. |
 | `SearchBarTest` | Driver: starts Fiji, runs `"show bdv play"` via the search bar — smoke test for `FijiCommands.searchAndRun`. |
 | `RobotSourceTreeRightClickTest` | Driver: starts Fiji, loads `BRAIN_SECTION_3DTILES` (auto-shows the standalone "BDV Sources" frame), places the frame, right-clicks a parent node with `RobotTree.rightClickPath`, then walks the popup with `RobotPopup.clickPath("Viewer>BDV>BDV - Show Sources")` to invoke a SciJava command pre-filled with all descendant sources. Not a widget test — it drives a standalone frame's popup, which is why it lives outside `WidgetsTest`. |
@@ -298,6 +299,44 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
   `BvvHandle` in the `ObjectService` as a side effect of the run, so the
   widget picks it up).
 
+- **Driving a BDV window's timepoint slider.** `RobotBdv.setTimepoint(bdv, t)`
+  reaches into `bdvHandle.getViewerPanel()`, finds the single `JSlider` child
+  (bdv-core's private `sliderTime`, added at `BorderLayout.SOUTH` only for
+  multi-timepoint data), computes current and target thumb x positions by
+  linear interpolation between `slider.getMinimum()` / `getMaximum()` over the
+  slider's screen bounds (with an 8 px thumb-half-width inset), and uses the
+  public `RobotHelper.drag` primitive to visibly drag from one to the other.
+  No-op when already on the target value; loud throw on a single-timepoint
+  dataset or an out-of-range value. Geometry note: the linear-interp model is
+  off by a pixel or two at the ends of the track — fine here because the click
+  only needs to land on the thumb, and Swing's drag pipeline reads the final
+  thumb position from the released x. If a future LAF paints a wider or
+  narrower thumb, the `THUMB_HALF_PX` constant absorbs it. The companion
+  `BdvSliderDemo` driver exercises this end to end: open LLS7 → show in BDV
+  via the source-tree right-click flow → drag the slider to `max`, `0`,
+  `max / 2`.
+- **Expanding / collapsing the BDV card panel.**
+  `RobotBdv.setCardPanelExpanded(bdv, expanded)` reproduces the natural user
+  gesture: hover the right edge of `viewerPanel.getDisplayComponent()` to
+  materialize the one-touch overlay arrow, wait for the
+  `SHOW_EXPAND` / `SHOW_COLLAPSE` animation to read on video, then click.
+  Click dispatch goes through bdv-core's `SplitPaneOneTouchExpandTrigger`
+  (a `MouseAdapter` on the display component) which forwards into
+  `SplitPanel.setCollapsed(!isCollapsed())`. Two reasons pixel-aim — not
+  component lookup — is the right approach here, in contrast to the
+  timepoint slider: (1) the arrow is painted by
+  `SplitPaneOneTouchExpandAnimator` as an `OverlayAnimator` on the viewer's
+  display, *not* a Swing component, so there is nothing to point at via
+  `ComponentInspector`; (2) the trigger region is defined in pixel terms by
+  the animator itself — `x > viewPortWidth - borderWidth` and
+  `|viewPortHeight - 2y| < triggerHeight`, where `borderWidth ≈ arrowImg.w + 10`
+  and `triggerHeight ≈ arrowImg.h + 10` (both scaled by UI scale) — so aiming
+  at `(displayRight - CARD_ARROW_RIGHT_INSET_PX, displayMidY)` with an inset
+  of 5 px lands well inside that region at UI scale 1. Idempotent on
+  `SplitPanel.isCollapsed()`: no-op when already in the requested state, no
+  cursor motion either. `BdvSliderDemo` exercises both expand and collapse
+  end to end after the slider drags.
+
 ## Known limitations
 
 - **AWT menus have no bounds.** The IJ1 main frame uses `java.awt.MenuBar` /
@@ -329,6 +368,10 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`.
 - `RobotSourceTreeRightClickTest.main()` — drives the standalone
   "BDV Sources" frame's right-click popup end to end (out of scope of
   `WidgetsTest`, which only covers harvester widgets).
+- `BdvSliderDemo.main()` — opens the LLS7 dataset, shows it in a new BDV
+  window, then drags the bottom timepoint slider to exercise
+  `RobotBdv.setTimepoint`. First-pass driver for the BDV-window automation
+  branch.
 
 ## Extending
 
