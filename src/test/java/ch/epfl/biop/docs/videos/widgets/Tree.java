@@ -1,4 +1,7 @@
-package ch.epfl.biop.docs.videos;
+package ch.epfl.biop.docs.videos.widgets;
+
+import ch.epfl.biop.docs.videos.core.Timings;
+import ch.epfl.biop.docs.videos.core.Ui;
 
 import javax.swing.JTree;
 import javax.swing.SwingUtilities;
@@ -16,11 +19,11 @@ import java.util.List;
  * {@code SwingSourceListWidget}) and the standalone BigDataViewer-Playground
  * "BDV Sources" frame ({@code SourceTree}) expose exactly the same
  * {@code DefaultMutableTreeNode}-based model — so the same {@code ">"}-delimited
- * path API drives both. {@link RobotCommands#fillWidget} delegates here for the
+ * path API drives both. {@link Harvester#fillWidget} delegates here for the
  * widget case; a test driver can call directly here to drive the standalone
  * frame.</p>
  *
- * <p>Path semantics (shared with {@link RobotCommands}):</p>
+ * <p>Path semantics (shared with {@link Harvester}):</p>
  * <ul>
  *   <li>Path segments must match {@link DefaultMutableTreeNode#toString()}
  *       <em>exactly</em>, including the root. A loud {@link IllegalArgumentException}
@@ -34,7 +37,7 @@ import java.util.List;
  *       so a parent-node click delivers everything beneath it.</li>
  * </ul>
  */
-public class RobotTree {
+public class Tree {
 
     /**
      * Navigate {@code tree} along {@code path}, double-clicking each ancestor
@@ -44,7 +47,7 @@ public class RobotTree {
     public static void selectPath(JTree tree, String path) {
         TreePath target = navigateAndExpand(tree, path);
         clickRow(tree, target, false);
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
     }
 
     /**
@@ -60,15 +63,15 @@ public class RobotTree {
      *
      * <p>Caller is responsible for any post-popup gestures (waiting for the
      * popup to be visible, navigating its menu items, dismissing with
-     * {@link RobotHelper#escape()}). This method returns immediately after
+     * {@link Ui#escape()}). This method returns immediately after
      * the right-click is dispatched.</p>
      */
     public static void rightClickPath(JTree tree, String path) {
         TreePath target = navigateAndExpand(tree, path);
         clickRow(tree, target, false);
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
-        RobotHelper.rightClick();
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.rightClick();
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
     }
 
     // ===== Path navigation =======================================================
@@ -118,7 +121,7 @@ public class RobotTree {
             TreePath ap = ancestorPaths[i];
             if (tree.isExpanded(ap)) continue;
             clickRow(tree, ap, true);
-            RobotHelper.pause(Timings.PAUSE_AFTER_TREE_EXPAND_MS);
+            Ui.pause(Timings.PAUSE_AFTER_TREE_EXPAND_MS);
             if (!tree.isExpanded(ap)) {
                 throw new IllegalStateException("Tree path did not expand after double-click: " + ap);
             }
@@ -156,12 +159,12 @@ public class RobotTree {
      */
     static void clickRow(JTree tree, TreePath path, boolean doubleClick) {
         Point center = rowScreenCenter(tree, path);
-        RobotHelper.moveTo(center.x, center.y);
-        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        Ui.moveTo(center.x, center.y);
+        Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
         if (doubleClick) {
-            RobotHelper.doubleClick();
+            Ui.doubleClick();
         } else {
-            RobotHelper.click();
+            Ui.click();
         }
     }
 
@@ -170,7 +173,7 @@ public class RobotTree {
      * view first (EDT-bound) so {@link JTree#getRowForPath} / {@link JTree#getRowBounds}
      * return non-null values, then converts to absolute coordinates via
      * {@link JTree#getLocationOnScreen}. Used by {@link #clickRow} and by the
-     * sorted-list drag-source flow in {@link RobotCommands}.
+     * sorted-list drag-source flow in {@link Harvester}.
      */
     public static Point rowScreenCenter(JTree tree, TreePath path) {
         try {

@@ -1,4 +1,4 @@
-package ch.epfl.biop.docs.videos;
+package ch.epfl.biop.docs.videos.core;
 
 import javax.swing.AbstractButton;
 import javax.swing.JLabel;
@@ -26,7 +26,7 @@ import java.util.Map;
  *   {@code "ImageJ / [AwtMenu] Plugins / [AwtMenuItem] Macros"}
  *
  * Each entry records the component's local bounds and (when reachable) its
- * absolute screen location — the latter is what the {@link RobotHelper} needs.
+ * absolute screen location — the latter is what the {@link Ui} needs.
  *
  * Caveats:
  *   - AWT {@code MenuBar}/{@code Menu}/{@code MenuItem} (used by IJ1) are
@@ -36,7 +36,7 @@ import java.util.Map;
  *   - Swing {@code JMenuBar}/{@code JMenu}/{@code JMenuItem} ARE components,
  *     so their bounds/screen locations are populated when the menu is realized.
  */
-public class ComponentInspector {
+public class Inspector {
 
     /** Information about a single visited component. */
     public static class ComponentInfo {

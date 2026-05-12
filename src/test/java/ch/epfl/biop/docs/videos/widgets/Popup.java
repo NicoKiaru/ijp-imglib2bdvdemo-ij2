@@ -1,4 +1,7 @@
-package ch.epfl.biop.docs.videos;
+package ch.epfl.biop.docs.videos.widgets;
+
+import ch.epfl.biop.docs.videos.core.Timings;
+import ch.epfl.biop.docs.videos.core.Ui;
 
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
@@ -20,7 +23,7 @@ import java.util.List;
  * until a visible {@link JPopupMenu} shows up, then walk the
  * {@code ">"}-delimited path through nested submenus.</p>
  *
- * <p>Path semantics (consistent with {@link RobotTree}):</p>
+ * <p>Path semantics (consistent with {@link Tree}):</p>
  * <ul>
  *   <li>Segments must match {@link JMenuItem#getText()} <em>exactly</em>;
  *       loud throw with the list of available items at that level on mismatch.</li>
@@ -33,7 +36,7 @@ import java.util.List;
  *   <li>The final segment is left-clicked, which fires its action.</li>
  * </ul>
  */
-public class RobotPopup {
+public class Popup {
 
     /** Max time to wait for the active popup or any submenu to become visible. */
     public static long POPUP_WAIT_TIMEOUT_MS = 3000;
@@ -70,9 +73,9 @@ public class RobotPopup {
             moveToItem(item);
             boolean isLast = (i == parts.length - 1);
             if (isLast) {
-                RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
-                RobotHelper.click();
-                RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+                Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+                Ui.click();
+                Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
             } else {
                 if (!(item instanceof JMenu)) {
                     throw new IllegalArgumentException("Popup path segment '"
@@ -81,7 +84,7 @@ public class RobotPopup {
                 }
                 JMenu jmenu = (JMenu) item;
                 // Hover dwell: Swing auto-opens the submenu on mouse-enter.
-                RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
+                Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
                 JPopupMenu sub = jmenu.getPopupMenu();
                 if (!waitForPopupShowing(sub, POPUP_WAIT_TIMEOUT_MS)) {
                     throw new IllegalStateException("Submenu '" + parts[i]
@@ -125,7 +128,7 @@ public class RobotPopup {
     private static void moveToItem(JMenuItem item) {
         long deadline = System.currentTimeMillis() + POPUP_WAIT_TIMEOUT_MS;
         while (!item.isShowing() && System.currentTimeMillis() < deadline) {
-            RobotHelper.rawPause(POPUP_POLL_INTERVAL_MS);
+            Ui.rawPause(POPUP_POLL_INTERVAL_MS);
         }
         if (!item.isShowing()) {
             throw new IllegalStateException("JMenuItem '" + item.getText()
@@ -134,7 +137,7 @@ public class RobotPopup {
         Point loc = item.getLocationOnScreen();
         int x = loc.x + item.getWidth() / 2;
         int y = loc.y + item.getHeight() / 2;
-        RobotHelper.moveTo(x, y);
+        Ui.moveTo(x, y);
     }
 
     // ===== Popup discovery =======================================================
@@ -153,7 +156,7 @@ public class RobotPopup {
                     return (JPopupMenu) me;
                 }
             }
-            RobotHelper.rawPause(POPUP_POLL_INTERVAL_MS);
+            Ui.rawPause(POPUP_POLL_INTERVAL_MS);
         }
         return null;
     }
@@ -162,7 +165,7 @@ public class RobotPopup {
         long deadline = System.currentTimeMillis() + timeoutMs;
         while (System.currentTimeMillis() < deadline) {
             if (popup.isShowing()) return true;
-            RobotHelper.rawPause(POPUP_POLL_INTERVAL_MS);
+            Ui.rawPause(POPUP_POLL_INTERVAL_MS);
         }
         return false;
     }

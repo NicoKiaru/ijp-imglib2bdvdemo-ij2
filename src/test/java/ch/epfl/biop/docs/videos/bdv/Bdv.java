@@ -1,4 +1,8 @@
-package ch.epfl.biop.docs.videos;
+package ch.epfl.biop.docs.videos.bdv;
+
+import ch.epfl.biop.docs.videos.core.Timings;
+import ch.epfl.biop.docs.videos.core.Ui;
+import ch.epfl.biop.docs.videos.widgets.Harvester;
 
 import bdv.ui.BdvDefaultCards;
 import bdv.ui.splitpanel.SplitPanel;
@@ -27,7 +31,7 @@ import java.util.List;
  * component's trigger region when the control is only overlay-painted
  * ({@link #setCardPanelExpanded setCardPanelExpanded}).
  */
-public class RobotBdv {
+public class Bdv {
 
     /**
      * Half the visible thumb width, used to inset the usable track region.
@@ -97,7 +101,7 @@ public class RobotBdv {
                 + (int) Math.round((targetTimepoint - min) * (double) usable / range);
         int y = loc.y + h / 2;
 
-        RobotHelper.drag(currentX, y, targetX, y);
+        Ui.drag(currentX, y, targetX, y);
     }
 
     /**
@@ -131,9 +135,9 @@ public class RobotBdv {
         // Move into the trigger zone so the arrow paints in, pause for the
         // show animation, then click — the trigger's mouseClicked handler
         // forwards to splitPanel.setCollapsed(!isCollapsed()).
-        RobotHelper.moveTo(x, y);
-        RobotHelper.pause(Timings.scaled(CARD_ARROW_HOVER_PAUSE_MS));
-        RobotHelper.click();
+        Ui.moveTo(x, y);
+        Ui.pause(Timings.scaled(CARD_ARROW_HOVER_PAUSE_MS));
+        Ui.click();
     }
 
     /**
@@ -184,10 +188,10 @@ public class RobotBdv {
         int x = tableLoc.x + cell.x + cell.width / 2;
         int y = tableLoc.y + cell.y + cell.height / 2;
 
-        RobotHelper.moveTo(x, y);
-        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
-        RobotHelper.click();
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.moveTo(x, y);
+        Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        Ui.click();
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
     }
 
     /**
@@ -213,7 +217,7 @@ public class RobotBdv {
      * {@code min} first then {@code max} for readability on video.</p>
      *
      * <p>Each spinner is filled with the same primitive the harvester uses
-     * ({@link RobotCommands#fillNumberField}): click the {@link JFormattedTextField}
+     * ({@link Harvester#fillNumberField}): click the {@link JFormattedTextField}
      * inside the spinner editor, select-all, paste {@code String.valueOf(value)},
      * Enter. Paste (not type) for layout-independence; Enter is load-bearing
      * because a {@code JFormattedTextField} only commits on Enter or focus
@@ -264,7 +268,7 @@ public class RobotBdv {
     private static void ensureSourcesCardReady(BdvHandle bdv) {
         if (bdv.getSplitPanel().isCollapsed()) {
             throw new IllegalStateException(
-                    "BDV split panel is collapsed — call RobotBdv.setCardPanelExpanded(bdv, true) first");
+                    "BDV split panel is collapsed — call Bdv.setCardPanelExpanded(bdv, true) first");
         }
         bdv.getCardPanel().setCardExpanded(BdvDefaultCards.DEFAULT_SOURCES_CARD, true);
     }
@@ -297,7 +301,7 @@ public class RobotBdv {
             throw new IllegalStateException(
                     "JSpinner editor has no JFormattedTextField — non-standard editor?");
         }
-        RobotCommands.typeNumberField(field, value);
+        Harvester.typeNumberField(field, value);
     }
 
     @SuppressWarnings("unchecked")
@@ -334,5 +338,5 @@ public class RobotBdv {
         return null;
     }
 
-    private RobotBdv() { /* static helpers only */ }
+    private Bdv() { /* static helpers only */ }
 }

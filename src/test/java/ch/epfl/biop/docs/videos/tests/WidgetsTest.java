@@ -1,4 +1,8 @@
-package ch.epfl.biop.docs.videos;
+package ch.epfl.biop.docs.videos.tests;
+
+import ch.epfl.biop.docs.videos.core.Ui;
+import ch.epfl.biop.docs.videos.fiji.Fiji;
+import ch.epfl.biop.docs.videos.widgets.Harvester;
 
 import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
@@ -33,7 +37,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 /**
- * End-to-end tests for every widget {@link RobotCommands} can drive. Boots
+ * End-to-end tests for every widget {@link Harvester} can drive. Boots
  * Fiji (and loads the {@code BRAIN_SECTION_3DTILES} dataset for the source
  * tests) once in {@link #setUpClass()}; each {@code @Test} drives one
  * harvester dialog and asserts the echoed output.
@@ -60,10 +64,10 @@ public class WidgetsTest {
 
     @BeforeClass
     public static void setUpClass() throws Exception {
-        FijiCommands.startFiji();
+        Fiji.startFiji();
         // Eager load: the source tests below need the SourceService populated.
         DemoDatasetHelper.getData(
-                DemoDatasetHelper.DemoDataset.BRAIN_SECTION_3DTILES, FijiCommands.context());
+                DemoDatasetHelper.DemoDataset.BRAIN_SECTION_3DTILES, Fiji.context());
         // Two empty BDVs registered in the ObjectService so the BdvHandleList
         // test has something to multi-select. Stable, distinct titles so the
         // assertion isn't sensitive to default-naming changes.
@@ -75,7 +79,7 @@ public class WidgetsTest {
         // the window and BvvHandlePostprocessor registers it in the
         // ObjectService as a side effect; passing windowtitle skips the
         // harvester.
-        CommandService cs = FijiCommands.context().service(CommandService.class);
+        CommandService cs = Fiji.context().service(CommandService.class);
         cs.run(BvvCreateCommand.class, true, "windowtitle", BVV_ALPHA_TITLE).get();
         cs.run(BvvCreateCommand.class, true, "windowtitle", BVV_BETA_TITLE).get();
     }
@@ -99,7 +103,7 @@ public class WidgetsTest {
     @Test
     public void testString() throws Exception {
         String name = "hello robot";
-        Future<CommandModule> future = RobotCommands.run(StringDemo.class, "name", name);
+        Future<CommandModule> future = Harvester.run(StringDemo.class, "name", name);
         assertEquals("name=" + name, future.get().getOutput("result"));
     }
 
@@ -114,7 +118,7 @@ public class WidgetsTest {
 
     @Test
     public void testBoolean() throws Exception {
-        Future<CommandModule> future = RobotCommands.run(BooleanDemo.class, "doIt", true);
+        Future<CommandModule> future = Harvester.run(BooleanDemo.class, "doIt", true);
         assertEquals("doIt=true", future.get().getOutput("result"));
     }
 
@@ -130,7 +134,7 @@ public class WidgetsTest {
     @Test
     public void testFile() throws Exception {
         File tmp = makeTmp("widgets-file-", ".txt", "hi");
-        Future<CommandModule> future = RobotCommands.run(FileDemo.class, "file", tmp);
+        Future<CommandModule> future = Harvester.run(FileDemo.class, "file", tmp);
         assertEquals(tmp, future.get().getInput("file"));
     }
 
@@ -150,7 +154,7 @@ public class WidgetsTest {
                 makeTmp("widgets-list-b-", ".txt", "b"),
                 makeTmp("widgets-list-c-", ".txt", "c"),
         };
-        Future<CommandModule> future = RobotCommands.run(FileListDemo.class, "files", tmps);
+        Future<CommandModule> future = Harvester.run(FileListDemo.class, "files", tmps);
         File[] out = (File[]) future.get().getInput("files");
         assertEquals(tmps.length, out.length);
     }
@@ -173,7 +177,7 @@ public class WidgetsTest {
         float regularization = 0.005f;
         double sigma = 2.5;
 
-        Future<CommandModule> future = RobotCommands.run(NumberDemo.class,
+        Future<CommandModule> future = Harvester.run(NumberDemo.class,
                 "iterations", iterations,
                 "blockSize", blockSize,
                 "threshold", threshold,
@@ -220,7 +224,7 @@ public class WidgetsTest {
         String direction = "Down";
         String quality = "High";
 
-        Future<CommandModule> future = RobotCommands.run(ChoiceDemo.class,
+        Future<CommandModule> future = Harvester.run(ChoiceDemo.class,
                 "pixelType", pixelType,
                 "mode", mode,
                 "direction", direction,
@@ -264,7 +268,7 @@ public class WidgetsTest {
     @Test
     public void testSource() throws Exception {
         String pathStr = "Sources>BrainSection-Tiles>Channel>ch_0>All Sources";
-        Future<CommandModule> future = RobotCommands.run(SourceDemo.class, "source", pathStr);
+        Future<CommandModule> future = Harvester.run(SourceDemo.class, "source", pathStr);
         Object result = future.get().getOutput("result");
         assertNotNull(result);
         if ("null".equals(result)) {
@@ -285,13 +289,13 @@ public class WidgetsTest {
 
     @Test
     public void testSourceList() throws Exception {
-        SourceService bss = FijiCommands.context().service(SourceService.class);
+        SourceService bss = Fiji.context().service(SourceService.class);
         TreeModel model = bss.tree().getTreeModel();
 
         String pathStr = "Sources>BrainSection-Tiles>Channel>ch_0";
         int expected = countLeavesAt((DefaultMutableTreeNode) model.getRoot(), pathStr.split(">"));
 
-        Future<CommandModule> future = RobotCommands.run(SourceListDemo.class, "sources", pathStr);
+        Future<CommandModule> future = Harvester.run(SourceListDemo.class, "sources", pathStr);
         int actual = (Integer) future.get().getOutput("count");
         assertEquals(expected, actual);
     }
@@ -307,13 +311,13 @@ public class WidgetsTest {
 
     @Test
     public void testSourceSortedList() throws Exception {
-        SourceService bss = FijiCommands.context().service(SourceService.class);
+        SourceService bss = Fiji.context().service(SourceService.class);
         TreeModel model = bss.tree().getTreeModel();
 
         String pathStr = "Sources>BrainSection-Tiles>Channel>ch_0";
         int expected = countLeavesAt((DefaultMutableTreeNode) model.getRoot(), pathStr.split(">"));
 
-        Future<CommandModule> future = RobotCommands.run(SourceSortedListDemo.class, "sources", pathStr);
+        Future<CommandModule> future = Harvester.run(SourceSortedListDemo.class, "sources", pathStr);
         int actual = (Integer) future.get().getOutput("count");
         assertEquals(expected, actual);
     }
@@ -337,7 +341,7 @@ public class WidgetsTest {
     @Test
     public void testBdvHandleList() throws Exception {
         String[] names = new String[] { BDV_ALPHA_TITLE, BDV_BETA_TITLE };
-        Future<CommandModule> future = RobotCommands.run(BdvHandleListDemo.class, "bdvs", names);
+        Future<CommandModule> future = Harvester.run(BdvHandleListDemo.class, "bdvs", names);
         CommandModule module = future.get();
         assertEquals(2, (int) (Integer) module.getOutput("count"));
         String titles = (String) module.getOutput("titles");
@@ -370,13 +374,13 @@ public class WidgetsTest {
      * Same flat-{@link javax.swing.JList} multi-select as
      * {@link #testBdvHandleList()}, against the BVV (BigVolumeViewer) twin
      * widget. Shares the {@code String[] → JList} dispatch branch in
-     * {@link RobotCommands} — no widget-specific code, just a different
+     * {@link Harvester} — no widget-specific code, just a different
      * value type on the fixture.
      */
     @Test
     public void testBvvHandleList() throws Exception {
         String[] names = new String[] { BVV_ALPHA_TITLE+"_00", BVV_BETA_TITLE+"_00" }; // stupid thingy
-        Future<CommandModule> future = RobotCommands.run(BvvHandleListDemo.class, "bvvs", names);
+        Future<CommandModule> future = Harvester.run(BvvHandleListDemo.class, "bvvs", names);
         CommandModule module = future.get();
         assertEquals(2, (int) (Integer) module.getOutput("count"));
         String titles = (String) module.getOutput("titles");
@@ -403,7 +407,7 @@ public class WidgetsTest {
     // ─── Long form → harvester wrapped in JScrollPane, scroll required ─────
 
     /**
-     * Smoke-tests {@link RobotHelper#scrollIntoView}: a command with enough
+     * Smoke-tests {@link Ui#scrollIntoView}: a command with enough
      * boolean parameters that {@code SwingInputHarvester} wraps its panel in
      * a {@link javax.swing.JScrollPane}. Setting widgets at the top, the
      * middle and the bottom exercises three regimes — already visible
@@ -421,7 +425,7 @@ public class WidgetsTest {
      */
     @Test
     public void testScrollIntoView() throws Exception {
-        Future<CommandModule> future = RobotCommands.run(LongFormDemo.class,
+        Future<CommandModule> future = Harvester.run(LongFormDemo.class,
                 "b01", true,
                 "b15", true,
                 "b30", true);

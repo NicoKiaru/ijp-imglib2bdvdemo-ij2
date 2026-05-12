@@ -1,4 +1,4 @@
-package ch.epfl.biop.docs.videos;
+package ch.epfl.biop.docs.videos.core;
 
 import javax.swing.JScrollPane;
 import javax.swing.JViewport;
@@ -30,7 +30,7 @@ import java.awt.event.KeyEvent;
  *   - Defaults are mutable {@code public static} fields so a video script can
  *     tweak them at the top of {@code main} without touching the helper.
  */
-public class RobotHelper {
+public class Ui {
 
     // ===== Tweakable defaults =====================================================
 
@@ -81,7 +81,7 @@ public class RobotHelper {
     /** Logs the detected screens — useful to confirm DEFAULT_SCREEN is correct. */
     public static void logScreens() {
         GraphicsDevice[] all = screens();
-        System.out.println("[RobotHelper] " + all.length + " screen(s) detected:");
+        System.out.println("[Ui] " + all.length + " screen(s) detected:");
         for (int i = 0; i < all.length; i++) {
             Rectangle b = all[i].getDefaultConfiguration().getBounds();
             String marker = (i == Math.min(DEFAULT_SCREEN, all.length - 1)) ? "  <-- TARGET" : "";

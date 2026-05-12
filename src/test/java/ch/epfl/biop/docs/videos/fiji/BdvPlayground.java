@@ -1,4 +1,10 @@
-package ch.epfl.biop.docs.videos;
+package ch.epfl.biop.docs.videos.fiji;
+
+import ch.epfl.biop.docs.videos.core.Timings;
+import ch.epfl.biop.docs.videos.core.Ui;
+import ch.epfl.biop.docs.videos.widgets.Harvester;
+import ch.epfl.biop.docs.videos.widgets.Popup;
+import ch.epfl.biop.docs.videos.widgets.Tree;
 
 import org.scijava.MenuPath;
 import org.scijava.command.Command;
@@ -10,25 +16,25 @@ import sc.fiji.bdvpg.scijava.service.tree.SourceTree;
 import javax.swing.*;
 import java.awt.*;
 
-public class Robot {
+public class BdvPlayground {
 
     public static void openBDVPlaygroundTree() {
-        RobotCommands.runViaSearch(SourceServiceShowCommand.class, "show bdv play");
-        Frame bdvSources = RobotHelper.waitForFrame("BDV Sources", Timings.FRAME_WAIT_TIMEOUT_MS);
-        RobotHelper.resizeFrame(bdvSources, 450, 600);
-        RobotHelper.dragFrame(bdvSources, RobotHelper.DEFAULT_FRAME_X, RobotHelper.DEFAULT_FRAME_Y + 150);
+        Harvester.runViaSearch(SourceServiceShowCommand.class, "show bdv play");
+        Frame bdvSources = Ui.waitForFrame("BDV Sources", Timings.FRAME_WAIT_TIMEOUT_MS);
+        Ui.resizeFrame(bdvSources, 450, 600);
+        Ui.dragFrame(bdvSources, Ui.DEFAULT_FRAME_X, Ui.DEFAULT_FRAME_Y + 150);
 
     }
 
     public static void runFromBDVPlaygroundTree(String sourceTreePath,
                                                 Class<? extends Command> command,
                                                 Object... args) {
-        SourceService bss = FijiCommands.context().service(SourceService.class);
+        SourceService bss = Fiji.context().service(SourceService.class);
         SourceTree sourceTree = bss.tree();
         JTree tree = sourceTree.getJTree();
-        RobotTree.rightClickPath(tree, sourceTreePath);
+        Tree.rightClickPath(tree, sourceTreePath);
 
-        CommandService cs = FijiCommands.context().getService(CommandService.class);
+        CommandService cs = Fiji.context().getService(CommandService.class);
         MenuPath menuPath = cs.getCommand(command).getMenuPath();
         StringBuilder sb = new StringBuilder();
         for (int i = 2; i< menuPath.size()-1;i++) {
@@ -36,13 +42,13 @@ public class Robot {
             sb.append(">");
         }
         sb.append(menuPath.getLeaf().getName());
-        RobotPopup.clickPath(sb.toString());
+        Popup.clickPath(sb.toString());
 
         // The command is now running — let it finish painting any UI it spawns
         // (a BDV viewer, in this case) before the test driver exits.
-        RobotHelper.pause(Timings.scaled(Timings.PAUSE_AFTER_CLICK_MS));
+        Ui.pause(Timings.scaled(Timings.PAUSE_AFTER_CLICK_MS));
 
-        RobotCommands.runOpenDialog(command, args);
+        Harvester.runOpenDialog(command, args);
 
     }
 }

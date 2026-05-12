@@ -1,4 +1,10 @@
-package ch.epfl.biop.docs.videos;
+package ch.epfl.biop.docs.videos.widgets;
+
+import ch.epfl.biop.docs.videos.bdv.Bdv;
+import ch.epfl.biop.docs.videos.core.Inspector;
+import ch.epfl.biop.docs.videos.core.Timings;
+import ch.epfl.biop.docs.videos.core.Ui;
+import ch.epfl.biop.docs.videos.fiji.Fiji;
 
 import org.scijava.command.Command;
 import org.scijava.command.CommandModule;
@@ -32,7 +38,7 @@ import java.util.Map;
 import java.util.concurrent.Future;
 
 /**
- * Drives a SciJava command's input-harvester dialog via {@link RobotHelper},
+ * Drives a SciJava command's input-harvester dialog via {@link Ui},
  * mimicking {@link CommandService#run(Class, boolean, Object...)} ergonomics.
  *
  * Pass alternating {@code "fieldName", value} pairs the same way you would
@@ -98,7 +104,7 @@ import java.util.concurrent.Future;
  *       model.</li>
  * </ul>
  */
-public class RobotCommands {
+public class Harvester {
 
     /**
      * Launches {@code cmdClass} via the {@link CommandService}, waits for the
@@ -112,7 +118,7 @@ public class RobotCommands {
      */
     public static <C extends Command> Future<CommandModule> run(Class<C> cmdClass, Object... namedInputs) {
         Map<String, Object> values = parseValues(namedInputs);
-        CommandService cs = FijiCommands.context().service(CommandService.class);
+        CommandService cs = Fiji.context().service(CommandService.class);
         Future<CommandModule> future = cs.run(cmdClass, true);
         driveDialog(cmdClass, values);
         return future;
@@ -144,7 +150,7 @@ public class RobotCommands {
     public static <C extends Command> void runViaSearch(Class<C> cmdClass, String searchQuery,
                                                         Object... namedInputs) {
         Map<String, Object> values = parseValues(namedInputs);
-        FijiCommands.searchAndRun(searchQuery);
+        Fiji.searchAndRun(searchQuery);
         driveDialog(cmdClass, values);
     }
 
@@ -163,13 +169,13 @@ public class RobotCommands {
     private static <C extends Command> void driveDialog(Class<C> cmdClass, Map<String, Object> values) {
         Map<String, String> fieldToLabel = labelsFor(cmdClass);
 
-        Dialog dialog = RobotHelper.waitForActiveDialog(Timings.FRAME_WAIT_TIMEOUT_MS);
+        Dialog dialog = Ui.waitForActiveDialog(Timings.FRAME_WAIT_TIMEOUT_MS);
         if (dialog == null) {
             // No other parameters - we're done
             return;
         }
         // Let the dialog finish realizing before we touch screen positions.
-        RobotHelper.pause(Timings.PAUSE_AFTER_FRAME_PLACEMENT_MS);
+        Ui.pause(Timings.PAUSE_AFTER_FRAME_PLACEMENT_MS);
 
         for (Map.Entry<String, Object> e : values.entrySet()) {
             String fieldName = e.getKey();
@@ -183,11 +189,11 @@ public class RobotCommands {
                 throw new IllegalStateException("No input container found for parameter '"
                         + fieldName + "' (label: '" + label + "')");
             }
-            System.out.println("[RobotCommands] " + fieldName + " (" + label + ") <- " + e.getValue());
+            System.out.println("[Harvester] " + fieldName + " (" + label + ") <- " + e.getValue());
             // No-op when the harvester panel isn't wrapped in a JScrollPane.
             // When it is, brings the widget to the top of the viewport so it
             // (and as many subsequent widgets as possible) are reachable.
-            RobotHelper.scrollIntoView(inputContainer);
+            Ui.scrollIntoView(inputContainer);
             fillWidget(inputContainer, e.getValue());
         }
 
@@ -415,10 +421,10 @@ public class RobotCommands {
         Point loc = cb.getLocationOnScreen();
         int x = loc.x + CHECKBOX_CLICK_OFFSET_X;
         int y = loc.y + cb.getHeight() / 2;
-        RobotHelper.moveTo(x, y);
-        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
-        RobotHelper.click();
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.moveTo(x, y);
+        Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        Ui.click();
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
     }
 
     /** Pixels from the JCheckBox's left edge to the centre of the box icon (FlatLaf default ≈ 9). */
@@ -438,11 +444,11 @@ public class RobotCommands {
      * combo's selection updates.
      *
      * The popup itself isn't part of the parent dialog's component tree
-     * (similar to the menu / context popups handled in {@link RobotPopup}),
+     * (similar to the menu / context popups handled in {@link Popup}),
      * so we reach it through {@code combo.getUI().getAccessibleChild(combo, 0)}
      * which returns the {@link BasicComboPopup}. Row positions are read
      * from the live {@link JList} once it is on screen — they aren't Swing
-     * components and don't appear in {@link ComponentInspector} output.
+     * components and don't appear in {@link Inspector} output.
      *
      * Always shows the visible gesture (open popup → click item) — no
      * idempotent short-circuit when the value already matches the current
@@ -451,10 +457,10 @@ public class RobotCommands {
      */
     private static void fillComboBox(JComboBox<?> combo, String value) {
         Point center = centerOnScreen(combo);
-        RobotHelper.moveTo(center);
-        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
-        RobotHelper.click();
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.moveTo(center);
+        Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        Ui.click();
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
 
         Object accessible = combo.getUI().getAccessibleChild(combo, 0);
         if (!(accessible instanceof BasicComboPopup)) {
@@ -465,7 +471,7 @@ public class RobotCommands {
 
         long deadline = System.currentTimeMillis() + Timings.FRAME_WAIT_TIMEOUT_MS;
         while (!list.isShowing() && System.currentTimeMillis() < deadline) {
-            RobotHelper.rawPause(Timings.FRAME_POLL_INTERVAL_MS);
+            Ui.rawPause(Timings.FRAME_POLL_INTERVAL_MS);
         }
         if (!list.isShowing()) {
             throw new IllegalStateException("Combo popup did not open in time");
@@ -490,10 +496,10 @@ public class RobotCommands {
         Point listLoc = list.getLocationOnScreen();
         int x = listLoc.x + bounds.x + bounds.width / 2;
         int y = listLoc.y + bounds.y + bounds.height / 2;
-        RobotHelper.moveTo(x, y);
-        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
-        RobotHelper.click();
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.moveTo(x, y);
+        Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        Ui.click();
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
     }
 
     /**
@@ -529,10 +535,10 @@ public class RobotCommands {
         Point loc = target.getLocationOnScreen();
         int x = loc.x + RADIO_CLICK_OFFSET_X;
         int y = loc.y + target.getHeight() / 2;
-        RobotHelper.moveTo(x, y);
-        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
-        RobotHelper.click();
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.moveTo(x, y);
+        Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        Ui.click();
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
     }
 
     /**
@@ -581,25 +587,25 @@ public class RobotCommands {
             indices[n] = found;
         }
 
-        java.awt.Robot r = RobotHelper.robot();
+        java.awt.Robot r = Ui.robot();
         Point listLoc = list.getLocationOnScreen();
         for (int k = 0; k < indices.length; k++) {
             Rectangle bounds = list.getCellBounds(indices[k], indices[k]);
             int x = listLoc.x + bounds.x + bounds.width / 2;
             int y = listLoc.y + bounds.y + bounds.height / 2;
-            RobotHelper.moveTo(x, y);
-            RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
+            Ui.moveTo(x, y);
+            Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
             if (k == 0) {
-                RobotHelper.click();
+                Ui.click();
             } else {
                 // Ctrl+click → toggle into the existing selection. Plain click
                 // would replace it and we'd end up with only the last row.
                 r.keyPress(KeyEvent.VK_CONTROL);
                 r.delay(Timings.KEY_HOLD_MS);
-                RobotHelper.click();
+                Ui.click();
                 r.keyRelease(KeyEvent.VK_CONTROL);
             }
-            RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+            Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
         }
     }
 
@@ -609,7 +615,7 @@ public class RobotCommands {
      *
      * Two non-obvious choices:
      * <ul>
-     *   <li><strong>Paste</strong> rather than {@link RobotHelper#type type} —
+     *   <li><strong>Paste</strong> rather than {@link Ui#type type} —
      *       numeric strings include {@code "."}, which goes through
      *       {@link java.awt.Robot#keyPress Robot.keyPress} and is rejected on
      *       non-US keyboard layouts (Swiss / French / etc.). Same reason the
@@ -628,22 +634,22 @@ public class RobotCommands {
      */
     static void fillNumberField(JFormattedTextField field, Number value) {
         Point center = centerOnScreen(field);
-        RobotHelper.moveTo(center);
-        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
-        RobotHelper.click();
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.moveTo(center);
+        Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        Ui.click();
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
         selectAllAndDelete();
-        RobotHelper.paste(String.valueOf(value));
-        RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
-        RobotHelper.enter();
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.paste(String.valueOf(value));
+        Ui.pause(Timings.PAUSE_AFTER_TYPING_MS);
+        Ui.enter();
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
     }
 
     /**
      * Visible sibling of {@link #fillNumberField}: types the value
-     * character-by-character via {@link RobotHelper#type} instead of pasting
+     * character-by-character via {@link Ui#type} instead of pasting
      * it in one shot. Used by the BDV-window automation
-     * ({@link RobotBdv#setDisplayRange}) where the digits appearing one at a
+     * ({@link Bdv#setDisplayRange}) where the digits appearing one at a
      * time read better on a recorded tutorial than a value materializing
      * instantly.
      *
@@ -661,33 +667,33 @@ public class RobotCommands {
      * {@link #fillNumberField} — a {@code JFormattedTextField} only commits
      * the edit on Enter or focus loss.</p>
      */
-    static void typeNumberField(JFormattedTextField field, Number value) {
+    public static void typeNumberField(JFormattedTextField field, Number value) {
         Point center = centerOnScreen(field);
-        RobotHelper.moveTo(center);
-        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
-        RobotHelper.click();
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.moveTo(center);
+        Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        Ui.click();
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
         selectAllAndDelete();
-        RobotHelper.type(String.valueOf(value));
-        RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
-        RobotHelper.enter();
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.type(String.valueOf(value));
+        Ui.pause(Timings.PAUSE_AFTER_TYPING_MS);
+        Ui.enter();
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
     }
 
     private static void fillTextField(JTextField tf, String text) {
         Point center = centerOnScreen(tf);
-        RobotHelper.moveTo(center);
-        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
-        RobotHelper.click();
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.moveTo(center);
+        Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        Ui.click();
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
         selectAllAndDelete();
-        RobotHelper.type(text);
-        RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
+        Ui.type(text);
+        Ui.pause(Timings.PAUSE_AFTER_TYPING_MS);
     }
 
     /** Ctrl+A then Delete — clears whatever the field currently contains. */
     private static void selectAllAndDelete() {
-        java.awt.Robot r = RobotHelper.robot();
+        java.awt.Robot r = Ui.robot();
         r.keyPress(KeyEvent.VK_CONTROL);
         r.keyPress(KeyEvent.VK_A);
         r.delay(Timings.KEY_HOLD_MS);
@@ -718,26 +724,26 @@ public class RobotCommands {
         String name = abs.getName();
 
         Point center = centerOnScreen(browse);
-        RobotHelper.moveTo(center);
-        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
-        RobotHelper.click();
-        RobotHelper.pause(Timings.PAUSE_AFTER_FILE_CHOOSER_OPEN_MS);
+        Ui.moveTo(center);
+        Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        Ui.click();
+        Ui.pause(Timings.PAUSE_AFTER_FILE_CHOOSER_OPEN_MS);
 
         if (!dirPath.isEmpty()) {
-            RobotHelper.paste(dirPath);
-            RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
-            RobotHelper.enter();
-            RobotHelper.pause(Timings.PAUSE_AFTER_FOLDER_NAV_MS);
+            Ui.paste(dirPath);
+            Ui.pause(Timings.PAUSE_AFTER_TYPING_MS);
+            Ui.enter();
+            Ui.pause(Timings.PAUSE_AFTER_FOLDER_NAV_MS);
             // Enter navigates into the folder but leaves the path text in
             // the file-name field — wipe it before typing the file name.
             selectAllAndDelete();
         }
         // Filename is short and ASCII — type it for the visible cadence
         // (paths get pasted because of the layout-dependent symbols).
-        RobotHelper.type(name);
-        RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
-        RobotHelper.enter();
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.type(name);
+        Ui.pause(Timings.PAUSE_AFTER_TYPING_MS);
+        Ui.enter();
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
     }
 
     /**
@@ -747,10 +753,10 @@ public class RobotCommands {
      */
     private static void clickClearList(AbstractButton clear) {
         Point center = centerOnScreen(clear);
-        RobotHelper.moveTo(center);
-        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
-        RobotHelper.click();
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.moveTo(center);
+        Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        Ui.click();
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
     }
 
     /**
@@ -768,34 +774,34 @@ public class RobotCommands {
             String name = abs.getName();
 
             Point center = centerOnScreen(addFiles);
-            RobotHelper.moveTo(center);
-            RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
-            RobotHelper.click();
-            RobotHelper.pause(Timings.PAUSE_AFTER_FILE_CHOOSER_OPEN_MS);
+            Ui.moveTo(center);
+            Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+            Ui.click();
+            Ui.pause(Timings.PAUSE_AFTER_FILE_CHOOSER_OPEN_MS);
 
             if (!dirPath.isEmpty()) {
-                RobotHelper.paste(dirPath);
-                RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
-                RobotHelper.enter();
-                RobotHelper.pause(Timings.PAUSE_AFTER_FOLDER_NAV_MS);
+                Ui.paste(dirPath);
+                Ui.pause(Timings.PAUSE_AFTER_TYPING_MS);
+                Ui.enter();
+                Ui.pause(Timings.PAUSE_AFTER_FOLDER_NAV_MS);
                 selectAllAndDelete();
             }
-            RobotHelper.type(name);
-            RobotHelper.pause(Timings.PAUSE_AFTER_TYPING_MS);
-            RobotHelper.enter();
-            RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+            Ui.type(name);
+            Ui.pause(Timings.PAUSE_AFTER_TYPING_MS);
+            Ui.enter();
+            Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
         }
     }
 
     // ===== JTree (SourceWidget / SourceListWidget) ==============================
 
     /**
-     * Drive a JTree-bearing widget. Thin wrapper over {@link RobotTree#selectPath};
-     * the actual navigate / expand / select logic lives in {@link RobotTree}
+     * Drive a JTree-bearing widget. Thin wrapper over {@link Tree#selectPath};
+     * the actual navigate / expand / select logic lives in {@link Tree}
      * so it can also drive the standalone "BDV Sources" frame.
      */
     private static void fillTree(JTree tree, String path) {
-        RobotTree.selectPath(tree, path);
+        Tree.selectPath(tree, path);
     }
 
     /**
@@ -819,16 +825,16 @@ public class RobotCommands {
      * selection" button).</p>
      */
     private static void fillSourceSortedList(JTree tree, JList<?> list, String path) {
-        javax.swing.tree.TreePath target = RobotTree.navigateAndExpand(tree, path);
-        Point src = RobotTree.rowScreenCenter(tree, target);
+        javax.swing.tree.TreePath target = Tree.navigateAndExpand(tree, path);
+        Point src = Tree.rowScreenCenter(tree, target);
         if (!list.isShowing()) {
             throw new IllegalStateException("Sorted-list drop target JList is not on screen");
         }
         Point listLoc = list.getLocationOnScreen();
         int dstX = listLoc.x + list.getWidth() / 2;
         int dstY = listLoc.y + list.getHeight() / 2;
-        RobotHelper.drag(src.x, src.y, dstX, dstY);
-        RobotHelper.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.drag(src.x, src.y, dstX, dstY);
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
     }
 
     // ===== OK button =============================================================
@@ -837,9 +843,9 @@ public class RobotCommands {
         AbstractButton ok = findButton(dialog, "OK");
         if (ok == null) throw new IllegalStateException("No OK button found in dialog");
         Point center = centerOnScreen(ok);
-        RobotHelper.moveTo(center);
-        RobotHelper.pause(Timings.PAUSE_AFTER_MOVE_MS);
-        RobotHelper.click();
+        Ui.moveTo(center);
+        Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        Ui.click();
     }
 
     private static AbstractButton findButton(Container root, String text) {

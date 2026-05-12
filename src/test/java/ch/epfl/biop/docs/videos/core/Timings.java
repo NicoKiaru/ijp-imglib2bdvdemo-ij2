@@ -1,4 +1,4 @@
-package ch.epfl.biop.docs.videos;
+package ch.epfl.biop.docs.videos.core;
 
 /**
  * Central timing knobs for tutorial-video automation.
@@ -8,8 +8,8 @@ package ch.epfl.biop.docs.videos;
  *   GLOBAL_SPEED = 2.0 → twice as fast
  *   GLOBAL_SPEED = 0.5 → twice as slow
  *
- * Anything passed through {@link #scaled(long)} (or {@link RobotHelper#pause(long)}
- * / {@link RobotHelper#moveTo(int, int, long, int)}) responds to GLOBAL_SPEED.
+ * Anything passed through {@link #scaled(long)} (or {@link Ui#pause(long)}
+ * / {@link Ui#moveTo(int, int, long, int)}) responds to GLOBAL_SPEED.
  * Mechanical timings (click hold, key hold) and polling intervals are kept raw
  * so input stays reliable and polls stay responsive regardless of speed.
  */
@@ -42,7 +42,7 @@ public class Timings {
     /**
      * Optional synchronous delay between {@code Robot.mouseWheel} and the
      * subsequent {@code Robot.waitForIdle()} inside
-     * {@link RobotHelper#scrollIntoView}. Defaults to {@code 0} —
+     * {@link Ui#scrollIntoView}. Defaults to {@code 0} —
      * {@code waitForIdle} already calls {@code SunToolkit.flushPendingEvents}
      * which pulls pending native events into AWT, so on Windows this delay
      * is normally unnecessary. Bump it (5–20 ms) only if a slow / loaded
@@ -53,7 +53,7 @@ public class Timings {
 
     /**
      * Notches per call to {@code Robot.mouseWheel} inside
-     * {@link RobotHelper#scrollIntoView}. Default {@code 5}. A single call
+     * {@link Ui#scrollIntoView}. Default {@code 5}. A single call
      * sending {@code N} notches still triggers {@code N} individual
      * {@code MouseWheelEvent}s on the EDT (so the scroll still reads as
      * {@code N} small steps to the viewer), but the loop only pays one
@@ -68,14 +68,14 @@ public class Timings {
 
     /**
      * Number of consecutive {@code now.y == prev.y} reads
-     * {@link RobotHelper#scrollIntoView} tolerates before treating the
+     * {@link Ui#scrollIntoView} tolerates before treating the
      * scrollbar as saturated and bailing. A larger value is more
      * forgiving of EDT races, at the cost of extra wheel ticks at the
      * actual scroll limit.
      */
     public static int WHEEL_STAGNATION_LIMIT = 3;
     /**
-     * Per-click hold inside {@link RobotHelper#doubleClick()}. Must be short
+     * Per-click hold inside {@link Ui#doubleClick()}. Must be short
      * enough that press → release → gap → press fits inside the OS double-click
      * threshold (~500 ms on Windows by default), otherwise the OS tags both
      * events as {@code clickCount=1} and Swing never sees a double-click.
@@ -92,7 +92,7 @@ public class Timings {
 
     // ===== Typing rhythm (scaled — perceptual) ====================================
 
-    /** Pause between successive characters in {@link RobotHelper#type(String)}. */
+    /** Pause between successive characters in {@link Ui#type(String)}. */
     public static long TYPE_INTER_CHAR_MS = 40;
 
     // ===== Standard pauses around interactions (scaled) ===========================
@@ -113,7 +113,7 @@ public class Timings {
     public static long WHEEL_TICK_PAUSE_MS = 2;
 
     /**
-     * Beat at the end of {@link RobotHelper#scrollIntoView}, between the last
+     * Beat at the end of {@link Ui#scrollIntoView}, between the last
      * wheel notch and whatever gesture follows (typically a click on the
      * just-scrolled widget). Keeps the scroll and the click readable as two
      * distinct steps on tutorial videos rather than blurring into one motion.
