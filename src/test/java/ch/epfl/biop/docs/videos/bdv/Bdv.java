@@ -138,6 +138,7 @@ public class Bdv {
         Ui.moveTo(x, y);
         Ui.pause(Timings.scaled(CARD_ARROW_HOVER_PAUSE_MS));
         Ui.click();
+        Ui.pause(Timings.scaled(CARD_ARROW_HOVER_PAUSE_MS));
     }
 
     /**

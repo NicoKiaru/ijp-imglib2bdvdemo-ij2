@@ -45,7 +45,7 @@ public class Tree {
      * the final node to select it.
      */
     public static void selectPath(JTree tree, String path) {
-        TreePath target = navigateAndExpand(tree, path);
+        TreePath target = navigateAndExpand(tree, "Sources>"+path);
         clickRow(tree, target, false);
         Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
     }
@@ -67,7 +67,7 @@ public class Tree {
      * the right-click is dispatched.</p>
      */
     public static void rightClickPath(JTree tree, String path) {
-        TreePath target = navigateAndExpand(tree, path);
+        TreePath target = navigateAndExpand(tree, "Sources>"+path);
         clickRow(tree, target, false);
         Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
         Ui.rightClick();

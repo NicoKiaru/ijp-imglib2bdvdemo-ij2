@@ -4,13 +4,14 @@ import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
 import bdv.viewer.ViewerPanel;
 import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
+import ch.epfl.biop.docs.videos.CommandExecutor;
 import ch.epfl.biop.docs.videos.bdv.Bdv;
 import ch.epfl.biop.docs.videos.core.Timings;
 import ch.epfl.biop.docs.videos.core.Ui;
-import ch.epfl.biop.docs.videos.fiji.BdvPlayground;
 import ch.epfl.biop.docs.videos.fiji.Fiji;
 import net.imagej.patcher.LegacyInjector;
 import sc.fiji.bdvpg.command.display.bdv.SingleBdvSourcesShowCommand;
+import sc.fiji.bdvpg.command.workspace.SourceServiceShowCommand;
 import sc.fiji.bdvpg.service.SourceServices;
 
 import java.awt.Frame;
@@ -44,18 +45,24 @@ public class BdvSliderDemo {
 
     public static void main(String[] args) throws Exception {
         Fiji.startFiji();
-        BdvPlayground.openBDVPlaygroundTree();
+        CommandExecutor.of(SourceServiceShowCommand.class)
+                .viaSearch("show bdv play")
+                .execute();
+        Frame bdvSources = Ui.waitForFrame("BDV Sources", Timings.FRAME_WAIT_TIMEOUT_MS);
+        Ui.resizeFrame(bdvSources, 450, 600);
+        Ui.dragFrame(bdvSources, Ui.DEFAULT_FRAME_X, Ui.DEFAULT_FRAME_Y + 150);
 
         File fileDataset = ch.epfl.biop.DatasetHelper.getDataset(
                 "https://zenodo.org/records/19047136/files/ZeissLLS7Demo.czi");
-        BdvPlayground.runFromBDVPlaygroundTree("Sources>Other Sources",
-                DatasetFromBioFormatsCreateCommand.class,
-                "datasetname", fileDataset.getName(),
-                "unit", "MICROMETER",
-                "files", new File[]{fileDataset},
-                "split_rgb_channels", false,
-                "auto_pyramidize", true,
-                "disable_memo", false);
+        CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
+                .args("datasetname", fileDataset.getName(),
+                        "unit", "MICROMETER",
+                        "files", new File[]{fileDataset},
+                        "split_rgb_channels", false,
+                        "auto_pyramidize", true,
+                        "disable_memo", false)
+                .viaTreePath("Sources>Other Sources")
+                .execute();
 
         Ui.pause(5000);
 
@@ -64,12 +71,13 @@ public class BdvSliderDemo {
         Set<BdvHandle> before = new HashSet<>(
                 SourceServices.getBdvDisplayService().getDisplays());
 
-        BdvPlayground.runFromBDVPlaygroundTree("Sources>" + fileDataset.getName(),
-                SingleBdvSourcesShowCommand.class,
-                "adjust_view", true,
-                "auto_contrast", true,
-                "interpolate", false,
-                "make_new_window", true);
+        CommandExecutor.of(SingleBdvSourcesShowCommand.class)
+                .args("adjust_view", true,
+                        "auto_contrast", true,
+                        "interpolate", false,
+                        "make_new_window", true)
+                .viaTreePath("Sources>" + fileDataset.getName())
+                .execute();
 
         Frame bdvFrame = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
         Ui.resizeFrame(bdvFrame, 800, 400);

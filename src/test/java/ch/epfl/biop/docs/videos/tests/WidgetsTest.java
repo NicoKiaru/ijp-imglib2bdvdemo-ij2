@@ -341,7 +341,7 @@ public class WidgetsTest {
     @Test
     public void testBdvHandleList() throws Exception {
         String[] names = new String[] { BDV_ALPHA_TITLE, BDV_BETA_TITLE };
-        Future<CommandModule> future = Harvester.run(BdvHandleListDemo.class, "bdvs", names);
+        Future<CommandModule> future = Harvester.run(BdvHandleListDemo.class, "bdvs", names);//String.join(",", names));
         CommandModule module = future.get();
         assertEquals(2, (int) (Integer) module.getOutput("count"));
         String titles = (String) module.getOutput("titles");

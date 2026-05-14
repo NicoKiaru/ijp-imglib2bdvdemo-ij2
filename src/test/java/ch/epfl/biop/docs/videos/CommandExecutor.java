@@ -1,13 +1,21 @@
 package ch.epfl.biop.docs.videos;
 
-import ch.epfl.biop.docs.videos.fiji.BdvPlayground;
+import ch.epfl.biop.docs.videos.core.Timings;
+import ch.epfl.biop.docs.videos.core.Ui;
 import ch.epfl.biop.docs.videos.fiji.Fiji;
 import ch.epfl.biop.docs.videos.widgets.Harvester;
+import ch.epfl.biop.docs.videos.widgets.Popup;
+import ch.epfl.biop.docs.videos.widgets.Tree;
 
+import org.scijava.MenuPath;
 import org.scijava.command.Command;
 import org.scijava.command.CommandModule;
 import org.scijava.command.CommandService;
+import sc.fiji.bdvpg.scijava.converter.StringToSourceArray;
+import sc.fiji.bdvpg.scijava.service.SourceService;
+import sc.fiji.bdvpg.scijava.service.tree.SourceTree;
 
+import javax.swing.JTree;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -24,8 +32,7 @@ import java.util.concurrent.Future;
  *   <li>{@link Mode#SEARCH} — launch via Fiji's legacy search bar, then drive the harvester
  *       dialog with the Robot (delegates to {@link Harvester#runViaSearch}).</li>
  *   <li>{@link Mode#TREE} — right-click a BDV-Playground source-tree node, walk the popup
- *       to the command's menu path, then drive the harvester dialog
- *       (delegates to {@link BdvPlayground#runFromBDVPlaygroundTree}).</li>
+ *       to the command's menu path, then drive the harvester dialog.</li>
  * </ol>
  *
  * <p>Set {@link #FORCE_PROGRAMMATIC} to {@code true} at the top of a demo script to
@@ -57,11 +64,25 @@ public class CommandExecutor {
 
     public enum Mode { PROGRAMMATIC, SEARCH, TREE }
 
+    /** Tree node clicked by {@link #viaTreePath()} when no path is supplied. */
+    private static final String DEFAULT_TREE_ROOT = "Sources";
+
+    /** Parameter name that the BDV-Playground source-tree right-click conventionally feeds. */
+    private static final String TREE_SOURCES_PARAM = "sources";
+
     private final Class<? extends Command> commandClass;
     private Object[] args = new Object[0];
     private Mode mode = Mode.PROGRAMMATIC;
     private String searchQuery;
     private String treePath;
+    /**
+     * Whether to inject {@code "sources" = treePath} into the command's args in
+     * programmatic mode. Set by {@link #viaTreePath(String)} (true) and the
+     * no-arg {@link #viaTreePath()} (false) — mirrors the Robot-mode behaviour
+     * where right-clicking a specific source node pre-fills the command's
+     * {@code sources} parameter, while right-clicking the root does not.
+     */
+    private boolean treeInjectsSources;
 
     private CommandExecutor(Class<? extends Command> commandClass) {
         this.commandClass = commandClass;
@@ -103,11 +124,39 @@ public class CommandExecutor {
      * Launch by right-clicking the node at {@code sourceTreePath} in the BDV-Playground
      * "BDV Sources" tree, walking the resulting popup to the command's menu path, then
      * driving the harvester dialog. Path is {@code ">"}-delimited (e.g.
-     * {@code "Sources>Other Sources"}); see {@link BdvPlayground#runFromBDVPlaygroundTree}.
+     * {@code "Sources>Other Sources"}); segments must match
+     * {@code DefaultMutableTreeNode.toString()} exactly.
+     *
+     * <p>In Robot/TREE mode the right-click is what pre-fills the command's
+     * {@code sources} parameter from the clicked node — by BDV-Playground
+     * convention, that parameter is named {@code "sources"}. To preserve the
+     * same behaviour in {@link Mode#PROGRAMMATIC PROGRAMMATIC} mode (e.g. under
+     * {@link #FORCE_PROGRAMMATIC}), this variant injects
+     * {@code "sources" = sourceTreePath} into the args before
+     * {@link CommandService#run cs.run(...)}, unless the caller already supplied
+     * {@code "sources"} via {@link #args(Object...)} (explicit args always win).
+     * Use the no-arg {@link #viaTreePath()} variant for commands that don't
+     * consume sources.</p>
      */
     public CommandExecutor viaTreePath(String sourceTreePath) {
         this.mode = Mode.TREE;
         this.treePath = sourceTreePath;
+        this.treeInjectsSources = true;
+        return this;
+    }
+
+    /**
+     * Launch via a right-click on the source-tree root ({@code "Sources"}),
+     * walking the resulting popup to the command's menu path. Use this for
+     * commands that don't consume a {@code sources} parameter (e.g.
+     * {@code ViewSynchronizeCommand}, {@code BdvTitleSetCommand}) — the tree
+     * click is just a way to discover the menu item, and no arg is injected
+     * in {@link Mode#PROGRAMMATIC} mode.
+     */
+    public CommandExecutor viaTreePath() {
+        this.mode = Mode.TREE;
+        this.treePath = DEFAULT_TREE_ROOT;
+        this.treeInjectsSources = false;
         return this;
     }
 
@@ -132,9 +181,40 @@ public class CommandExecutor {
                 if (treePath == null) {
                     throw new IllegalStateException("viaTreePath(...) was not configured");
                 }
-                BdvPlayground.runFromBDVPlaygroundTree(treePath, commandClass, args);
+                runViaTreePopup();
                 break;
         }
+    }
+
+    /**
+     * Right-click the source-tree node, walk the resulting popup to the command's
+     * menu path, then drive the harvester dialog. Reaches the BDV-Playground source
+     * tree via {@code SourceService.tree()} (the same JTree the harvester
+     * widget-branch drives), then builds the popup path from the command's
+     * {@link MenuPath} — dropping the top-level "Plugins" / "BDV Playground"
+     * segments since they aren't present inside the source-tree's context menu.
+     */
+    private void runViaTreePopup() {
+        SourceService bss = Fiji.context().service(SourceService.class);
+        SourceTree sourceTree = bss.tree();
+        JTree jtree = sourceTree.getJTree();
+        Tree.rightClickPath(jtree, treePath);
+
+        CommandService cs = Fiji.context().getService(CommandService.class);
+        MenuPath menuPath = cs.getCommand(commandClass).getMenuPath();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 2; i < menuPath.size() - 1; i++) {
+            sb.append(menuPath.get(i).getName());
+            sb.append(">");
+        }
+        sb.append(menuPath.getLeaf().getName());
+        Popup.clickPath(sb.toString());
+
+        // The command is now running — let it finish painting any UI it spawns
+        // (a BDV viewer, in this case) before driving the dialog.
+        Ui.pause(Timings.scaled(Timings.PAUSE_AFTER_CLICK_MS));
+
+        Harvester.runOpenDialog(commandClass, args);
     }
 
     /**
@@ -164,7 +244,33 @@ public class CommandExecutor {
 
     private Future<CommandModule> runProgrammatic() {
         CommandService cs = Fiji.context().service(CommandService.class);
-        return cs.run(commandClass, true, args);
+        StringToSourceArray s;
+        return cs.run(commandClass, true, effectiveArgs());
+    }
+
+    /**
+     * Args passed to {@code cs.run(...)} in programmatic mode. If this executor
+     * was configured via {@link #viaTreePath(String)}, prepend
+     * {@code "sources" = treePath} so the command receives the same source
+     * context it would get from a tree right-click — unless the caller already
+     * supplied {@code "sources"} explicitly via {@link #args(Object...)}, in
+     * which case their value is left untouched.
+     */
+    private Object[] effectiveArgs() {
+        if (!treeInjectsSources || treePath == null) return args;
+        if (hasNamedArg(TREE_SOURCES_PARAM)) return args;
+        Object[] withSources = new Object[args.length + 2];
+        withSources[0] = TREE_SOURCES_PARAM;
+        withSources[1] = treePath; // Removes Sources
+        System.arraycopy(args, 0, withSources, 2, args.length);
+        return withSources;
+    }
+
+    private boolean hasNamedArg(String name) {
+        for (int i = 0; i < args.length; i += 2) {
+            if (name.equals(args[i])) return true;
+        }
+        return false;
     }
 
     private void awaitProgrammatic() {

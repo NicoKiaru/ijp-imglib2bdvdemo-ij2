@@ -2,17 +2,20 @@ package ch.epfl.biop.docs;
 
 import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
+import bvv.vistools.BvvHandle;
 import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
 import ch.epfl.biop.command.process.deconvolve.SourcesDeconvolveCommand;
+import ch.epfl.biop.docs.videos.CommandExecutor;
 import ch.epfl.biop.docs.videos.bdv.Bdv;
 import ch.epfl.biop.docs.videos.core.Timings;
 import ch.epfl.biop.docs.videos.core.Ui;
-import ch.epfl.biop.docs.videos.fiji.BdvPlayground;
 import ch.epfl.biop.docs.videos.fiji.Fiji;
 import net.imagej.patcher.LegacyInjector;
 import sc.fiji.bdvpg.command.display.ViewSynchronizeCommand;
 import sc.fiji.bdvpg.command.display.bdv.SingleBdvSourcesShowCommand;
 import sc.fiji.bdvpg.command.display.bdv.settings.BdvTitleSetCommand;
+import sc.fiji.bdvpg.command.workspace.SourceServiceShowCommand;
+import sc.fiji.bdvpg.scijava.converter.StringToBdvHandleArray;
 import sc.fiji.bdvpg.service.SourceServices;
 
 import java.awt.*;
@@ -37,52 +40,71 @@ public class DeconvolutionVideoDemo {
 
     public static void main(String[] args) throws Exception {
 
+        // Flip both to true while iterating on this demo — every CommandExecutor
+        // runs programmatically (no Robot, no dialog) and Ui frame placement /
+        // pauses become instant. Flip back to false to record.
+        CommandExecutor.FORCE_PROGRAMMATIC = true;
+        Ui.FAST_MODE = true;
+
         // Prepare = cache necessary files
         File fileDataset = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/19047136/files/ZeissLLS7Demo.czi");
         File filePSF = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/14505724/files/psf-400nm.tif");
 
         // Start Fiji and Open Bdv Playground Tree
         Fiji.startFiji();
-        BdvPlayground.openBDVPlaygroundTree();
+        CommandExecutor.of(SourceServiceShowCommand.class)
+                .viaSearch("show bdv play")
+                .execute();
+        Frame bdvSources = Ui.waitForFrame("BDV Sources", Timings.FRAME_WAIT_TIMEOUT_MS);
+        Ui.resizeFrame(bdvSources, 450, 600);
+        Ui.dragFrame(bdvSources, Ui.DEFAULT_FRAME_X, Ui.DEFAULT_FRAME_Y + 150);
 
 
-        BdvPlayground.runFromBDVPlaygroundTree("Sources>Other Sources",
-                DatasetFromBioFormatsCreateCommand.class,
-                "datasetname", fileDataset.getName(),
-                "unit", "MICROMETER",
-                "files", new File[]{fileDataset},
-                "split_rgb_channels", false,
-                "auto_pyramidize", true,
-                "disable_memo", false);
+        CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
+                .args("datasetname", fileDataset.getName(),
+                        "unit", "MICROMETER",
+                        "files", new File[]{fileDataset},
+                        "split_rgb_channels", false,
+                        "auto_pyramidize", true,
+                        "disable_memo", false,
+                        "plane_origin_convention", "TOP LEFT")
+                .viaTreePath()
+                .execute();
 
 
-        BdvPlayground.runFromBDVPlaygroundTree("Sources>Other Sources",
-                DatasetFromBioFormatsCreateCommand.class,
-                "datasetname", filePSF.getName(),
-                "unit", "MICROMETER",
-                "files", new File[]{filePSF},
-                "split_rgb_channels", false,
-                "auto_pyramidize", true,
-                "disable_memo", false);
+        CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
+                .args("datasetname", filePSF.getName(),
+                        "unit", "MICROMETER",
+                        "files", new File[]{filePSF},
+                        "split_rgb_channels", false,
+                        "auto_pyramidize", true,
+                        "disable_memo", false,
+                        "plane_origin_convention", "TOP LEFT")
+                .viaTreePath()
+                .execute();
 
-        BdvPlayground.runFromBDVPlaygroundTree("Sources>"+fileDataset.getName(), SingleBdvSourcesShowCommand.class,
-                "adjust_view", true,
-                "auto_contrast", true,
-                "interpolate", false,
-                "make_new_window", true);
+        CommandExecutor.of(SingleBdvSourcesShowCommand.class)
+                .args("adjust_view", true,
+                        "auto_contrast", true,
+                        "interpolate", false,
+                        "make_new_window", true)
+                .viaTreePath(fileDataset.getName())
+                .execute();
 
         Frame bdvRaw = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
         Ui.resizeFrame(bdvRaw, 800, 600);
         Ui.dragFrame(bdvRaw, Ui.DEFAULT_FRAME_X + 450, Ui.DEFAULT_FRAME_Y + 150);
 
-        BdvPlayground.runFromBDVPlaygroundTree("Sources>Other Sources", BdvTitleSetCommand.class,
-                "title", "BDV - Raw Sources");
+        CommandExecutor.of(BdvTitleSetCommand.class)
+                .args("title", "BDV - Raw Sources")
+                .viaTreePath()
+                .execute();
 
         BdvHandle rawBdv = SourceServices.getBdvDisplayService().getActiveBdv();
 
         Bdv.setTimepoint(rawBdv, 30);
 
-        Bdv.setCardPanelExpanded(rawBdv, true);
+        /*Bdv.setCardPanelExpanded(rawBdv, true);
         Ui.pause(2000);
 
         List<SourceAndConverter<?>> sources = rawBdv.getViewerPanel().state().getSources();
@@ -93,40 +115,52 @@ public class DeconvolutionVideoDemo {
         Bdv.selectSourceInCard(rawBdv, sources.get(2).getSpimSource().getName());
         Bdv.setDisplayRange(rawBdv, 90, 1000);
 
-        Bdv.setCardPanelExpanded(rawBdv, false);
+        Bdv.setCardPanelExpanded(rawBdv, false);*/
 
-        BdvPlayground.runFromBDVPlaygroundTree("Sources>"+fileDataset.getName(), SourcesDeconvolveCommand.class,
-                "sources", "Sources>"+fileDataset.getName(),
-                "psf", "Sources>"+filePSF.getName(),
-                "output_pixel_type", "Keep Pixel Type Of Original Image",
-                "suffix", "_deconvolved",
-                "block_size_x", 256,
-                "block_size_y", 256,
-                "block_size_z", 64,
-                "overlap_size", 16,
-                "num_iterations", 20,
-                "non_circulant", true,
-                "regularization_factor", 0.002f,
-                "n_threads", 4);
+        CommandExecutor.of(SourcesDeconvolveCommand.class)
+                .args("sources", fileDataset.getName(),
+                        "psf", filePSF.getName(),
+                        "output_pixel_type", "Keep Pixel Type Of Original Image",
+                        "suffix", "_deconvolved",
+                        "block_size_x", 256,
+                        "block_size_y", 256,
+                        "block_size_z", 64,
+                        "overlap_size", 16,
+                        "num_iterations", 20,
+                        "non_circulant", true,
+                        "regularization_factor", 0.002f,
+                        "n_threads", 4)
+                .viaTreePath()
+                .execute();
 
         Ui.resizeFrame(bdvRaw, 800, 400);
 
-        BdvPlayground.runFromBDVPlaygroundTree("Sources>Other Sources", SingleBdvSourcesShowCommand.class,
-                "adjust_view", true,
-                "auto_contrast", false,
-                "interpolate", false,
-                "make_new_window", true);
+        CommandExecutor.of(SingleBdvSourcesShowCommand.class)
+                .args("adjust_view", true,
+                        "auto_contrast", false,
+                        "interpolate", false,
+                        "make_new_window", true)
+                .viaTreePath("Other Sources")
+                .execute();
 
 
         Frame bdvDeconvolved = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
         Ui.resizeFrame(bdvDeconvolved, 800, 400);
         Ui.dragFrame(bdvDeconvolved, Ui.DEFAULT_FRAME_X + 450, Ui.DEFAULT_FRAME_Y + 450);
 
-        BdvPlayground.runFromBDVPlaygroundTree("Sources>Other Sources", BdvTitleSetCommand.class,
-                "title", "BDV - Deconvolved Sources");
+        CommandExecutor.of(BdvTitleSetCommand.class)
+                .args("title", "BDV - Deconvolved Sources")
+                .viaTreePath()
+                .execute();
 
-        BdvPlayground.runFromBDVPlaygroundTree("Sources>Other Sources", ViewSynchronizeCommand.class,
-                "bdvhs", new String[]{"BDV - Raw Sources", "BDV - Deconvolved Sources"},
-                    "synchronizetime", true);
+        Ui.rawPause(2000);
+
+
+        CommandExecutor.of(ViewSynchronizeCommand.class)
+                .args("bdvhs", new String[]{"BDV - Raw Sources", "BDV - Deconvolved Sources"},
+                        "bvvhs", new BvvHandle[]{},
+                        "synchronizetime", true)
+                .viaTreePath()
+                .execute();
     }
 }

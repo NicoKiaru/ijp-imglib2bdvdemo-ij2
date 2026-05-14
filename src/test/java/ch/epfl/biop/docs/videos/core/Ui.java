@@ -41,6 +41,23 @@ public class Ui {
     public static int DEFAULT_FRAME_X = 100;
     public static int DEFAULT_FRAME_Y = 100;
 
+    /**
+     * Fast-iteration switch. When {@code true}, methods that exist purely for
+     * visible motion on a recorded video — {@link #dragFrame}, {@link #resizeFrame},
+     * {@link #minimizeWithMouse}, {@link #pause(long)} — short-circuit to
+     * their programmatic Swing/AWT equivalents (instant {@code setLocation} /
+     * {@code setSize} / {@code setExtendedState}, zero-millisecond pauses).
+     * Low-level Robot primitives ({@link #click}, {@link #drag}, {@link #moveTo},
+     * {@link #mouseWheel}, {@link #type}, {@link #paste}, {@link #key}) are
+     * deliberately <em>not</em> short-circuited — they are used by the
+     * Robot-driven widget drivers in {@code Harvester} and {@code Bdv}, which
+     * stay functional in fast mode for the parts of a script that still need
+     * them (e.g. slider drags whose effect isn't reachable via a single API
+     * call). Pair this with {@code CommandExecutor.FORCE_PROGRAMMATIC = true}
+     * for an end-to-end no-Robot iteration mode.
+     */
+    public static boolean FAST_MODE = false;
+
     // Timings (durations, holds, polling) live in {@link Timings}.
 
     // ===== Robot singleton ========================================================
@@ -196,6 +213,10 @@ public class Ui {
      * draw their own title bar.
      */
     public static void minimizeWithMouse(Frame frame) {
+        if (FAST_MODE) {
+            runOnEdt(() -> frame.setExtendedState(frame.getExtendedState() | Frame.ICONIFIED));
+            return;
+        }
         Insets insets = frame.getInsets();
         int titleBarHeight = Math.max(insets.top, 24);
         int buttonWidth = (int) (1.5 * titleBarHeight);
@@ -221,6 +242,11 @@ public class Ui {
         int newAbsX = screen.x + dxOnTargetScreen;
         int newAbsY = screen.y + dyOnTargetScreen;
 
+        if (FAST_MODE) {
+            runOnEdt(() -> frame.setLocation(newAbsX, newAbsY));
+            return;
+        }
+
         Insets insets = frame.getInsets();
         int titleBarHeight = Math.max(insets.top, 24);
         int grabOffsetX = frame.getWidth()/2;//Math.min(60, Math.max(20, frame.getWidth() / 2));
@@ -240,6 +266,10 @@ public class Ui {
      * borders.
      */
     public static void resizeFrame(Frame frame, int width, int height) {
+        if (FAST_MODE) {
+            runOnEdt(() -> frame.setSize(width, height));
+            return;
+        }
         int startX = frame.getX() + frame.getWidth() - 1;
         int startY = frame.getY() + frame.getHeight() - 1;
         int endX   = frame.getX() + width - 1;
@@ -437,12 +467,25 @@ public class Ui {
         Rectangle b = targetScreenBounds();
         int absX = b.x + dxOnTargetScreen;
         int absY = b.y + dyOnTargetScreen;
+        runOnEdt(() -> {
+            frame.setLocation(absX, absY);
+            frame.toFront();
+            frame.requestFocus();
+        });
+    }
+
+    /**
+     * Run {@code r} on the EDT and block until it completes. If we're already
+     * on the EDT (e.g. called from a Swing listener), run inline to avoid
+     * deadlock. Wraps any reflective failure into an unchecked exception.
+     */
+    private static void runOnEdt(Runnable r) {
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+            return;
+        }
         try {
-            SwingUtilities.invokeAndWait(() -> {
-                frame.setLocation(absX, absY);
-                frame.toFront();
-                frame.requestFocus();
-            });
+            SwingUtilities.invokeAndWait(r);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -677,6 +720,7 @@ public class Ui {
      * that must NOT be affected by speed (e.g. polling intervals).
      */
     public static void pause(long ms) {
+        if (FAST_MODE) return;
         rawPause(Timings.scaled(ms));
     }
 
