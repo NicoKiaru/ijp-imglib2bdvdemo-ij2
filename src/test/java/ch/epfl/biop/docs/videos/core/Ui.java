@@ -479,7 +479,7 @@ public class Ui {
      * on the EDT (e.g. called from a Swing listener), run inline to avoid
      * deadlock. Wraps any reflective failure into an unchecked exception.
      */
-    private static void runOnEdt(Runnable r) {
+    public static void runOnEdt(Runnable r) {
         if (SwingUtilities.isEventDispatchThread()) {
             r.run();
             return;

@@ -165,6 +165,23 @@ public class Harvester {
         return values;
     }
 
+    /**
+     * True when a parameter value should be skipped entirely in Robot mode —
+     * the widget is left at its harvester default. Covers two cases:
+     * {@code null} (caller passed an explicit "no value" placeholder), and
+     * any empty array <em>except</em> {@code File[]} (an empty {@code File[]}
+     * is a deliberate "click Clear list" gesture in the
+     * {@code MutableFileListWidget} dispatch).
+     */
+    private static boolean isRobotNoOpValue(Object value) {
+        if (value == null) return true;
+        if (value instanceof File[]) return false;
+        if (value.getClass().isArray()) {
+            return java.lang.reflect.Array.getLength(value) == 0;
+        }
+        return false;
+    }
+
     /** Wait for the active dialog, fill each named parameter, click OK. */
     private static <C extends Command> void driveDialog(Class<C> cmdClass, Map<String, Object> values) {
         Map<String, String> fieldToLabel = labelsFor(cmdClass);
@@ -179,6 +196,20 @@ public class Harvester {
 
         for (Map.Entry<String, Object> e : values.entrySet()) {
             String fieldName = e.getKey();
+            Object value = e.getValue();
+            // Robot-mode skip: callers often need to pass null / empty arrays
+            // in programmatic mode purely to satisfy "all inputs supplied"
+            // (so cs.run doesn't pop a harvester dialog for a missing input).
+            // Driving the dialog for such values would just leave the widget
+            // at its harvester default anyway — and there's no JTextField to
+            // fall back to for typed multi-select widgets like
+            // SwingBdvHandleListWidget / SwingBvvHandleListWidget — so skip
+            // the parameter entirely. File[] is the one exception: an empty
+            // File[] is a deliberate "click Clear list" gesture.
+            if (isRobotNoOpValue(value)) {
+                System.out.println("[Harvester] " + fieldName + " skipped (null or empty array)");
+                continue;
+            }
             String label = fieldToLabel.get(fieldName);
             if (label == null) {
                 throw new IllegalArgumentException("No @Parameter found for field '"
@@ -189,12 +220,12 @@ public class Harvester {
                 throw new IllegalStateException("No input container found for parameter '"
                         + fieldName + "' (label: '" + label + "')");
             }
-            System.out.println("[Harvester] " + fieldName + " (" + label + ") <- " + e.getValue());
+            System.out.println("[Harvester] " + fieldName + " (" + label + ") <- " + value);
             // No-op when the harvester panel isn't wrapped in a JScrollPane.
             // When it is, brings the widget to the top of the viewport so it
             // (and as many subsequent widgets as possible) are reachable.
             Ui.scrollIntoView(inputContainer);
-            fillWidget(inputContainer, e.getValue());
+            fillWidget(inputContainer, value);
         }
 
         clickOk(dialog);

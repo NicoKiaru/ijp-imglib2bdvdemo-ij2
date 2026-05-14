@@ -90,6 +90,11 @@ public class Bdv {
         int current = slider.getValue();
         if (current == targetTimepoint) return;
 
+        if (Ui.FAST_MODE) {
+            Ui.runOnEdt(() -> vp.setTimepoint(targetTimepoint));
+            return;
+        }
+
         Point loc = slider.getLocationOnScreen();
         int w = slider.getWidth();
         int h = slider.getHeight();
@@ -126,6 +131,11 @@ public class Bdv {
     public static void setCardPanelExpanded(BdvHandle bdv, boolean expanded) {
         SplitPanel splitPanel = bdv.getSplitPanel();
         if (splitPanel.isCollapsed() == !expanded) return;
+
+        if (Ui.FAST_MODE) {
+            Ui.runOnEdt(() -> splitPanel.setCollapsed(!expanded));
+            return;
+        }
 
         Component display = bdv.getViewerPanel().getDisplayComponent();
         Point loc = display.getLocationOnScreen();
@@ -179,6 +189,16 @@ public class Bdv {
             throw new IllegalArgumentException(
                     "no source named '" + sourceName + "' in the Sources card — available: "
                             + listSourceNames(table));
+        }
+
+        if (Ui.FAST_MODE) {
+            // changeSelection routes through the table's ListSelectionModel exactly
+            // like a real mouse click would, so the downstream "selected source"
+            // observers (notably the ConverterSetupEditPanel) see the same event
+            // sequence — important because setDisplayRange follows up by editing
+            // the spinners bound to the selected source.
+            Ui.runOnEdt(() -> table.changeSelection(row, SourceTableModel.NAME_COLUMN, false, false));
+            return;
         }
 
         Rectangle cell = table.getCellRect(row, SourceTableModel.NAME_COLUMN, true);
@@ -255,6 +275,21 @@ public class Bdv {
                     "expected 2 JSpinners (min, max) in BoundedRangePanel, found "
                             + spinners.size());
         }
+
+        if (Ui.FAST_MODE) {
+            // Same ordering rationale as the Robot path: BoundedRange.withMin
+            // / withMax both expand-to-accommodate, so the second setValue
+            // wins on any cross-over and the final state is (min, max)
+            // regardless of which we set first. Spinner change listeners
+            // propagate to the source's ConverterSetup, exactly as the
+            // Robot's "Enter on the JFormattedTextField" path does.
+            Ui.runOnEdt(() -> {
+                spinners.get(0).setValue(min);
+                spinners.get(1).setValue(max);
+            });
+            return;
+        }
+
         fillSpinner(spinners.get(0), min);
         fillSpinner(spinners.get(1), max);
     }

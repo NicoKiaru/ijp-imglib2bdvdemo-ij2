@@ -104,8 +104,7 @@ public class DeconvolutionVideoDemo {
 
         Bdv.setTimepoint(rawBdv, 30);
 
-        /*Bdv.setCardPanelExpanded(rawBdv, true);
-        Ui.pause(2000);
+        Bdv.setCardPanelExpanded(rawBdv, true);
 
         List<SourceAndConverter<?>> sources = rawBdv.getViewerPanel().state().getSources();
         Bdv.selectSourceInCard(rawBdv, sources.get(0).getSpimSource().getName());
@@ -115,7 +114,7 @@ public class DeconvolutionVideoDemo {
         Bdv.selectSourceInCard(rawBdv, sources.get(2).getSpimSource().getName());
         Bdv.setDisplayRange(rawBdv, 90, 1000);
 
-        Bdv.setCardPanelExpanded(rawBdv, false);*/
+        Bdv.setCardPanelExpanded(rawBdv, false);
 
         CommandExecutor.of(SourcesDeconvolveCommand.class)
                 .args("sources", fileDataset.getName(),
@@ -158,6 +157,7 @@ public class DeconvolutionVideoDemo {
 
         CommandExecutor.of(ViewSynchronizeCommand.class)
                 .args("bdvhs", new String[]{"BDV - Raw Sources", "BDV - Deconvolved Sources"},
+                        "bvvhs", null,
                         "synchronizetime", true)
                 .viaTreePath()
                 .execute();
