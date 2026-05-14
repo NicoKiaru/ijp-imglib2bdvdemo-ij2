@@ -21,7 +21,7 @@ import java.util.List;
 
 /**
  * Generates a demo for deconvolution. Should be used for video documentation.
- *
+ * <p>
  * Workflow:
  *   1. Open raw LLS7 HeLa image (both channels) in BDV.
  *   2. Run lazy Richardson-Lucy deconvolution (both channels, 200 nm PSF).
@@ -36,10 +36,16 @@ public class DeconvolutionVideoDemo {
     }
 
     public static void main(String[] args) throws Exception {
+
+        // Prepare = cache necessary files
+        File fileDataset = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/19047136/files/ZeissLLS7Demo.czi");
+        File filePSF = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/14505724/files/psf-400nm.tif");
+
+        // Start Fiji and Open Bdv Playground Tree
         Fiji.startFiji();
         BdvPlayground.openBDVPlaygroundTree();
 
-        File fileDataset = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/19047136/files/ZeissLLS7Demo.czi");
+
         BdvPlayground.runFromBDVPlaygroundTree("Sources>Other Sources",
                 DatasetFromBioFormatsCreateCommand.class,
                 "datasetname", fileDataset.getName(),
@@ -50,7 +56,6 @@ public class DeconvolutionVideoDemo {
                 "disable_memo", false);
 
 
-        File filePSF = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/14505724/files/psf-400nm.tif");
         BdvPlayground.runFromBDVPlaygroundTree("Sources>Other Sources",
                 DatasetFromBioFormatsCreateCommand.class,
                 "datasetname", filePSF.getName(),
