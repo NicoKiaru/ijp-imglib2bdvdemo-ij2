@@ -65,7 +65,7 @@ public class CommandExecutor {
     public enum Mode { PROGRAMMATIC, SEARCH, TREE }
 
     /** Tree node clicked by {@link #viaTreePath()} when no path is supplied. */
-    private static final String DEFAULT_TREE_ROOT = "Sources";
+    private static final String DEFAULT_TREE_ROOT = "";
 
     /** Parameter name that the BDV-Playground source-tree right-click conventionally feeds. */
     private static final String TREE_SOURCES_PARAM = "sources";

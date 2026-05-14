@@ -43,8 +43,8 @@ public class DeconvolutionVideoDemo {
         // Flip both to true while iterating on this demo — every CommandExecutor
         // runs programmatically (no Robot, no dialog) and Ui frame placement /
         // pauses become instant. Flip back to false to record.
-        CommandExecutor.FORCE_PROGRAMMATIC = true;
-        Ui.FAST_MODE = true;
+        CommandExecutor.FORCE_PROGRAMMATIC = false;
+        Ui.FAST_MODE = false;
 
         // Prepare = cache necessary files
         File fileDataset = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/19047136/files/ZeissLLS7Demo.czi");
@@ -158,7 +158,6 @@ public class DeconvolutionVideoDemo {
 
         CommandExecutor.of(ViewSynchronizeCommand.class)
                 .args("bdvhs", new String[]{"BDV - Raw Sources", "BDV - Deconvolved Sources"},
-                        "bvvhs", new BvvHandle[]{},
                         "synchronizetime", true)
                 .viaTreePath()
                 .execute();

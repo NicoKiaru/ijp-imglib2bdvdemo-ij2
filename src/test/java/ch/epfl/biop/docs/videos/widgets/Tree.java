@@ -85,6 +85,9 @@ public class Tree {
      * The final segment is left untouched (single-click is the caller's job).</p>
      */
     static TreePath navigateAndExpand(JTree tree, String path) {
+        if (!path.startsWith("Sources>")) {
+            path = "Sources>"+path;
+        }
         if (path == null || path.isEmpty()) {
             throw new IllegalArgumentException("Empty tree path");
         }
