@@ -120,6 +120,7 @@ public class DeconvolutionVideoDemo {
                 .execute();
 
         Frame bdvRaw = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
+        Ui.pause(1500);
         Ui.resizeFrame(bdvRaw, 800, 600);
         Ui.dragFrame(bdvRaw, Ui.DEFAULT_FRAME_X + 450, Ui.DEFAULT_FRAME_Y + 150);
 
@@ -181,6 +182,7 @@ public class DeconvolutionVideoDemo {
                 .execute();
 
         Frame bdvDeconvolved = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
+        Ui.pause(1500);
         Ui.resizeFrame(bdvDeconvolved, 800, 400);
         Ui.dragFrame(bdvDeconvolved, Ui.DEFAULT_FRAME_X + 450, Ui.DEFAULT_FRAME_Y + 450);
 
