@@ -87,8 +87,8 @@ public class Fiji {
 
     private static Frame waitForIJFrame(long timeoutMs) {
         long deadline = System.currentTimeMillis() + timeoutMs;
+        ij.ImageJ ij1 = IJ.getInstance();
         while (System.currentTimeMillis() < deadline) {
-            ij.ImageJ ij1 = IJ.getInstance();
             if (ij1 != null && ij1.isShowing()) return ij1;
             Ui.rawPause(Timings.FRAME_POLL_INTERVAL_MS);
         }

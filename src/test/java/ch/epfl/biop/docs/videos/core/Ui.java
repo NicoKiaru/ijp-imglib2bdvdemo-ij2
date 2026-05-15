@@ -7,6 +7,7 @@ import java.awt.AWTException;
 import java.awt.Component;
 import java.awt.Dialog;
 import java.awt.Frame;
+import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Insets;
@@ -19,6 +20,7 @@ import java.awt.Window;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.awt.geom.AffineTransform;
 
 /**
  * Reusable helpers for tutorial-video automation built on top of {@link Robot}.
@@ -38,8 +40,8 @@ public class Ui {
     public static int DEFAULT_SCREEN = 0;
 
     /** Top-left position of the GUI frame, RELATIVE to the target screen's origin. */
-    public static int DEFAULT_FRAME_X = 100;
-    public static int DEFAULT_FRAME_Y = 100;
+    public static int DEFAULT_FRAME_X = 20;
+    public static int DEFAULT_FRAME_Y = 20;
 
     /**
      * Fast-iteration switch. When {@code true}, methods that exist purely for
@@ -93,6 +95,31 @@ public class Ui {
     /** Bounds of the target screen in absolute virtual-desktop coordinates. */
     public static Rectangle targetScreenBounds() {
         return targetScreen().getDefaultConfiguration().getBounds();
+    }
+
+    /**
+     * Bounds of the target screen in <em>physical</em> pixels — i.e. logical
+     * AWT bounds multiplied by the device DPI scale from
+     * {@link GraphicsConfiguration#getDefaultTransform()}.
+     *
+     * <p>Use this for tools that interpret screen coordinates in physical
+     * pixels regardless of Windows DPI scaling — most importantly
+     * {@code ffmpeg -f gdigrab}: passing logical bounds to gdigrab on a
+     * &gt;100% DPI screen captures only a fraction of the visible content
+     * (same output dims, smaller captured area). {@link Robot#createScreenCapture}
+     * is fine with logical bounds — Java handles the scaling internally.</p>
+     */
+    public static Rectangle targetScreenPhysicalBounds() {
+        GraphicsConfiguration gc = targetScreen().getDefaultConfiguration();
+        Rectangle logical = gc.getBounds();
+        AffineTransform tx = gc.getDefaultTransform();
+        double sx = tx.getScaleX();
+        double sy = tx.getScaleY();
+        return new Rectangle(
+                (int) Math.round(logical.x * sx),
+                (int) Math.round(logical.y * sy),
+                (int) Math.round(logical.width * sx),
+                (int) Math.round(logical.height * sy));
     }
 
     /** Logs the detected screens — useful to confirm DEFAULT_SCREEN is correct. */

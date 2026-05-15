@@ -186,7 +186,7 @@ public class Harvester {
     private static <C extends Command> void driveDialog(Class<C> cmdClass, Map<String, Object> values) {
         Map<String, String> fieldToLabel = labelsFor(cmdClass);
 
-        Dialog dialog = Ui.waitForActiveDialog(Timings.FRAME_WAIT_TIMEOUT_MS);
+        Dialog dialog = Ui.waitForActiveDialog(Timings.FRAME_WAIT_FOR_DIALOG_MS);
         if (dialog == null) {
             // No other parameters - we're done
             return;

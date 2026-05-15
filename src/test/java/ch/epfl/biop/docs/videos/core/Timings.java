@@ -128,6 +128,7 @@ public class Timings {
 
     public static long FRAME_POLL_INTERVAL_MS = 100;
     public static long FRAME_WAIT_TIMEOUT_MS  = 7000;
+    public static final long FRAME_WAIT_FOR_DIALOG_MS = 2000;
 
     /**
      * Scale a duration by {@link #GLOBAL_SPEED}. Non-positive inputs return 0;

@@ -73,7 +73,7 @@ public class Popup {
             moveToItem(item);
             boolean isLast = (i == parts.length - 1);
             if (isLast) {
-                Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+                Ui.pause(Timings.PAUSE_AFTER_MOVE_MS*3);
                 Ui.click();
                 Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
             } else {
@@ -84,7 +84,7 @@ public class Popup {
                 }
                 JMenu jmenu = (JMenu) item;
                 // Hover dwell: Swing auto-opens the submenu on mouse-enter.
-                Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+                Ui.pause(Timings.PAUSE_AFTER_MOVE_MS*3);
                 JPopupMenu sub = jmenu.getPopupMenu();
                 if (!waitForPopupShowing(sub, POPUP_WAIT_TIMEOUT_MS)) {
                     throw new IllegalStateException("Submenu '" + parts[i]
