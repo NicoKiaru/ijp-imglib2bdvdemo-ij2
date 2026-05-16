@@ -41,6 +41,15 @@ public class Screenshotter {
         return ofRegion(Ui.targetScreenBounds(), name);
     }
 
+    /**
+     * Capture the recording region (per {@link Ui#recordingBoundsLogical()})
+     * — same crop as the screen-recorded video, so the PNG and the MP4
+     * show the same content with no bottom-strip popup.
+     */
+    public static File ofRecordingArea(String name) {
+        return ofRegion(Ui.recordingBoundsLogical(), name);
+    }
+
     private static File write(BufferedImage img, String name) {
         String safe = name.replaceAll("[^A-Za-z0-9._-]+", "_");
         String fileName = String.format("%03d-%s.png", ++counter, safe);

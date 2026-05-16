@@ -47,13 +47,13 @@ public class ScreenRecorder {
     private static String currentClip;
 
     /**
-     * Start recording the full target screen into a new clip. Uses
-     * {@link Ui#targetScreenPhysicalBounds()} so the capture matches the
-     * actual physical pixels that gdigrab samples — see that method's note
-     * about HiDPI / DPI-scaling.
+     * Start recording the target screen into a new clip — uses
+     * {@link Ui#recordingBoundsPhysical()}, so the bottom
+     * {@link Ui#RECORDING_BOTTOM_INSET_PX} strip (reserved for the
+     * "Continue when done" popup and OS taskbar) is excluded.
      */
     public static void start(String clipName) {
-        start(clipName, Ui.targetScreenPhysicalBounds());
+        start(clipName, Ui.recordingBoundsPhysical());
     }
 
     /**

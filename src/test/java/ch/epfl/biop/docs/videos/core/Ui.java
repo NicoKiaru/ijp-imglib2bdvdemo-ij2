@@ -122,6 +122,53 @@ public class Ui {
                 (int) Math.round(logical.height * sy));
     }
 
+    /**
+     * Reserved bottom strip (in logical pixels) excluded from the recording
+     * crop. The {@link ch.epfl.biop.docs.videos.core.Step#waitForUser}
+     * "Continue when done" popup is placed inside this strip — above the
+     * OS taskbar but outside the recording — so the dismissal click does
+     * not appear in the recorded clip or auto-screenshot.
+     *
+     * <p>Default is sized for a ~80 px popup, a ~40 px Windows taskbar
+     * and ~30 px of margin. Window placements that previously extended
+     * into the bottom 150 px of the screen will now be cropped — adjust
+     * their {@code dragFrame} y-coordinate or shrink them to fit.</p>
+     */
+    public static int RECORDING_BOTTOM_INSET_PX = 150;
+
+    /**
+     * Logical recording bounds = {@link #targetScreenBounds()} with the
+     * bottom {@link #RECORDING_BOTTOM_INSET_PX} stripped off. Use for
+     * {@link Robot#createScreenCapture} so the screenshot matches the
+     * video crop.
+     */
+    public static Rectangle recordingBoundsLogical() {
+        Rectangle b = targetScreenBounds();
+        int h = Math.max(0, b.height - RECORDING_BOTTOM_INSET_PX);
+        return new Rectangle(b.x, b.y, b.width, h);
+    }
+
+    /**
+     * Physical recording bounds for ffmpeg gdigrab: {@link #recordingBoundsLogical()}
+     * scaled by the device DPI, with width/height floored to even pixels
+     * (libx264 + yuv420p requires even dimensions; an odd value triggers
+     * "width not divisible by 2" and ffmpeg aborts).
+     */
+    public static Rectangle recordingBoundsPhysical() {
+        Rectangle logical = recordingBoundsLogical();
+        GraphicsConfiguration gc = targetScreen().getDefaultConfiguration();
+        AffineTransform tx = gc.getDefaultTransform();
+        double sx = tx.getScaleX();
+        double sy = tx.getScaleY();
+        int x = (int) Math.round(logical.x * sx);
+        int y = (int) Math.round(logical.y * sy);
+        int w = (int) Math.round(logical.width * sx);
+        int h = (int) Math.round(logical.height * sy);
+        w -= w % 2;
+        h -= h % 2;
+        return new Rectangle(x, y, w, h);
+    }
+
     /** Logs the detected screens — useful to confirm DEFAULT_SCREEN is correct. */
     public static void logScreens() {
         GraphicsDevice[] all = screens();
@@ -297,12 +344,56 @@ public class Ui {
             runOnEdt(() -> frame.setSize(width, height));
             return;
         }
+        // If the current bottom-right corner sits outside the screen's
+        // usable area (off-screen or under the taskbar), Robot can't
+        // visibly grab it. Programmatically shrink to a size whose
+        // corner IS reachable first, then drag from the new corner.
+        ensureBottomRightGrabbable(frame);
+
         int startX = frame.getX() + frame.getWidth() - 1;
         int startY = frame.getY() + frame.getHeight() - 1;
         int endX   = frame.getX() + width - 1;
         int endY   = frame.getY() + height - 1;
 
         drag(startX, startY, endX, endY);
+    }
+
+    /**
+     * Programmatically shrink {@code frame} just enough that its
+     * bottom-right corner lands inside the usable area of its screen —
+     * i.e. inside {@link GraphicsConfiguration#getBounds()} minus the
+     * {@link Toolkit#getScreenInsets(GraphicsConfiguration)} (the OS
+     * taskbar) and a small grab margin so the resize cursor lands on the
+     * window edge rather than just past it. Settle pause after
+     * {@code setSize} lets the OS repaint the new edges before the Robot
+     * tries to grab them.
+     *
+     * <p>No-op when the corner is already reachable. Floors the new size
+     * at {@code MIN_FRAME_DIM_PX} so a frame whose top-left is itself
+     * off-screen doesn't get a negative dimension.</p>
+     */
+    private static void ensureBottomRightGrabbable(Frame frame) {
+        final int GRAB_EDGE_MARGIN_PX = 5;
+        final int MIN_FRAME_DIM_PX = 120;
+
+        GraphicsConfiguration gc = frame.getGraphicsConfiguration();
+        if (gc == null) gc = targetScreen().getDefaultConfiguration();
+        Rectangle screen = gc.getBounds();
+        Insets osInsets = Toolkit.getDefaultToolkit().getScreenInsets(gc);
+        int usableRight = screen.x + screen.width - osInsets.right - GRAB_EDGE_MARGIN_PX;
+        int usableBottom = screen.y + screen.height - osInsets.bottom - GRAB_EDGE_MARGIN_PX;
+
+        int currentRight = frame.getX() + frame.getWidth() - 1;
+        int currentBottom = frame.getY() + frame.getHeight() - 1;
+        if (currentRight <= usableRight && currentBottom <= usableBottom) return;
+
+        int safeW = Math.max(MIN_FRAME_DIM_PX,
+                Math.min(frame.getWidth(), usableRight - frame.getX()));
+        int safeH = Math.max(MIN_FRAME_DIM_PX,
+                Math.min(frame.getHeight(), usableBottom - frame.getY()));
+        final int w = safeW, h = safeH;
+        runOnEdt(() -> frame.setSize(w, h));
+        rawPause(150);
     }
 
     /**

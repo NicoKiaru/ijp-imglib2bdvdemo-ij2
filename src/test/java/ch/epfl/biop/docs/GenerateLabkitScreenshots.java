@@ -2,65 +2,56 @@ package ch.epfl.biop.docs;
 
 import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
-import bvv.vistools.BvvHandle;
+import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
 import ch.epfl.biop.command.process.labkit.SourcesLabkitClassifyCommand;
 import ch.epfl.biop.command.process.labkit.SourcesLabkitOpenCommand;
-import ch.epfl.biop.demos.DemoHelper;
-import ch.epfl.biop.demos.utils.DemoDatasetHelper;
-import net.imagej.ImageJ;
+import ch.epfl.biop.docs.videos.CommandExecutor;
+import ch.epfl.biop.docs.videos.bdv.Bdv;
+import ch.epfl.biop.docs.videos.core.Assets;
+import ch.epfl.biop.docs.videos.core.ScreenRecorder;
+import ch.epfl.biop.docs.videos.core.Screenshotter;
+import ch.epfl.biop.docs.videos.core.Step;
+import ch.epfl.biop.docs.videos.core.Timings;
+import ch.epfl.biop.docs.videos.core.Ui;
+import ch.epfl.biop.docs.videos.fiji.Fiji;
 import net.imagej.patcher.LegacyInjector;
-import org.scijava.command.CommandModule;
+import org.scijava.command.CommandService;
 import sc.fiji.bdvpg.command.display.ViewSynchronizeCommand;
 import sc.fiji.bdvpg.command.display.bdv.SingleBdvSourcesShowCommand;
-import sc.fiji.bdvpg.scijava.service.SourceBdvDisplayService;
-import sc.fiji.bdvpg.source.display.BrightnessAutoAdjuster;
-import sc.fiji.bdvpg.viewer.bdv.BdvHandleHelper;
-import sc.fiji.bdvpg.viewer.bdv.navigate.ViewerTransformAdjuster;
-import sc.fiji.bdvpg.viewer.bdv.supplier.DefaultBdvSupplier;
-import sc.fiji.bdvpg.viewer.bdv.supplier.SerializableBdvOptions;
+import sc.fiji.bdvpg.command.display.bdv.settings.BdvTitleSetCommand;
+import sc.fiji.bdvpg.command.workspace.SourceServiceShowCommand;
+import sc.fiji.bdvpg.service.SourceServices;
 
-import javax.swing.SwingUtilities;
+import java.awt.Frame;
 import java.io.File;
-import java.util.concurrent.Future;
+import java.util.List;
 
 /**
- * Generates screenshots for the workflows/labkit.md documentation page.
+ * Generates a Labkit pixel-classification demo for video documentation.
+ * <p>
+ * Uses the LATTICE_HELA_SKEWED dataset (single timepoint, 2 channels). Both
+ * channels are sent to Labkit so the classifier can leverage joint intensity
+ * to separate background, cytoplasm and nucleus.
  *
- * Uses the LATTICE_HELA_SKEWED dataset (single timepoint, 2 channels).
- * Both channels are sent to Labkit so the classifier can leverage the
- * joint intensity information to separate background, cytoplasm and nucleus.
+ * <p>Workflow (each step a separate clip + script line + auto-screenshot):
+ * <ol>
+ *   <li>boot Fiji and open the BDV Playground tree;</li>
+ *   <li>load the raw LLS7 dataset via Bio-Formats and show it in BDV;</li>
+ *   <li>open Labkit on the two channels;</li>
+ *   <li>(manual) create labels, draw scribbles per class, train classifier;</li>
+ *   <li>(manual) save the trained classifier to {@link #CLASSIFIER_FILE} and
+ *       close the Labkit window;</li>
+ *   <li>apply the classifier with {@link SourcesLabkitClassifyCommand}, show
+ *       the result in a second BDV beneath the raw view, and synchronize.</li>
+ * </ol>
  *
- * Workflow:
- *   1. Open raw LLS7 HeLa image (both channels) in BDV — capture raw view.
- *   2. Open Labkit on the sources — capture the Labkit window at the start of training.
- *   3. User draws background scribbles — capture.
- *   4. User draws cytoplasm scribbles — capture.
- *   5. User draws nucleus scribbles and clicks Train Classifier — capture with live overlay.
- *   6. User saves the classifier to a known path, then closes Labkit.
- *   7. Apply the saved classifier with SourcesLabkitClassifyCommand and show the
- *      classified result alongside the raw image in BDV (synchronised views).
+ * <p>Manual phases use {@link Step#waitForUser(String)} — a small floating
+ * dialog (placed off the recording screen if multi-monitor) that holds the
+ * demo while the recorder draws / clicks in Labkit, with the recording still
+ * rolling so the manual actions appear on video.</p>
  *
- * Because SourcesLabkitOpenCommand blocks until the Labkit window is closed,
- * we submit it as a Future and do the screenshot pauses while Labkit is up.
- * The Future is awaited (module.get()) after step 6.
- *
- * Output directory is controlled by the system property {@code doc.output.dir}.
- * Default: ../bigdataviewer-playground-documentation/docs/source/workflows/images
- *
- * Classifier file is saved to:
- *   <user.dir>/labkit-cyto-nuc.classifier
- * (overridable via -Dlabkit.classifier.file=/absolute/path/to/file.classifier)
- *
- * Run from IDE: right-click → Run 'GenerateLabkitScreenshots.main()'
- *
- * Expected output files (prefix_WindowTitle.png):
- *   labkit_step1_BigDataViewer_Raw.png
- *   labkit_step2_Labkit_*.png          (just opened)
- *   labkit_step3_Labkit_*.png          (background scribbles)
- *   labkit_step4_Labkit_*.png          (cytoplasm scribbles)
- *   labkit_step5_Labkit_*.png          (nucleus scribbles + trained)
- *   labkit_step7_BigDataViewer_Raw.png
- *   labkit_step7_BigDataViewer_Classified.png
+ * <p>Classifier path defaults to {@code <user.dir>/labkit-cyto-nuc.classifier};
+ * override with {@code -Dlabkit.classifier.file=...}.</p>
  */
 public class GenerateLabkitScreenshots {
 
@@ -68,234 +59,238 @@ public class GenerateLabkitScreenshots {
         LegacyInjector.preinit();
     }
 
-    static final File OUTPUT_DIR = new File(
-            System.getProperty("doc.output.dir",
-                    "../bigdataviewer-playground-documentation/docs/source/workflows/images")
-    );
-
     static final File CLASSIFIER_FILE = new File(
             System.getProperty("labkit.classifier.file",
                     new File(System.getProperty("user.dir"), "labkit-cyto-nuc.classifier").getAbsolutePath())
     );
 
     public static void main(String[] args) throws Exception {
-        System.out.println("Output directory: " + OUTPUT_DIR.getAbsolutePath());
-        System.out.println("Classifier path:  " + CLASSIFIER_FILE.getAbsolutePath());
 
-        ImageJ ij = new ImageJ();
-        DemoHelper.startFiji(ij);
-        DemoHelper.expandTreeView(ij);
+        // Flip both to true while iterating on this demo — every CommandExecutor
+        // runs programmatically (no Robot, no dialog) and Ui frame placement /
+        // pauses become instant. Flip back to false to record.
+        CommandExecutor.FORCE_PROGRAMMATIC = false;
+        Ui.FAST_MODE = false;
 
-        // Load the LLS7 HeLa dataset (2 channels, single timepoint).
-        System.out.println("Loading LLS7 HeLa dataset...");
-        SourceAndConverter<?>[] sources = DemoDatasetHelper.getData(
-                DemoDatasetHelper.DemoDataset.LATTICE_HELA_SKEWED, ij.context());
+        // Asset capture toggles. Flip these to false while iterating; flip
+        // them back on for the recording pass. Output lands in
+        // target/video-assets/LabkitVideoDemo/ as NNN-step.{mp4,png} plus a
+        // single script.md transcript.
+        Assets.session("LabkitVideoDemo");
+        ScreenRecorder.ENABLED = true;
+        Screenshotter.ENABLED = true;
+        // Set Step.SKIP_MANUAL = true to race through the automated phases
+        // (the wait-for-Continue dialogs return immediately — useful only
+        // when the classifier file already exists and you want to test the
+        // apply / show / sync tail).
+        Step.SKIP_MANUAL = false;
 
-        // Auto-adjust brightness on both channels.
-        for (SourceAndConverter<?> source : sources) {
-            new BrightnessAutoAdjuster<>(source, 0).run();
-        }
+        System.out.println("Classifier path: " + CLASSIFIER_FILE.getAbsolutePath());
 
-        ij.get(SourceBdvDisplayService.class).setDefaultBdvSupplier(
-                new DefaultBdvSupplier(new SerializableBdvOptions()));
+        File fileDataset = ch.epfl.biop.DatasetHelper.getDataset(
+                "https://zenodo.org/records/14203207/files/Hela-Kyoto-1-Timepoint-LLS7.czi");
 
-        // =====================================================================
-        // Step 1: Open raw image in BDV
-        // =====================================================================
-        System.out.println("\n=== Step 1: Opening raw LLS7 image in BDV ===");
-        BdvHandle bdvRaw = (BdvHandle) ij.command().run(SingleBdvSourcesShowCommand.class, true,
-                "sources", sources,
-                "adjust_view", true,
-                "auto_contrast", false,
-                "interpolate", true,
-                "make_new_window", true
-        ).get().getOutput("bdvh");
+        Step.begin("boot-fiji",
+                "We start Fiji and place its main window on the secondary monitor.");
+        Fiji.startFiji();
+        Step.end();
 
-        SwingUtilities.invokeAndWait(() -> {
-            BdvHandleHelper.getJFrame(bdvRaw).setTitle("BigDataViewer-Raw");
-            BdvHandleHelper.getJFrame(bdvRaw).setLocation(50, 50);
-            new ViewerTransformAdjuster(bdvRaw, sources[0]).run();
-        });
+        Step.begin("open-bdv-tree",
+                "From Fiji's search bar we open the BDV Playground Sources tree, "
+                        + "where every loaded source will land.");
+        CommandExecutor.of(SourceServiceShowCommand.class)
+                .viaSearch("show bdv play")
+                .execute();
+        Frame bdvSources = Ui.waitForFrame("BDV Sources", Timings.FRAME_WAIT_TIMEOUT_MS);
+        Ui.resizeFrame(bdvSources, 450, 600);
+        Ui.dragFrame(bdvSources, Ui.DEFAULT_FRAME_X, Ui.DEFAULT_FRAME_Y + 150);
+        Step.end();
 
-        DemoHelper.shot()
-                .to(OUTPUT_DIR)
-                .prefix("labkit_step1")
-                .waitMs(4000)
-                .filter("BigDataViewer-Raw")
-                .pause("Step 1 — Raw LLS7 image in BDV (both channels).\n\n" +
-                        "Navigate to a good overview where nuclei and cytoplasm are\n" +
-                        "clearly visible. Adjust brightness/contrast if needed.\n\n" +
-                        "Click Continue to capture.")
-                .capture();
+        Step.begin("load-raw-czi",
+                "We load the LLS7 HeLa Kyoto dataset through Bio-Formats — "
+                        + "two channels, single timepoint, lazily backed by the .czi.");
+        CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
+                .args("datasetname", fileDataset.getName(),
+                        "unit", "MICROMETER",
+                        "files", new File[]{fileDataset},
+                        "split_rgb_channels", false,
+                        "auto_pyramidize", true,
+                        "disable_memo", false,
+                        "plane_origin_convention", "TOP LEFT")
+                .viaTreePath()
+                .execute();
+        Step.end();
+        Ui.pause(3000); // Time to open the dataset - no get when not programmatic
 
-        // =====================================================================
-        // Step 2: Open Labkit on the two channels
-        // =====================================================================
-        System.out.println("\n=== Step 2: Opening Labkit ===");
+        Step.begin("show-raw-bdv",
+                "Right-clicking the dataset shows it in a new BigDataViewer window — "
+                        + "we'll call this one Raw Sources and place it next to the tree.");
+        CommandExecutor.of(SingleBdvSourcesShowCommand.class)
+                .args("adjust_view", true,
+                        "auto_contrast", true,
+                        "interpolate", true,
+                        "make_new_window", true)
+                .viaTreePath(fileDataset.getName())
+                .execute();
 
-        // Do NOT call .get() — the command blocks until the user closes Labkit.
-        // We capture screenshots at various stages of training while it is open,
-        // then await completion at the end (step 6).
-        Future<CommandModule> labkitFuture = ij.command().run(SourcesLabkitOpenCommand.class, true,
-                "sources", sources,
+        Frame bdvRaw = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
+        Ui.pause(1500);
+        Ui.resizeFrame(bdvRaw, 800, 600);
+        Ui.dragFrame(bdvRaw, Ui.DEFAULT_FRAME_X + 450, Ui.DEFAULT_FRAME_Y + 150);
+
+        CommandExecutor.of(BdvTitleSetCommand.class)
+                .args("title", "BDV - Raw Sources")
+                .viaTreePath()
+                .execute();
+        Step.end();
+
+        Step.begin("open-labkit",
+                "We send both channels to Labkit. Labkit opens its own window where we'll "
+                        + "draw scribbles for three classes: background, cytoplasm and nucleus.");
+        BdvHandle rawBdv = SourceServices.getBdvDisplayService().getActiveBdv();
+        List<SourceAndConverter<?>> sources = rawBdv.getViewerPanel().state().getSources();
+        SourceAndConverter<?>[] sourceArray = sources.toArray(new SourceAndConverter<?>[0]);
+
+        // Labkit blocks until the user closes its window — fire it and let
+        // the demo continue. We never await: at the end of the labkit phase
+        // the window is minimized (not closed) so the tree is visible for
+        // the apply-classifier step without losing the live Labkit session.
+        // The returned Future is intentionally discarded.
+        CommandService cs = Fiji.context().service(CommandService.class);
+        cs.run(SourcesLabkitOpenCommand.class, true,
+                "sources", sourceArray,
                 "resolution_level", 0);
 
-        // Give Labkit a moment to open its window before taking the first shot.
-        DemoHelper.waitFor(3000);
+        // Find the Labkit window once it appears and place it on the right
+        // side of the target screen, covering the BDV Raw view. The BDV
+        // Sources tree on the left stays visible.
+        Frame labkitFrame = Ui.waitForFrame("Labkit -", Timings.FRAME_WAIT_TIMEOUT_MS);
+        if (labkitFrame == null) {
+            throw new IllegalStateException("Labkit window (title starting 'Labkit -') did not appear");
+        }
+        Ui.pause(1500);
 
-        DemoHelper.shot()
-                .to(OUTPUT_DIR)
-                .prefix("labkit_step2")
-                .waitMs(3000)
-                .filter("Labkit")
-                .pause("Step 2 — Labkit has opened on the two LLS7 channels.\n\n" +
-                        "Create THREE labels in the Labeling panel (right side):\n" +
-                        "  1. background\n" +
-                        "  2. cytoplasm\n" +
-                        "  3. nucleus\n\n" +
-                        "Do not draw scribbles yet — just set up the labels.\n" +
-                        "Click Continue to capture the initial Labkit window.")
-                .capture();
+        Ui.resizeFrame(labkitFrame, 950, 600);
+        Ui.dragFrame(labkitFrame, Ui.DEFAULT_FRAME_X + 450, Ui.DEFAULT_FRAME_Y + 150);
+        Step.end();
 
-        // =====================================================================
-        // Step 3: Background scribbles
-        // =====================================================================
-        System.out.println("\n=== Step 3: Background scribbles ===");
+        Step.begin("setup-labkit-labels",
+                "We create three labels in Labkit's Labeling panel — background, cytoplasm and nucleus.",
+                "In Labkit's Labeling panel (right side), CREATE THREE LABELS:\n"
+                        + "  1. background\n"
+                        + "  2. cytoplasm\n"
+                        + "  3. nucleus\n\n"
+                        + "Do not draw scribbles yet.\n\n"
+                        + "Click OK to start recording.");
+        Step.waitForUser("Click Continue when the labels are set up.");
+        Step.end();
 
-        DemoHelper.shot()
-                .to(OUTPUT_DIR)
-                .prefix("labkit_step3")
-                .waitMs(2000)
-                .filter("Labkit")
-                .pause("Step 3 — Draw BACKGROUND scribbles.\n\n" +
-                        "Select the 'background' label and use the brush tool\n" +
-                        "to scribble over empty / dark regions (outside cells).\n" +
-                        "A few strokes on several slices are enough.\n\n" +
-                        "Click Continue to capture.")
-                .capture();
+        Step.begin("draw-background",
+                "We scribble the background class on empty / dark regions outside the cells.",
+                "Select the 'background' label and use the brush to scribble over\n"
+                        + "empty / dark regions outside the cells. A few short strokes on\n"
+                        + "two or three slices is enough.\n\n"
+                        + "Click OK to start recording.");
+        Step.waitForUser("Click Continue when background scribbles are done.");
+        Step.end();
 
-        // =====================================================================
-        // Step 4: Cytoplasm scribbles
-        // =====================================================================
-        System.out.println("\n=== Step 4: Cytoplasm scribbles ===");
+        Step.begin("draw-cytoplasm",
+                "We scribble the cytoplasm class — bright signal that is clearly outside the nuclei.",
+                "Select the 'cytoplasm' label and scribble over cytoplasmic regions —\n"
+                        + "bright but clearly outside the nucleus. Toggle channel visibility in\n"
+                        + "the Image panel if it helps spot cytoplasm-specific signal.\n\n"
+                        + "Click OK to start recording.");
+        Step.waitForUser("Click Continue when cytoplasm scribbles are done.");
+        Step.end();
 
-        DemoHelper.shot()
-                .to(OUTPUT_DIR)
-                .prefix("labkit_step4")
-                .waitMs(2000)
-                .filter("Labkit")
-                .pause("Step 4 — Draw CYTOPLASM scribbles.\n\n" +
-                        "Select the 'cytoplasm' label and scribble over cytoplasmic\n" +
-                        "regions (bright but clearly outside the nucleus).\n" +
-                        "Use both channels if helpful — toggle channel visibility\n" +
-                        "in the Image panel to spot cytoplasm-specific signal.\n\n" +
-                        "Click Continue to capture.")
-                .capture();
+        Step.begin("draw-nucleus-and-train",
+                "We scribble the nucleus class, then train the classifier. The live overlay "
+                        + "shows the segmentation as Labkit refines its model.",
+                "Select the 'nucleus' label and scribble over nuclei.\n\n"
+                        + "Then click 'Train Classifier' (Segmentation menu or toolbar) and\n"
+                        + "wait for the live overlay. If the result is poor, add scribbles\n"
+                        + "where it fails and retrain.\n\n"
+                        + "Click OK to start recording.");
+        Step.waitForUser("Click Continue once the overlay reads correctly.");
+        Step.end();
 
-        // =====================================================================
-        // Step 5: Nucleus scribbles + Train Classifier
-        // =====================================================================
-        System.out.println("\n=== Step 5: Nucleus scribbles and training ===");
-
-        DemoHelper.shot()
-                .to(OUTPUT_DIR)
-                .prefix("labkit_step5")
-                .waitMs(3000)
-                .filter("Labkit")
-                .pause("Step 5 — Draw NUCLEUS scribbles and TRAIN.\n\n" +
-                        "Select the 'nucleus' label and scribble over nuclei.\n" +
-                        "Then click 'Train Classifier' (Segmentation menu or toolbar).\n" +
-                        "Wait until the live segmentation overlay appears.\n\n" +
-                        "If the result is poor, add more scribbles where it fails\n" +
-                        "and retrain.\n\n" +
-                        "Click Continue to capture Labkit with the trained overlay.")
-                .capture();
-
-        // =====================================================================
-        // Step 6: Save classifier, close Labkit
-        // =====================================================================
-        System.out.println("\n=== Step 6: Save the classifier ===");
-
-        DemoHelper.pause(
-                "Step 6 — Save the trained classifier.\n\n" +
-                "In Labkit: Segmentation > Save Classifier as...\n" +
-                "Save it EXACTLY to this path:\n\n" +
-                "  " + CLASSIFIER_FILE.getAbsolutePath() + "\n\n" +
-                "Then CLOSE the Labkit window to resume the demo.\n\n" +
-                "(No screenshot is taken here — the next step will capture BDV.)");
-
-        // Block until the user closes Labkit.
-        System.out.println("Waiting for Labkit to close...");
-        labkitFuture.get();
-        System.out.println("Labkit closed.");
-
+        Step.begin("save-and-minimize-labkit",
+                "We save the trained classifier so it can be re-applied later, then minimize "
+                        + "Labkit so the BDV tree is visible again for the next steps.",
+                "In Labkit: Segmentation > Save Classifier as...\n\n"
+                        + "Save the classifier EXACTLY at this path:\n\n"
+                        + "  " + CLASSIFIER_FILE.getAbsolutePath() + "\n\n"
+                        + "Do NOT close Labkit — we'll minimize it automatically.\n\n"
+                        + "Click OK to start recording.");
+        Step.waitForUser("Click Continue once the classifier file has been written.");
+        // Recording is still active — minimize Labkit visibly so the viewer
+        // sees the BDV tree become accessible again.
+        Ui.minimizeWithMouse(labkitFrame);
+        Ui.pause(1000);
         if (!CLASSIFIER_FILE.exists()) {
             throw new IllegalStateException(
-                    "Classifier file not found at " + CLASSIFIER_FILE.getAbsolutePath() +
-                    " — did you save it to the correct path in step 6?");
+                    "Classifier file not found at " + CLASSIFIER_FILE.getAbsolutePath()
+                            + " — did you save it to the correct path in the previous step?");
         }
+        Step.end();
 
-        // =====================================================================
-        // Step 7: Apply the saved classifier and show the result in BDV
-        // =====================================================================
-        System.out.println("\n=== Step 7: Applying classifier ===");
+        Step.begin("apply-classifier",
+                "We re-apply the saved classifier to the same sources — lazy, so each tile "
+                        + "is classified on demand as it comes into view.");
+        CommandExecutor.of(SourcesLabkitClassifyCommand.class)
+                .args("classifier_file", CLASSIFIER_FILE,
+                        "resolution_level", 0,
+                        "suffix", "_classified",
+                        "use_gpu", true)
+                .viaTreePath(fileDataset.getName())
+                .execute();
+        Step.end();
 
-        SourceAndConverter<?> classifiedSource = (SourceAndConverter<?>) ij.command().run(
-                SourcesLabkitClassifyCommand.class, true,
-                "sources", sources,
-                "classifier_file", CLASSIFIER_FILE,
-                "resolution_level", 0,
-                "suffix", "_classified",
-                "use_gpu", true
-        ).get().getOutput("source_out");
+        Step.begin("show-classified-bdv",
+                "The classified source lands under Other Sources. We open it in a second BDV "
+                        + "beneath the raw view, with display range 0..3 to show the three classes.");
+        Ui.resizeFrame(bdvRaw, 800, 400);
+        Ui.rawPause(1500);
 
-        DemoHelper.expandTreeView(ij);
+        CommandExecutor.of(SingleBdvSourcesShowCommand.class)
+                .args("adjust_view", true,
+                        "auto_contrast", false,
+                        "interpolate", false,
+                        "make_new_window", true)
+                .viaTreePath("Other Sources")
+                .execute();
 
-        // Show the classified source in a second BDV window, beside the raw one.
-        BdvHandle bdvClassified = (BdvHandle) ij.command().run(SingleBdvSourcesShowCommand.class, true,
-                "sources", new SourceAndConverter<?>[]{classifiedSource},
-                "adjust_view", false,
-                "auto_contrast", false,
-                "interpolate", false,
-                "make_new_window", true
-        ).get().getOutput("bdvh");
+        Frame bdvClassified = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
+        Ui.resizeFrame(bdvClassified, 800, 400);
+        Ui.dragFrame(bdvClassified, Ui.DEFAULT_FRAME_X + 450, Ui.DEFAULT_FRAME_Y + 390);
 
-        // 3 classes → display range 0..3 to show background / cytoplasm / nucleus LUTs.
-        ij.get(sc.fiji.bdvpg.scijava.service.SourceService.class)
-                .getConverterSetup(classifiedSource).setDisplayRange(0, 3);
+        CommandExecutor.of(BdvTitleSetCommand.class)
+                .args("title", "BDV - Classified Sources")
+                .viaTreePath()
+                .execute();
 
-        SwingUtilities.invokeAndWait(() -> {
-            BdvHandleHelper.getJFrame(bdvClassified).setTitle("BigDataViewer-Classified");
-            int rawRight = BdvHandleHelper.getJFrame(bdvRaw).getX()
-                    + BdvHandleHelper.getJFrame(bdvRaw).getWidth();
-            BdvHandleHelper.getJFrame(bdvClassified).setLocation(rawRight + 10, 50);
-            new ViewerTransformAdjuster(bdvClassified, sources[0]).run();
-        });
-        DemoHelper.waitFor(1000);
+        BdvHandle classifiedBdv = SourceServices.getBdvDisplayService().getActiveBdv();
+        Bdv.setCardPanelExpanded(classifiedBdv, true);
+        List<SourceAndConverter<?>> classifiedSources = classifiedBdv.getViewerPanel().state().getSources();
+        for (SourceAndConverter<?> s : classifiedSources) {
+            Bdv.selectSourceInCard(classifiedBdv, s.getSpimSource().getName());
+            Bdv.setDisplayRange(classifiedBdv, 0, 3);
+        }
+        Bdv.setCardPanelExpanded(classifiedBdv, false);
+        Step.end();
 
-        // Synchronise the two views so navigation in one updates the other.
-        System.out.println("Starting live view synchronisation...");
-        ij.command().run(ViewSynchronizeCommand.class, true,
-                "bdvhs", new BdvHandle[]{bdvRaw, bdvClassified},
-                "bvvhs", new BvvHandle[]{},
-                "synchronizetime", true);
-        DemoHelper.waitFor(500);
-
-        DemoHelper.shot()
-                .to(OUTPUT_DIR)
-                .prefix("labkit_step7")
-                .waitMs(4000)
-                .filter("BigDataViewer-")
-                .pause("Step 7 — Raw vs Classified (lazy segmentation).\n\n" +
-                        "Views are synchronised. Navigate to a region where the\n" +
-                        "classifier result is visibly correct (nuclei in one colour,\n" +
-                        "cytoplasm in another, background in a third).\n" +
-                        "Wait for the classified tiles to render.\n\n" +
-                        "Click Continue to capture BOTH windows.")
-                .capture();
-
-        System.out.println("\n=== Done. Screenshots saved to: " + OUTPUT_DIR.getAbsolutePath() + " ===");
-        System.out.println("Classifier saved at: " + CLASSIFIER_FILE.getAbsolutePath());
-        // Fiji stays open so you can inspect the results. Close it manually when done.
+        Step.begin("sync-views",
+                "Finally, ViewSynchronizeCommand keeps both windows tracking each other live — "
+                        + "as we navigate the raw image, the classifier output streams in beside it.");
+        CommandExecutor.of(ViewSynchronizeCommand.class)
+                .args("bdvhs", new String[]{"BDV - Raw Sources", "BDV - Classified Sources"},
+                        "bvvhs", null,
+                        "synchronizetime", true)
+                .viaTreePath()
+                .execute();
+        // The classifier streams in over several seconds — hold so the
+        // final frame shows both windows fully resolved.
+        Ui.rawPause(20000);
+        Step.end();
     }
 }
