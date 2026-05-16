@@ -119,8 +119,8 @@ public class GenerateLabkitScreenshots {
                         "plane_origin_convention", "TOP LEFT")
                 .viaTreePath()
                 .execute();
+        Ui.rawPause(3000); // Time to open the dataset - no get when not programmatic
         Step.end();
-        Ui.pause(3000); // Time to open the dataset - no get when not programmatic
 
         Step.begin("show-raw-bdv",
                 "Right-clicking the dataset shows it in a new BigDataViewer window — "

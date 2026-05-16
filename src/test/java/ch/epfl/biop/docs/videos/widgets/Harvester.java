@@ -227,7 +227,7 @@ public class Harvester {
             Ui.scrollIntoView(inputContainer);
             fillWidget(inputContainer, value);
         }
-
+        Ui.pause(1000);
         clickOk(dialog);
     }
 
