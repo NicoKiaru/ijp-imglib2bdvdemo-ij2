@@ -91,6 +91,7 @@ public class DeconvolutionVideoDemo {
                         "plane_origin_convention", "TOP LEFT")
                 .viaTreePath()
                 .execute();
+        Ui.rawPause(1500);
         Step.end();
 
         Step.begin("load-psf",
@@ -106,6 +107,7 @@ public class DeconvolutionVideoDemo {
                         "plane_origin_convention", "TOP LEFT")
                 .viaTreePath()
                 .execute();
+        Ui.rawPause(1500);
         Step.end();
 
         Step.begin("show-raw-bdv",

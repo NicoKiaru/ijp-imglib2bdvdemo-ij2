@@ -75,6 +75,16 @@ public class Step {
     public static boolean AUTO_SNAP_END = true;
 
     /**
+     * When {@code true} (default), key automation moments — search bar
+     * filled, harvester dialog filled, popup menu walked to its leaf —
+     * also yield a screenshot, captured just before the triggering click
+     * via {@link #snapMoment(String)}. Lets the recorder ship a
+     * "here's what the user sees right before clicking" PNG for each
+     * such moment without an explicit Step call in the demo script.
+     */
+    public static boolean AUTO_SNAP_MOMENTS = true;
+
+    /**
      * When {@code true}, {@link #waitForUser(String)} returns immediately
      * instead of blocking on the Continue button — so a script with manual
      * phases can be raced through during fast iteration. Note that demos
@@ -147,6 +157,19 @@ public class Step {
     /** Take an extra screenshot mid-step, named {@code "<step>-<suffix>".png} (or just {@code suffix} outside a step). */
     public static File snap(String suffix) {
         String name = currentName == null ? suffix : currentName + "-" + suffix;
+        return Screenshotter.ofRecordingArea(name);
+    }
+
+    /**
+     * Hook called from automation primitives (search bar, harvester
+     * dialog OK, popup menu leaf) to grab the "right before clicking"
+     * frame. Guarded by {@link #AUTO_SNAP_MOMENTS}; no-op when off or
+     * when {@link Screenshotter#ENABLED} is off. Outside any step, the
+     * filename falls back to just {@code moment}.
+     */
+    public static File snapMoment(String moment) {
+        if (!AUTO_SNAP_MOMENTS) return null;
+        String name = currentName == null ? moment : currentName + "-" + moment;
         return Screenshotter.ofRecordingArea(name);
     }
 

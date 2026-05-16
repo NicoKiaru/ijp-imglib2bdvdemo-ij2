@@ -2,6 +2,7 @@ package ch.epfl.biop.docs.videos.widgets;
 
 import ch.epfl.biop.docs.videos.bdv.Bdv;
 import ch.epfl.biop.docs.videos.core.Inspector;
+import ch.epfl.biop.docs.videos.core.Step;
 import ch.epfl.biop.docs.videos.core.Timings;
 import ch.epfl.biop.docs.videos.core.Ui;
 import ch.epfl.biop.docs.videos.fiji.Fiji;
@@ -876,6 +877,8 @@ public class Harvester {
         Point center = centerOnScreen(ok);
         Ui.moveTo(center);
         Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+        // Tutorial PNG: dialog fully filled, cursor on OK, just before the click.
+        Step.snapMoment("dialog");
         Ui.click();
     }
 

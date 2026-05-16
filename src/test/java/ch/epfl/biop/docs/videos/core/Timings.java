@@ -97,9 +97,9 @@ public class Timings {
 
     // ===== Standard pauses around interactions (scaled) ===========================
 
-    public static long PAUSE_AFTER_MOVE_MS = 200;
+    public static long PAUSE_AFTER_MOVE_MS = 600;
     public static long PAUSE_AFTER_CLICK_MS = 300;
-    public static long PAUSE_AFTER_TYPING_MS = 800;
+    public static long PAUSE_AFTER_TYPING_MS = 1000;
     public static long PAUSE_AFTER_FRAME_PLACEMENT_MS = 300;
 
     /** Wait after clicking Browse, to let the file chooser open and gain focus. */

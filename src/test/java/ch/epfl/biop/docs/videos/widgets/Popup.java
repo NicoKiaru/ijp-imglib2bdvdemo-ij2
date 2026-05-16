@@ -1,5 +1,6 @@
 package ch.epfl.biop.docs.videos.widgets;
 
+import ch.epfl.biop.docs.videos.core.Step;
 import ch.epfl.biop.docs.videos.core.Timings;
 import ch.epfl.biop.docs.videos.core.Ui;
 
@@ -74,6 +75,9 @@ public class Popup {
             boolean isLast = (i == parts.length - 1);
             if (isLast) {
                 Ui.pause(Timings.PAUSE_AFTER_MOVE_MS*3);
+                // Tutorial PNG: popup walked to the leaf, cursor on it,
+                // just before the action-firing click.
+                Step.snapMoment("menu");
                 Ui.click();
                 Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
             } else {

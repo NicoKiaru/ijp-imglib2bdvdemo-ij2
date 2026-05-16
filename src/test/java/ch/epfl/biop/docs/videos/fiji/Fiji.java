@@ -1,6 +1,7 @@
 package ch.epfl.biop.docs.videos.fiji;
 
 import ch.epfl.biop.docs.videos.core.Inspector;
+import ch.epfl.biop.docs.videos.core.Step;
 import ch.epfl.biop.docs.videos.core.Timings;
 import ch.epfl.biop.docs.videos.core.Ui;
 
@@ -72,6 +73,8 @@ public class Fiji {
         Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
         Ui.type(query);
         Ui.pause(Timings.PAUSE_AFTER_TYPING_MS);
+        // Tutorial PNG: search query typed, cursor on the bar, just before Enter.
+        Step.snapMoment("search");
         Ui.enter();
     }
 
