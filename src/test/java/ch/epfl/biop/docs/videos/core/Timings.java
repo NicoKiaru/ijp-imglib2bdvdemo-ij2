@@ -97,7 +97,7 @@ public class Timings {
 
     // ===== Standard pauses around interactions (scaled) ===========================
 
-    public static long PAUSE_AFTER_MOVE_MS = 600;
+    public static long PAUSE_AFTER_MOVE_MS = 350;
     public static long PAUSE_AFTER_CLICK_MS = 300;
     public static long PAUSE_AFTER_TYPING_MS = 1000;
     public static long PAUSE_AFTER_FRAME_PLACEMENT_MS = 300;

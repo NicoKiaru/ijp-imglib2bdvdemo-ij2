@@ -51,6 +51,27 @@ public class Tree {
     }
 
     /**
+     * Navigate to {@code path} (expanding ancestors as needed), then double-click
+     * the final node. In the BDV-Playground "BDV Sources" frame this fires the
+     * tree's {@link java.awt.event.MouseListener#mouseClicked} branch for
+     * {@code getClickCount() == 2 && isLeftMouseButton}, which calls
+     * {@code SourceTree.adjustViewOnSelectedSources()} — re-framing the active
+     * BDV window onto the source(s) under {@code path} via
+     * {@code new ViewerTransformAdjuster(activeBdv, sources, 300).run()}.
+     *
+     * <p>Aiming at a parent flattens to all descendant sources (same as
+     * {@link #selectPath}), so a single double-click on a dataset node re-frames
+     * the active BDV on every source it contains. Side-effect: double-clicking
+     * a non-leaf also toggles its expand state — matches the manual user
+     * gesture in the GUI.</p>
+     */
+    public static void doubleClickPath(JTree tree, String path) {
+        TreePath target = navigateAndExpand(tree, "Sources>"+path);
+        clickRow(tree, target, true);
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
+    }
+
+    /**
      * Navigate to {@code path} (expanding ancestors as needed), left-click to
      * select the final node, then right-click in place so any
      * {@link java.awt.event.MouseListener} on the tree (e.g. the BDV Sources
@@ -198,4 +219,5 @@ public class Tree {
         Point loc = tree.getLocationOnScreen();
         return new Point(loc.x + b.x + b.width / 2, loc.y + b.y + b.height / 2);
     }
+
 }
