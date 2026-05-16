@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Smoke driver for {@link Bdv}. Reuses the {@link DeconvolutionVideoDemo}
+ * Smoke driver for {@link Bdv}. Reuses the {@link GenerateDeconvolutionDocAssets}
  * prefix — open the multi-timepoint LLS7 dataset, show it in a new BDV — then
  * exercises the BDV-window primitives:
  * <ol>

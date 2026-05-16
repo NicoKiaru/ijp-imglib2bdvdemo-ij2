@@ -2,7 +2,6 @@ package ch.epfl.biop.docs;
 
 import bdv.util.BdvHandle;
 import bdv.viewer.SourceAndConverter;
-import bvv.vistools.BvvHandle;
 import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
 import ch.epfl.biop.command.process.deconvolve.SourcesDeconvolveCommand;
 import ch.epfl.biop.docs.videos.CommandExecutor;
@@ -19,7 +18,6 @@ import sc.fiji.bdvpg.command.display.ViewSynchronizeCommand;
 import sc.fiji.bdvpg.command.display.bdv.SingleBdvSourcesShowCommand;
 import sc.fiji.bdvpg.command.display.bdv.settings.BdvTitleSetCommand;
 import sc.fiji.bdvpg.command.workspace.SourceServiceShowCommand;
-import sc.fiji.bdvpg.scijava.converter.StringToBdvHandleArray;
 import sc.fiji.bdvpg.service.SourceServices;
 
 import java.awt.*;
@@ -36,7 +34,7 @@ import java.util.List;
  *   4. Run ViewSynchronizeCommand — both windows now track each other live.
  *   5. Pause — navigate to a good region, wait for GPU tiles, then Continue to capture both.
  */
-public class DeconvolutionVideoDemo {
+public class GenerateDeconvolutionDocAssets {
 
     static {
         LegacyInjector.preinit();
@@ -208,7 +206,7 @@ public class DeconvolutionVideoDemo {
         // The deconvolved view fills in over several seconds as the GPU
         // streams tiles — hold long enough that the final frame shows
         // both windows fully resolved before the clip ends.
-        Ui.rawPause(45000);
+        Ui.rawPause(60000);
         Step.end();
     }
 }

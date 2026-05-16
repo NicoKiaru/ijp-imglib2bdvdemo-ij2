@@ -53,7 +53,7 @@ import java.util.List;
  * <p>Classifier path defaults to {@code <user.dir>/labkit-cyto-nuc.classifier};
  * override with {@code -Dlabkit.classifier.file=...}.</p>
  */
-public class GenerateLabkitScreenshots {
+public class GenerateLabkitDocAssets {
 
     static {
         LegacyInjector.preinit();
