@@ -1,5 +1,6 @@
 package ch.epfl.biop.docs.videos;
 
+import ch.epfl.biop.docs.videos.core.Step;
 import ch.epfl.biop.docs.videos.core.Timings;
 import ch.epfl.biop.docs.videos.core.Ui;
 import ch.epfl.biop.docs.videos.fiji.Fiji;
@@ -83,6 +84,11 @@ public class CommandExecutor {
      * {@code sources} parameter, while right-clicking the root does not.
      */
     private boolean treeInjectsSources;
+    /**
+     * Narration text fired via {@link Step#say(String)} at the moment the
+     * command's harvester dialog becomes active — see {@link #sayOnDialog}.
+     */
+    private String dialogSayText;
 
     private CommandExecutor(Class<? extends Command> commandClass) {
         this.commandClass = commandClass;
@@ -90,6 +96,31 @@ public class CommandExecutor {
 
     public static <C extends Command> CommandExecutor of(Class<C> commandClass) {
         return new CommandExecutor(commandClass);
+    }
+
+    /**
+     * Returns the SciJava-registered menu path of {@code commandClass} as a
+     * human-readable {@code " > "}-delimited string — handy for embedding the
+     * actual menu route inside narration text without re-deriving it from a
+     * {@link CommandService}:
+     *
+     * <pre>
+     * Step.say("Right-clicking the Sources root — we'll walk to: "
+     *         + CommandExecutor.menuPath(MyCommand.class));
+     * </pre>
+     *
+     * <p>The full path is returned (including any {@code Plugins} prefix);
+     * trim at the call site if a shorter form reads better in a subtitle.</p>
+     */
+    public static String menuPath(Class<? extends Command> commandClass) {
+        CommandService cs = Fiji.context().getService(CommandService.class);
+        MenuPath path = cs.getCommand(commandClass).getMenuPath();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < path.size(); i++) {
+            if (i > 0) sb.append(" > ");
+            sb.append(path.get(i).getName());
+        }
+        return sb.toString();
     }
 
     /**
@@ -106,6 +137,28 @@ public class CommandExecutor {
     /** Pure programmatic launch via {@link CommandService} — no Robot, no dialog. (Default.) */
     public CommandExecutor programmatic() {
         this.mode = Mode.PROGRAMMATIC;
+        return this;
+    }
+
+    /**
+     * Narrate the dialog-filling phase: a {@link Step#say(String)} fires the
+     * moment the harvester dialog becomes active, so the resulting subtitle
+     * spans the time the Robot spends typing into the dialog rather than
+     * starting before the menu has even been clicked.
+     *
+     * <p>Timing per mode:</p>
+     * <ul>
+     *   <li>{@link Mode#TREE TREE} — fires after the popup-menu walk and the
+     *       post-click pause, just as the dialog appears.</li>
+     *   <li>{@link Mode#SEARCH SEARCH} — fires after Fiji's search-bar Enter,
+     *       just as the dialog appears.</li>
+     *   <li>{@link Mode#PROGRAMMATIC PROGRAMMATIC} — fires immediately at
+     *       {@link #execute()} (no visible dialog to bracket), so the line
+     *       still appears in {@code script.md}.</li>
+     * </ul>
+     */
+    public CommandExecutor sayOnDialog(String text) {
+        this.dialogSayText = text;
         return this;
     }
 
@@ -169,13 +222,18 @@ public class CommandExecutor {
         Mode effective = effectiveMode();
         switch (effective) {
             case PROGRAMMATIC:
+                // No visible dialog to bracket — fire any sayOnDialog text
+                // immediately so it still lands in script.md in order.
+                if (dialogSayText != null) Step.say(dialogSayText);
                 awaitProgrammatic();
                 break;
             case SEARCH:
                 if (searchQuery == null) {
                     throw new IllegalStateException("viaSearch(...) was not configured");
                 }
-                Harvester.runViaSearch(commandClass, searchQuery, args);
+                Fiji.searchAndRun(searchQuery);
+                fireDialogSayWhenReady();
+                Harvester.runOpenDialog(commandClass, args);
                 break;
             case TREE:
                 if (treePath == null) {
@@ -184,6 +242,19 @@ public class CommandExecutor {
                 runViaTreePopup();
                 break;
         }
+    }
+
+    /**
+     * Block until the harvester dialog is on screen, then emit the
+     * {@link #sayOnDialog} narration. The subsequent
+     * {@link Harvester#runOpenDialog} call's own
+     * {@code waitForActiveDialog} returns immediately since the dialog is
+     * already active. No-op when {@link #dialogSayText} was never set.
+     */
+    private void fireDialogSayWhenReady() {
+        if (dialogSayText == null) return;
+        Ui.waitForActiveDialog(Timings.FRAME_WAIT_FOR_DIALOG_MS);
+        Step.say(dialogSayText);
     }
 
     /**
@@ -214,6 +285,7 @@ public class CommandExecutor {
         // (a BDV viewer, in this case) before driving the dialog.
         Ui.pause(Timings.scaled(Timings.PAUSE_AFTER_CLICK_MS));
 
+        fireDialogSayWhenReady();
         Harvester.runOpenDialog(commandClass, args);
     }
 

@@ -107,10 +107,8 @@ public class GenerateFuseResampleDocAssets {
         Step.begin("load-tiles",
                 "We load the tiled Dentate Gyrus brain-section .lif through Bio-Formats — "
                         + "two channels, many tiles, lazily backed by the file.");
-        Step.say("Right-clicking the Sources root opens the BDV Playground context menu — "
-                + "we'll walk it to the Bio-Formats importer.");
-        Step.say("Filling the importer dialog: micrometre units, pyramid generation on. "
-                + "The .lif contains many tiles in two channels — each tile becomes its own source.");
+        Step.say("Right-clicking the Sources root — walking to: "
+                + CommandExecutor.menuPath(DatasetFromBioFormatsCreateCommand.class));
         CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
                 .args("datasetname", fileDataset.getName(),
                         "unit", "MICROMETER",
@@ -119,6 +117,8 @@ public class GenerateFuseResampleDocAssets {
                         "auto_pyramidize", true,
                         "disable_memo", false,
                         "plane_origin_convention", "TOP LEFT")
+                .sayOnDialog("Filling the importer dialog: micrometre units, pyramid generation on. "
+                        + "The .lif contains many tiles in two channels — each tile becomes its own source.")
                 .viaTreePath()
                 .execute();
         Step.say("The dataset opens lazily — every tile shows up under the dataset node, "
@@ -130,13 +130,15 @@ public class GenerateFuseResampleDocAssets {
         Step.begin("show-tiles-bdv",
                 "Right-clicking the dataset shows every tile in a new BigDataViewer window — "
                         + "we'll call this one Raw Tiles and place it next to the tree.");
-        Step.say("Right-clicking the dataset node — Show in BDV opens every tile from both channels "
-                + "in one viewer with auto-contrast on so the mosaic reads at a glance.");
+        Step.say("Right-clicking the dataset node — walking to: "
+                + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
                 .args("adjust_view", true,
                         "auto_contrast", true,
                         "interpolate", false,
                         "make_new_window", true)
+                .sayOnDialog("Dialog: every tile from both channels in one viewer with auto-contrast "
+                        + "on so the mosaic reads at a glance, make_new_window=true for a fresh viewer.")
                 .viaTreePath(fileDataset.getName())
                 .execute();
 
@@ -144,10 +146,10 @@ public class GenerateFuseResampleDocAssets {
         Ui.pause(1500);
         bdvArea.place(bdvTiles, 1, 1, 0, 0);
 
-        Step.say("Renaming the window to \"BDV - Raw Tiles\" so the upcoming sync command "
-                + "can address it by title.");
         CommandExecutor.of(BdvTitleSetCommand.class)
                 .args("title", "BDV - Raw Tiles")
+                .sayOnDialog("Renaming the window to \"BDV - Raw Tiles\" so the upcoming sync "
+                        + "command can address it by title.")
                 .viaTreePath()
                 .execute();
         Step.end();
@@ -155,14 +157,16 @@ public class GenerateFuseResampleDocAssets {
         Step.begin("flip-tiles",
                 "The tiles come out mirrored from Bio-Formats — Rot270 around Z brings them "
                         + "into the orientation the documentation expects.");
-        Step.say("Applying SourceSimpleTransformCommand with Rot270 around Z on the dataset — "
-                + "global_change=false so each tile rotates in place, preserving the mosaic layout.");
+        Step.say("Right-clicking the dataset — walking to: "
+                + CommandExecutor.menuPath(SourceSimpleTransformCommand.class));
         CommandExecutor.of(SourceSimpleTransformCommand.class)
                 .args("type", "Rot270",
                         "axis", "Z",
                         "ini_timepoint", 0,
                         "n_timepoints", 1,
                         "global_change", false)
+                .sayOnDialog("Dialog: Rot270 around Z with global_change=false — each tile rotates "
+                        + "in place, preserving the mosaic layout.")
                 .viaTreePath(fileDataset.getName())
                 .execute();
         Step.end();
@@ -170,14 +174,14 @@ public class GenerateFuseResampleDocAssets {
 
         Step.begin("rotate-all-tiles",
                 "Rotate all tiles in order to get a more natural brain geometry");
-        Step.say("Same transform command, but Rot90 with global_change=true — the mosaic as a "
-                + "whole rotates so the brain section reads in its anatomical orientation.");
         CommandExecutor.of(SourceSimpleTransformCommand.class)
                 .args("type", "Rot90",
                         "axis", "Z",
                         "ini_timepoint", 0,
                         "n_timepoints", 1,
                         "global_change", true)
+                .sayOnDialog("Same transform command, but Rot90 with global_change=true — the "
+                        + "mosaic as a whole rotates so the brain section reads in its anatomical orientation.")
                 .viaTreePath(fileDataset.getName())
                 .execute();
         Step.end();
@@ -195,10 +199,8 @@ public class GenerateFuseResampleDocAssets {
         Step.begin("define-grid",
                 "We define a resampling grid spanning every tile at 0.25 µm in XY and 0.4 µm in Z — "
                         + "the model source the fused output will sample onto.");
-        Step.say("Running SourcesGridModelMakeCommand on the dataset — it auto-fits a grid around "
-                + "every tile and lands a \"grid_model\" empty source under Other Sources.");
-        Step.say("0.25 µm in XY and 0.4 µm in Z — slightly oversampled relative to the raw tiles, "
-                + "so the fuse step doesn't lose detail at tile borders.");
+        Step.say("Right-clicking the dataset — walking to: "
+                + CommandExecutor.menuPath(SourcesGridModelMakeCommand.class));
         CommandExecutor.of(SourcesGridModelMakeCommand.class)
                 .args("vox_size_x", 0.25,
                         "vox_size_y", 0.25,
@@ -210,14 +212,17 @@ public class GenerateFuseResampleDocAssets {
                         "downscale_y", 2,
                         "downscale_z", 2,
                         "name", "grid_model")
+                .sayOnDialog("Dialog: 0.25 µm in XY and 0.4 µm in Z — slightly oversampled relative "
+                        + "to the raw tiles, so the fuse step doesn't lose detail at tile borders. "
+                        + "Lands as a \"grid_model\" empty source under Other Sources.")
                 .viaTreePath(fileDataset.getName())
                 .execute();
         Step.end();
 
         Step.begin("fuse-channel-0",
                 "We fuse every tile of channel 0 onto the grid — one big source replacing the tile mosaic.");
-        Step.say("Running SourcesFuseAndResampleCommand on ch_0 with the grid_model as target — "
-                + "AVERAGE blending smooths overlap seams; the output is cached and computed lazily on demand.");
+        Step.say("Right-clicking the Sources root — walking to: "
+                + CommandExecutor.menuPath(SourcesFuseAndResampleCommand.class));
         CommandExecutor.of(SourcesFuseAndResampleCommand.class)
                 .args("sources", fileDataset.getName() + ">Channel>ch_0",
                         "model", "Other Sources>grid_model",
@@ -232,14 +237,14 @@ public class GenerateFuseResampleDocAssets {
                         "n_threads", 4,
                         "name", "fused_ch0",
                         "blending_mode", "AVERAGE")
+                .sayOnDialog("Dialog: ch_0 as input, grid_model as the resampling target, AVERAGE "
+                        + "blending to smooth tile-overlap seams. Output is cached and computed lazily on demand.")
                 .viaTreePath()
                 .execute();
         Step.end();
 
         Step.begin("fuse-channel-1",
                 "Same fuse pass for channel 1 — a second fused source on the same grid.");
-        Step.say("Same command on ch_1 with the same grid_model — two fused sources now live "
-                + "alongside the raw tiles in the source tree.");
         CommandExecutor.of(SourcesFuseAndResampleCommand.class)
                 .args("sources", fileDataset.getName() + ">Channel>ch_1",
                         "model", "Other Sources>grid_model",
@@ -254,6 +259,8 @@ public class GenerateFuseResampleDocAssets {
                         "n_threads", 4,
                         "name", "fused_ch1",
                         "blending_mode", "AVERAGE")
+                .sayOnDialog("Same dialog, but ch_1 as input — two fused sources now live "
+                        + "alongside the raw tiles in the source tree.")
                 .viaTreePath()
                 .execute();
         Step.end();
@@ -266,13 +273,15 @@ public class GenerateFuseResampleDocAssets {
         bdvArea.place(bdvTiles, 1, 3, 0, 0);
         Ui.rawPause(1500);
 
-        Step.say("Right-clicking fused_ch0 with make_new_window=true — this gives us a fresh BDV "
-                + "dedicated to the fused output, separate from the Raw Tiles viewer.");
+        Step.say("Right-clicking fused_ch0 — walking to: "
+                + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
                 .args("adjust_view", true,
                         "auto_contrast", true,
                         "interpolate", true,
                         "make_new_window", true)
+                .sayOnDialog("Dialog: make_new_window=true gives us a fresh BDV dedicated to the "
+                        + "fused output, separate from the Raw Tiles viewer.")
                 .viaTreePath("Other Sources>fused_ch0")
                 .execute();
 
@@ -281,20 +290,21 @@ public class GenerateFuseResampleDocAssets {
         // Fused spans the remaining two columns while no pyramidized window exists yet.
         bdvArea.place(bdvFused, 1, 3, 0, 1, 1, 2);
 
-        Step.say("Renaming the new viewer \"BDV - Fused\" so the later sync command can address it by title.");
         CommandExecutor.of(BdvTitleSetCommand.class)
                 .args("title", "BDV - Fused")
+                .sayOnDialog("Renaming the new viewer \"BDV - Fused\" so the later sync command "
+                        + "can address it by title.")
                 .viaTreePath()
                 .execute();
 
-        Step.say("Adding fused_ch1 to the same (now active) BDV — make_new_window=false reuses "
-                + "the active viewer, so both fused channels overlay in the Fused window.");
         // Add ch1 to the same (now active) BDV.
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
                 .args("adjust_view", false,
                         "auto_contrast", true,
                         "interpolate", true,
                         "make_new_window", false)
+                .sayOnDialog("Adding fused_ch1 to the same (now active) BDV — make_new_window=false "
+                        + "reuses the active viewer, so both fused channels overlay in the Fused window.")
                 .viaTreePath("Other Sources>fused_ch1")
                 .execute();
 
@@ -304,17 +314,19 @@ public class GenerateFuseResampleDocAssets {
         Step.begin("pyramidize-ch0",
                 "We wrap fused channel 0 in a lazy multi-resolution pyramid — same data, "
                         + "but with downsampled levels for smooth zoom-out.");
-        Step.say("Running SourcesPyramidizeCommand on fused_ch0 — the fused source has only one "
-                + "resolution level, so zooming out pulls full-res tiles. The pyramid wrapper adds downsampled levels lazily.");
+        Step.say("Right-clicking fused_ch0 — walking to: "
+                + CommandExecutor.menuPath(SourcesPyramidizeCommand.class));
         CommandExecutor.of(SourcesPyramidizeCommand.class)
+                .sayOnDialog("Dialog: the fused source has only one resolution level, so zooming "
+                        + "out pulls full-res tiles. The pyramid wrapper adds downsampled levels lazily.")
                 .viaTreePath("Other Sources>fused_ch0")
                 .execute();
         Step.end();
 
         Step.begin("pyramidize-ch1",
                 "Same pyramidize pass for fused channel 1.");
-        Step.say("Same pyramidize pass on fused_ch1 — a matching pyramid lands as fused_ch1_pyramid.");
         CommandExecutor.of(SourcesPyramidizeCommand.class)
+                .sayOnDialog("Same pyramidize pass on fused_ch1 — a matching pyramid lands as fused_ch1_pyramid.")
                 .viaTreePath("Other Sources>fused_ch1")
                 .execute();
         Step.end();
@@ -326,13 +338,15 @@ public class GenerateFuseResampleDocAssets {
         bdvArea.place(bdvFused, 1, 3, 0, 1);
         Ui.rawPause(500);
 
-        Step.say("Right-clicking fused_ch0_pyramid with make_new_window=true — the third BDV "
-                + "will let us watch the pyramid path against the raw and the flat-fused views.");
+        Step.say("Right-clicking fused_ch0_pyramid — walking to: "
+                + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
                 .args("adjust_view", true,
                         "auto_contrast", true,
                         "interpolate", true,
                         "make_new_window", true)
+                .sayOnDialog("Dialog: make_new_window=true gives us a third BDV so we can watch "
+                        + "the pyramid path against the raw and the flat-fused views.")
                 .viaTreePath("Other Sources>fused_ch0_pyramid")
                 .execute();
 
@@ -340,19 +354,19 @@ public class GenerateFuseResampleDocAssets {
         Ui.pause(1500);
         bdvArea.place(bdvPyr, 1, 3, 0, 2);
 
-        Step.say("Renaming this third viewer \"BDV - Pyramidized\" so the sync command can find it.");
         CommandExecutor.of(BdvTitleSetCommand.class)
                 .args("title", "BDV - Pyramidized")
+                .sayOnDialog("Renaming this third viewer \"BDV - Pyramidized\" so the sync command can find it.")
                 .viaTreePath()
                 .execute();
 
-        Step.say("Adding fused_ch1_pyramid into the same viewer — both pyramid channels overlay "
-                + "in the Pyramidized window, mirroring the layout of the Fused window.");
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
                 .args("adjust_view", false,
                         "auto_contrast", true,
                         "interpolate", true,
                         "make_new_window", false)
+                .sayOnDialog("Adding fused_ch1_pyramid into the same viewer — both pyramid channels "
+                        + "overlay in the Pyramidized window, mirroring the layout of the Fused window.")
                 .viaTreePath("Other Sources>fused_ch1_pyramid")
                 .execute();
 
@@ -363,12 +377,14 @@ public class GenerateFuseResampleDocAssets {
                 "Finally, ViewSynchronizeCommand on all three windows — navigation in any "
                         + "one mirrors instantly in the others, and the pyramid keeps the "
                         + "overview crisp at any zoom.");
-        Step.say("Running ViewSynchronizeCommand on all three BDV titles — pan and zoom propagate "
-                + "to every viewer, so we compare raw tiles, flat fused and pyramid side by side at the same view.");
+        Step.say("Right-clicking the Sources root — walking to: "
+                + CommandExecutor.menuPath(ViewSynchronizeCommand.class));
         CommandExecutor.of(ViewSynchronizeCommand.class)
                 .args("bdvhs", new String[]{"BDV - Raw Tiles", "BDV - Fused", "BDV - Pyramidized"},
                         "bvvhs", null,
                         "synchronizetime", false)
+                .sayOnDialog("Dialog: all three BDV titles selected — pan and zoom now propagate "
+                        + "to every viewer, so we compare raw tiles, flat fused and pyramid side by side at the same view.")
                 .viaTreePath()
                 .execute();
         Step.say("Holding the final frame for ~15 s while every viewer streams its current view — "

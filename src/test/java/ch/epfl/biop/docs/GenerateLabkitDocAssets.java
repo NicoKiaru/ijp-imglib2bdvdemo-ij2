@@ -8,6 +8,7 @@ import ch.epfl.biop.command.process.labkit.SourcesLabkitOpenCommand;
 import ch.epfl.biop.docs.videos.CommandExecutor;
 import ch.epfl.biop.docs.videos.bdv.Bdv;
 import ch.epfl.biop.docs.videos.core.Assets;
+import ch.epfl.biop.docs.videos.core.Layout;
 import ch.epfl.biop.docs.videos.core.ScreenRecorder;
 import ch.epfl.biop.docs.videos.core.Screenshotter;
 import ch.epfl.biop.docs.videos.core.Step;
@@ -90,6 +91,13 @@ public class GenerateLabkitDocAssets {
         File fileDataset = ch.epfl.biop.DatasetHelper.getDataset(
                 "https://zenodo.org/records/14203207/files/Hela-Kyoto-1-Timepoint-LLS7.czi");
 
+        // Single placement area for every window that lands to the right of
+        // the BDV Sources tree. Raw fills the full area while it's alone,
+        // Labkit fills it while training, then we re-partition into a 1×2
+        // side-by-side: raw on the left, classified on the right.
+        Layout bdvArea = Layout.area(Ui.DEFAULT_FRAME_X + 450,
+                Ui.DEFAULT_FRAME_Y + 150, 900, 600);
+
         Step.begin("boot-fiji",
                 "We start Fiji and place its main window on the secondary monitor.");
         Step.say("Booting a fresh Fiji instance with the BIOP update site enabled — "
@@ -113,9 +121,8 @@ public class GenerateLabkitDocAssets {
                 "We load a Zeiss LLS7 HeLa Kyoto dataset through Bio-Formats — "
                         + "two channels, single timepoint, lazily backed by the .czi.");
         Step.say("Right-clicking the Sources root opens the BDV Playground context menu — "
-                + "we'll walk it to the Bio-Formats importer.");
-        Step.say("Filling the importer dialog: micrometre units, pyramid generation on, "
-                + "and the top-left plane-origin convention (not relevant for this demo).");
+                + "we'll walk it to the Bio-Formats importer: "
+                + CommandExecutor.menuPath(DatasetFromBioFormatsCreateCommand.class));
         CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
                 .args("datasetname", fileDataset.getName(),
                         "unit", "MICROMETER",
@@ -124,6 +131,8 @@ public class GenerateLabkitDocAssets {
                         "auto_pyramidize", true,
                         "disable_memo", false,
                         "plane_origin_convention", "TOP LEFT")
+                .sayOnDialog("Filling the importer dialog: micrometre units, pyramid generation on, "
+                        + "and the top-left plane-origin convention (not relevant for this demo).")
                 .viaTreePath()
                 .execute();
         Step.say("The CZI is opened lazily — both channels show up under the dataset node "
@@ -134,25 +143,27 @@ public class GenerateLabkitDocAssets {
         Step.begin("show-raw-bdv",
                 "Right-clicking the dataset shows it in a new BigDataViewer window — "
                         + "we'll call this one Raw Sources and place it next to the tree.");
-        Step.say("Right-clicking the CZI node — the Show in BDV command opens it "
-                + "in a fresh viewer with auto-contrast on so the cells are visible immediately.");
+        Step.say("Right-clicking the CZI node — walking to: "
+                + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
                 .args("adjust_view", true,
                         "auto_contrast", true,
                         "interpolate", true,
                         "make_new_window", true)
+                .sayOnDialog("Dialog: auto-contrast on so the cells are visible immediately, "
+                        + "make_new_window=true for a fresh viewer.")
                 .viaTreePath(fileDataset.getName())
                 .execute();
 
         Frame bdvRaw = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
         Ui.pause(1500);
-        Ui.resizeFrame(bdvRaw, 800, 600);
-        Ui.dragFrame(bdvRaw, Ui.DEFAULT_FRAME_X + 450, Ui.DEFAULT_FRAME_Y + 150);
+        // Raw fills the whole BDV area while it's the only viewer.
+        bdvArea.place(bdvRaw, 1, 1, 0, 0);
 
-        Step.say("Renaming the window to \"BDV - Raw Sources\" so the upcoming sync command "
-                + "can address it by title.");
         CommandExecutor.of(BdvTitleSetCommand.class)
                 .args("title", "BDV - Raw Sources")
+                .sayOnDialog("Renaming the window to \"BDV - Raw Sources\" so the upcoming sync "
+                        + "command can address it by title.")
                 .viaTreePath()
                 .execute();
         Step.end();
@@ -173,22 +184,21 @@ public class GenerateLabkitDocAssets {
         // the window is minimized (not closed) so the tree is visible for
         // the apply-classifier step without losing the live Labkit session.
         // The returned Future is intentionally discarded.
-        CommandService cs = Fiji.context().service(CommandService.class);
+        CommandService cs = Fiji.context().getService(CommandService.class);
         cs.run(SourcesLabkitOpenCommand.class, true,
                 "sources", sourceArray,
                 "resolution_level", 0);
 
-        // Find the Labkit window once it appears and place it on the right
-        // side of the target screen, covering the BDV Raw view. The BDV
-        // Sources tree on the left stays visible.
+        // Find the Labkit window once it appears and place it in the BDV
+        // area, covering the BDV Raw view. The BDV Sources tree on the left
+        // stays visible.
         Frame labkitFrame = Ui.waitForFrame("Labkit -", Timings.FRAME_WAIT_TIMEOUT_MS);
         if (labkitFrame == null) {
             throw new IllegalStateException("Labkit window (title starting 'Labkit -') did not appear");
         }
         Ui.pause(1500);
 
-        Ui.resizeFrame(labkitFrame, 950, 600);
-        Ui.dragFrame(labkitFrame, Ui.DEFAULT_FRAME_X + 450, Ui.DEFAULT_FRAME_Y + 150);
+        bdvArea.place(labkitFrame, 1, 1, 0, 0);
         Step.end();
 
         Step.begin("setup-labkit-labels",
@@ -254,13 +264,15 @@ public class GenerateLabkitDocAssets {
         Step.begin("apply-classifier",
                 "We re-apply the saved classifier to the same sources — lazy, so each tile "
                         + "is classified on demand as it comes into view.");
-        Step.say("Right-clicking the dataset and running SourcesLabkitClassifyCommand with the "
-                + "classifier we just saved — GPU acceleration on for the dense feature pass.");
+        Step.say("Right-clicking the dataset — walking to: "
+                + CommandExecutor.menuPath(SourcesLabkitClassifyCommand.class));
         CommandExecutor.of(SourcesLabkitClassifyCommand.class)
                 .args("classifier_file", CLASSIFIER_FILE,
                         "resolution_level", 0,
                         "suffix", "_classified",
                         "use_gpu", true)
+                .sayOnDialog("Dialog: the classifier file we just saved, GPU acceleration on for "
+                        + "the dense feature pass.")
                 .viaTreePath(fileDataset.getName())
                 .execute();
         Step.say("The command returns immediately — classification happens lazily, one tile at "
@@ -269,27 +281,32 @@ public class GenerateLabkitDocAssets {
 
         Step.begin("show-classified-bdv",
                 "The classified source lands under Other Sources. We open it in a second BDV "
-                        + "beneath the raw view, with display range 0..3 to show the three classes.");
-        Ui.resizeFrame(bdvRaw, 800, 400);
+                        + "next to the raw view, with display range 0..3 to show the three classes.");
+        // Shrink the raw viewer to the left column so the classified one
+        // can take the right column.
+        bdvArea.place(bdvRaw, 1, 2, 0, 0);
         Ui.rawPause(1500);
 
-        Step.say("Opening the new \"Other Sources\" branch (where the classified source landed) "
-                + "in a fresh BDV — auto-contrast off, since we'll set an integer range for the labels by hand.");
+        Step.say("Right-clicking the new \"Other Sources\" branch (where the classified source "
+                + "landed) — walking to: "
+                + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
                 .args("adjust_view", true,
                         "auto_contrast", false,
                         "interpolate", false,
                         "make_new_window", true)
+                .sayOnDialog("Dialog: auto-contrast off since we'll set an integer range for the "
+                        + "labels by hand, make_new_window=true for a fresh viewer.")
                 .viaTreePath("Other Sources")
                 .execute();
 
         Frame bdvClassified = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
-        Ui.resizeFrame(bdvClassified, 800, 400);
-        Ui.dragFrame(bdvClassified, Ui.DEFAULT_FRAME_X + 450, Ui.DEFAULT_FRAME_Y + 390);
+        Ui.pause(1500);
+        bdvArea.place(bdvClassified, 1, 2, 0, 1);
 
-        Step.say("Renaming it \"BDV - Classified Sources\" so the sync command can find it by title.");
         CommandExecutor.of(BdvTitleSetCommand.class)
                 .args("title", "BDV - Classified Sources")
+                .sayOnDialog("Renaming it \"BDV - Classified Sources\" so the sync command can find it by title.")
                 .viaTreePath()
                 .execute();
 
@@ -308,12 +325,14 @@ public class GenerateLabkitDocAssets {
         Step.begin("sync-views",
                 "Finally, ViewSynchronizeCommand keeps both windows tracking each other live — "
                         + "as we navigate the raw image, the classifier output streams in beside it.");
-        Step.say("Running ViewSynchronizeCommand on both BDV titles — pan, zoom and timepoint "
-                + "stay in sync, so the classifier output is read against the raw signal at the same view.");
+        Step.say("Right-clicking the Sources root — walking to: "
+                + CommandExecutor.menuPath(ViewSynchronizeCommand.class));
         CommandExecutor.of(ViewSynchronizeCommand.class)
                 .args("bdvhs", new String[]{"BDV - Raw Sources", "BDV - Classified Sources"},
                         "bvvhs", null,
                         "synchronizetime", true)
+                .sayOnDialog("Dialog: both BDV titles selected, synchronizetime=true — pan, zoom "
+                        + "and timepoint stay in sync, so the classifier output is read against the raw signal at the same view.")
                 .viaTreePath()
                 .execute();
         Step.say("Holding the final frame for ~20 s while the classifier streams in tile by tile — "
