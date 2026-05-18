@@ -25,19 +25,28 @@ import java.util.concurrent.CountDownLatch;
 
 /**
  * One narrated phase of a tutorial demo. Pair {@link #begin(String, String)}
- * and {@link #end()} around the actions that belong to that phase:
+ * and {@link #end()} around the actions that belong to that phase, and drop
+ * {@link #say(String)} between actions for finer-grained subtitle-shaped
+ * narration:
  *
  * <pre>
  * Step.begin("open-bdv-tree", "From the search bar we open the BDV Playground tree.");
+ * Step.say("Typing the command name into the search bar.");
  * CommandExecutor.of(SourceServiceShowCommand.class).viaSearch("show bdv play").execute();
+ * Step.say("Resizing and placing the tree below the main window.");
+ * Ui.resizeFrame(bdvSources, 450, 600);
+ * Ui.dragFrame(bdvSources, ...);
  * Step.end();
  * </pre>
  *
  * Each pair:
  * <ul>
- *   <li>appends one line to {@code script.md} in {@link Assets#dir()},
- *       timestamped from the first {@code begin} of the session — so the
- *       same source-of-truth file feeds both the YouTube voice-over and a
+ *   <li>appends timestamped lines to {@code script.md} in {@link Assets#dir()},
+ *       each as {@code [mm:ss → mm:ss] text} where the end stamp is the
+ *       moment the next {@link #say} (or {@link #end}) fires — i.e. the
+ *       subtitle naturally spans the action that follows it. Times are
+ *       elapsed from the first {@code begin} of the session, so the same
+ *       source-of-truth file feeds both the YouTube voice-over and a
  *       written tutorial;</li>
  *   <li>brackets a screen-recorded clip via {@link ScreenRecorder} (named
  *       to match the step), so re-running the demo regenerates the
@@ -110,6 +119,25 @@ public class Step {
     private static long sessionStartMs;
     private static String currentName;
 
+    /**
+     * A narration line whose start time is known but whose end time is
+     * resolved later — when the next {@link #say} or {@link #end} fires.
+     * That way each subtitle naturally spans the action that follows it.
+     */
+    private static final class PendingLine {
+        final long startMs;
+        final String text;
+        /** Non-null for the {@link #begin}-header line; null for {@link #say} lines. */
+        final String stepName;
+        PendingLine(long startMs, String text, String stepName) {
+            this.startMs = startMs;
+            this.text = text;
+            this.stepName = stepName;
+        }
+    }
+
+    private static PendingLine pending;
+
     public static void begin(String name, String narration) {
         if (currentName != null) {
             throw new IllegalStateException("Step '" + currentName
@@ -117,8 +145,35 @@ public class Step {
         }
         if (sessionStartMs == 0) sessionStartMs = System.currentTimeMillis();
         currentName = name;
-        appendScript(System.currentTimeMillis(), name, narration);
+        long now = System.currentTimeMillis();
+        // Defensive: a stray pending line from a malformed prior step would
+        // otherwise eat the time gap between steps. Flush it at "now" so the
+        // new begin-header gets a clean start stamp.
+        flushPending(now);
+        pending = new PendingLine(now, narration, name);
         ScreenRecorder.start(name);
+    }
+
+    /**
+     * Append a narration line inside the currently-open step. The line's
+     * end time is filled in when the next {@code say} (or {@link #end})
+     * runs — so write the {@code say} call <em>before</em> the action it
+     * describes, and the resulting subtitle will span that action.
+     *
+     * <pre>
+     * Step.say("Resizing the window to half-width.");
+     * Ui.resizeFrame(frame, 800, 600);
+     * Step.say("Dragging it into place next to the tree.");
+     * Ui.dragFrame(frame, 450, 150);
+     * </pre>
+     */
+    public static void say(String text) {
+        if (currentName == null) {
+            throw new IllegalStateException("Step.say(...) called with no open step — wrap it in begin/end.");
+        }
+        long now = System.currentTimeMillis();
+        flushPending(now);
+        pending = new PendingLine(now, text, null);
     }
 
     /**
@@ -149,6 +204,10 @@ public class Step {
     public static void end() {
         if (currentName == null) return;
         if (ScreenRecorder.isRecording()) Ui.rawPause(END_PAUSE_MS);
+        // Resolve the last pending subtitle's end stamp *before* the
+        // ffmpeg shutdown wait + screenshot, so its duration reflects the
+        // visible dwell at the end of the step, not the recorder cleanup.
+        flushPending(System.currentTimeMillis());
         if (AUTO_SNAP_END) Screenshotter.ofRecordingArea(currentName);
         ScreenRecorder.stop();
         currentName = null;
@@ -326,11 +385,20 @@ public class Step {
 
     public static String currentName() { return currentName; }
 
-    private static void appendScript(long t, String name, String narration) {
+    private static void flushPending(long endMs) {
+        if (pending == null) return;
+        appendScript(pending, endMs);
+        pending = null;
+    }
+
+    private static void appendScript(PendingLine entry, long endMs) {
         if (!WRITE_SCRIPT) return;
-        long elapsed = t - sessionStartMs;
-        long s = elapsed / 1000;
-        String line = String.format("[%02d:%02d] **%s** — %s%n", s / 60, s % 60, name, narration);
+        if (entry.text == null || entry.text.isEmpty()) return;
+        String startStamp = formatStamp(entry.startMs - sessionStartMs);
+        String endStamp = formatStamp(endMs - sessionStartMs);
+        String line = entry.stepName != null
+                ? String.format("[%s → %s] **%s** — %s%n", startStamp, endStamp, entry.stepName, entry.text)
+                : String.format("[%s → %s]   %s%n", startStamp, endStamp, entry.text);
         File f = new File(Assets.dir(), "script.md");
         try {
             Files.write(f.toPath(), line.getBytes(StandardCharsets.UTF_8),
@@ -338,5 +406,10 @@ public class Step {
         } catch (IOException e) {
             throw new RuntimeException("Could not append to " + f, e);
         }
+    }
+
+    private static String formatStamp(long elapsedMs) {
+        long s = Math.max(0, elapsedMs) / 1000;
+        return String.format("%02d:%02d", s / 60, s % 60);
     }
 }

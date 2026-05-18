@@ -92,12 +92,15 @@ public class GenerateLabkitDocAssets {
 
         Step.begin("boot-fiji",
                 "We start Fiji and place its main window on the secondary monitor.");
+        Step.say("Booting a fresh Fiji instance with the BIOP update site enabled — "
+                + "this brings in BDV Playground and the Labkit-on-sources command.");
         Fiji.startFiji();
         Step.end();
 
         Step.begin("open-bdv-tree",
                 "From Fiji's search bar we open the BDV Playground Sources tree, "
                         + "where every loaded source will land.");
+        Step.say("Using Fiji's search bar, let's type 'show bdv play' to find BigDataViewer Playground tree display.");
         CommandExecutor.of(SourceServiceShowCommand.class)
                 .viaSearch("show bdv play")
                 .execute();
@@ -107,8 +110,12 @@ public class GenerateLabkitDocAssets {
         Step.end();
 
         Step.begin("load-raw-czi",
-                "We load the LLS7 HeLa Kyoto dataset through Bio-Formats — "
+                "We load a Zeiss LLS7 HeLa Kyoto dataset through Bio-Formats — "
                         + "two channels, single timepoint, lazily backed by the .czi.");
+        Step.say("Right-clicking the Sources root opens the BDV Playground context menu — "
+                + "we'll walk it to the Bio-Formats importer.");
+        Step.say("Filling the importer dialog: micrometre units, pyramid generation on, "
+                + "and the top-left plane-origin convention (not relevant for this demo).");
         CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
                 .args("datasetname", fileDataset.getName(),
                         "unit", "MICROMETER",
@@ -119,12 +126,16 @@ public class GenerateLabkitDocAssets {
                         "plane_origin_convention", "TOP LEFT")
                 .viaTreePath()
                 .execute();
+        Step.say("The CZI is opened lazily — both channels show up under the dataset node "
+                + "in the Sources tree, ready to feed Labkit.");
         Ui.rawPause(3000); // Time to open the dataset - no get when not programmatic
         Step.end();
 
         Step.begin("show-raw-bdv",
                 "Right-clicking the dataset shows it in a new BigDataViewer window — "
                         + "we'll call this one Raw Sources and place it next to the tree.");
+        Step.say("Right-clicking the CZI node — the Show in BDV command opens it "
+                + "in a fresh viewer with auto-contrast on so the cells are visible immediately.");
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
                 .args("adjust_view", true,
                         "auto_contrast", true,
@@ -138,6 +149,8 @@ public class GenerateLabkitDocAssets {
         Ui.resizeFrame(bdvRaw, 800, 600);
         Ui.dragFrame(bdvRaw, Ui.DEFAULT_FRAME_X + 450, Ui.DEFAULT_FRAME_Y + 150);
 
+        Step.say("Renaming the window to \"BDV - Raw Sources\" so the upcoming sync command "
+                + "can address it by title.");
         CommandExecutor.of(BdvTitleSetCommand.class)
                 .args("title", "BDV - Raw Sources")
                 .viaTreePath()
@@ -147,10 +160,14 @@ public class GenerateLabkitDocAssets {
         Step.begin("open-labkit",
                 "We send both channels to Labkit. Labkit opens its own window where we'll "
                         + "draw scribbles for three classes: background, cytoplasm and nucleus.");
+        Step.say("Pulling both sources out of the BDV state — sending the pair to Labkit "
+                + "lets the classifier use joint intensity (cytoplasm vs nucleus signal) to separate the classes.");
         BdvHandle rawBdv = SourceServices.getBdvDisplayService().getActiveBdv();
         List<SourceAndConverter<?>> sources = rawBdv.getViewerPanel().state().getSources();
         SourceAndConverter<?>[] sourceArray = sources.toArray(new SourceAndConverter<?>[0]);
 
+        Step.say("Launching SourcesLabkitOpenCommand — we don't await its Future because Labkit "
+                + "blocks until its window closes, and we want to drive the next steps while it stays open.");
         // Labkit blocks until the user closes its window — fire it and let
         // the demo continue. We never await: at the end of the labkit phase
         // the window is minimized (not closed) so the tree is visible for
@@ -237,6 +254,8 @@ public class GenerateLabkitDocAssets {
         Step.begin("apply-classifier",
                 "We re-apply the saved classifier to the same sources — lazy, so each tile "
                         + "is classified on demand as it comes into view.");
+        Step.say("Right-clicking the dataset and running SourcesLabkitClassifyCommand with the "
+                + "classifier we just saved — GPU acceleration on for the dense feature pass.");
         CommandExecutor.of(SourcesLabkitClassifyCommand.class)
                 .args("classifier_file", CLASSIFIER_FILE,
                         "resolution_level", 0,
@@ -244,6 +263,8 @@ public class GenerateLabkitDocAssets {
                         "use_gpu", true)
                 .viaTreePath(fileDataset.getName())
                 .execute();
+        Step.say("The command returns immediately — classification happens lazily, one tile at "
+                + "a time, only as the viewer requests pixels.");
         Step.end();
 
         Step.begin("show-classified-bdv",
@@ -252,6 +273,8 @@ public class GenerateLabkitDocAssets {
         Ui.resizeFrame(bdvRaw, 800, 400);
         Ui.rawPause(1500);
 
+        Step.say("Opening the new \"Other Sources\" branch (where the classified source landed) "
+                + "in a fresh BDV — auto-contrast off, since we'll set an integer range for the labels by hand.");
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
                 .args("adjust_view", true,
                         "auto_contrast", false,
@@ -264,11 +287,14 @@ public class GenerateLabkitDocAssets {
         Ui.resizeFrame(bdvClassified, 800, 400);
         Ui.dragFrame(bdvClassified, Ui.DEFAULT_FRAME_X + 450, Ui.DEFAULT_FRAME_Y + 390);
 
+        Step.say("Renaming it \"BDV - Classified Sources\" so the sync command can find it by title.");
         CommandExecutor.of(BdvTitleSetCommand.class)
                 .args("title", "BDV - Classified Sources")
                 .viaTreePath()
                 .execute();
 
+        Step.say("Setting display range 0..3 on every classified source — the classifier emits "
+                + "label indices 0/1/2 for background/cytoplasm/nucleus, so this maps each class to a distinct grey.");
         BdvHandle classifiedBdv = SourceServices.getBdvDisplayService().getActiveBdv();
         Bdv.setCardPanelExpanded(classifiedBdv, true);
         List<SourceAndConverter<?>> classifiedSources = classifiedBdv.getViewerPanel().state().getSources();
@@ -282,15 +308,25 @@ public class GenerateLabkitDocAssets {
         Step.begin("sync-views",
                 "Finally, ViewSynchronizeCommand keeps both windows tracking each other live — "
                         + "as we navigate the raw image, the classifier output streams in beside it.");
+        Step.say("Running ViewSynchronizeCommand on both BDV titles — pan, zoom and timepoint "
+                + "stay in sync, so the classifier output is read against the raw signal at the same view.");
         CommandExecutor.of(ViewSynchronizeCommand.class)
                 .args("bdvhs", new String[]{"BDV - Raw Sources", "BDV - Classified Sources"},
                         "bvvhs", null,
                         "synchronizetime", true)
                 .viaTreePath()
                 .execute();
+        Step.say("Holding the final frame for ~20 s while the classifier streams in tile by tile — "
+                + "the side-by-side reveals where the model agrees and where it doesn't.");
         // The classifier streams in over several seconds — hold so the
         // final frame shows both windows fully resolved.
         Ui.rawPause(20000);
         Step.end();
+
+        // Notify that capture is done so the user knows it's safe to close
+        // Fiji. The popup is shown after the last Step.end() — recorder is
+        // already stopped, so the popup won't appear in the final clip.
+        Step.waitForUser("Video acquisition complete — clips, screenshots and script.md "
+                + "are written. Click Continue to dismiss.");
     }
 }
