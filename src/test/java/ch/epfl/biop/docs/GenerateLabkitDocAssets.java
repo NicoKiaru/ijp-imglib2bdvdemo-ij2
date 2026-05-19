@@ -79,8 +79,8 @@ public class GenerateLabkitDocAssets {
         // target/video-assets/LabkitVideoDemo/ as NNN-step.{mp4,png} plus a
         // single script.md transcript.
         Assets.session("LabkitVideoDemo");
-        ScreenRecorder.ENABLED = true;
-        Screenshotter.ENABLED = true;
+        ScreenRecorder.ENABLED = false;//true;
+        Screenshotter.ENABLED = false;//true;
         // Set Step.SKIP_MANUAL = true to race through the automated phases
         // (the wait-for-Continue dialogs return immediately — useful only
         // when the classifier file already exists and you want to test the
@@ -143,7 +143,7 @@ public class GenerateLabkitDocAssets {
         Frame bdvRaw = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
         Ui.pause(1500);
         // Raw fills the whole BDV area while it's the only viewer.
-        bdvArea.place(bdvRaw, 1, 1, 0, 0);
+        bdvArea.place(bdvRaw, 1, 2, 0, 0);
 
         CommandExecutor.of(BdvTitleSetCommand.class)
                 .args("title", "BDV - Raw Sources")
