@@ -5,6 +5,7 @@ import ch.epfl.biop.command.process.SourcesPyramidizeCommand;
 import ch.epfl.biop.command.process.resample.SourcesFuseAndResampleCommand;
 import ch.epfl.biop.command.process.resample.SourcesGridModelMakeCommand;
 import ch.epfl.biop.docs.videos.CommandExecutor;
+import ch.epfl.biop.docs.videos.GenerateDocAssetsCommon;
 import ch.epfl.biop.docs.videos.core.Assets;
 import ch.epfl.biop.docs.videos.core.Layout;
 import ch.epfl.biop.docs.videos.core.ScreenRecorder;
@@ -84,25 +85,8 @@ public class GenerateFuseResampleDocAssets {
         Layout bdvArea = Layout.area(Ui.DEFAULT_FRAME_X + 450,
                 Ui.DEFAULT_FRAME_Y + 150, 900, 600);
 
-        Step.begin("boot-fiji",
-                "We start Fiji and place its main window on the secondary monitor.");
-        Step.say("Booting a fresh Fiji instance with the BIOP update site enabled — "
-                + "this brings in BDV Playground and the fuse/resample commands.");
-        Fiji.startFiji();
-        Step.end();
-
-        Step.begin("open-bdv-tree",
-                "From Fiji's search bar we open the BDV Playground Sources tree, "
-                        + "where every loaded source will land.");
-        Step.say("Typing the command into Fiji's legacy search bar — "
-                + "the search bar is our reliable entry point since AWT menus aren't scriptable.");
-        CommandExecutor.of(SourceServiceShowCommand.class)
-                .viaSearch("show bdv play")
-                .execute();
-        Frame bdvSources = Ui.waitForFrame("BDV Sources", Timings.FRAME_WAIT_TIMEOUT_MS);
-        Ui.resizeFrame(bdvSources, 450, 600);
-        Ui.dragFrame(bdvSources, Ui.DEFAULT_FRAME_X, Ui.DEFAULT_FRAME_Y + 150);
-        Step.end();
+        GenerateDocAssetsCommon.boot();
+        GenerateDocAssetsCommon.showBdvTreeDisplay();
 
         Step.begin("load-tiles",
                 "We load the tiled Dentate Gyrus brain-section .lif through Bio-Formats — "

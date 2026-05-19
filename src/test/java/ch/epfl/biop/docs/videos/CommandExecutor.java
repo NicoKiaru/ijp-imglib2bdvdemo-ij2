@@ -113,11 +113,15 @@ public class CommandExecutor {
      * trim at the call site if a shorter form reads better in a subtitle.</p>
      */
     public static String menuPath(Class<? extends Command> commandClass) {
+        return menuPath(commandClass, 0);
+    }
+
+    public static String menuPath(Class<? extends Command> commandClass, int iStart) {
         CommandService cs = Fiji.context().getService(CommandService.class);
         MenuPath path = cs.getCommand(commandClass).getMenuPath();
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < path.size(); i++) {
-            if (i > 0) sb.append(" > ");
+        for (int i = iStart; i < path.size(); i++) {
+            if (i > iStart) sb.append(" > ");
             sb.append(path.get(i).getName());
         }
         return sb.toString();

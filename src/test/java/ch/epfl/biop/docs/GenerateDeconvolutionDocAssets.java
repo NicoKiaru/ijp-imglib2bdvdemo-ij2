@@ -5,6 +5,7 @@ import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
 import ch.epfl.biop.command.process.deconvolve.SourcesDeconvolveCommand;
 import ch.epfl.biop.docs.videos.CommandExecutor;
+import ch.epfl.biop.docs.videos.GenerateDocAssetsCommon;
 import ch.epfl.biop.docs.videos.bdv.Bdv;
 import ch.epfl.biop.docs.videos.core.Assets;
 import ch.epfl.biop.docs.videos.core.Layout;
@@ -64,36 +65,19 @@ public class GenerateDeconvolutionDocAssets {
         // Single placement area for the two BDV windows in this demo. The raw
         // window fills the whole area while it's alone, then we re-partition
         // into a 2×1 stack — raw on top, deconvolved beneath — so each pane
-        // is 800×400 with no overlap.
+        // is 800×400 with no overlap.y
         Layout bdvArea = Layout.area(Ui.DEFAULT_FRAME_X + 450,
                 Ui.DEFAULT_FRAME_Y + 150, 900, 600);
 
-        Step.begin("boot-fiji",
-                "We start Fiji and place its main window on the secondary monitor.");
-        Step.say("Booting a fresh Fiji instance with the BIOP update site enabled — "
-                + "this brings in BDV Playground and the deconvolution command.");
-        Fiji.startFiji();
-        Step.end();
-
-        Step.begin("open-bdv-tree",
-                "From Fiji's search bar we open the BDV Playground Sources tree, "
-                        + "where every loaded source will land.");
-        Step.say("Typing the command into Fiji's legacy search bar — "
-                + "the search bar is our reliable entry point since AWT menus aren't scriptable.");
-        CommandExecutor.of(SourceServiceShowCommand.class)
-                .viaSearch("show bdv play")
-                .execute();
-        Frame bdvSources = Ui.waitForFrame("BDV Sources", Timings.FRAME_WAIT_TIMEOUT_MS);
-        Ui.resizeFrame(bdvSources, 450, 600);
-        Ui.dragFrame(bdvSources, Ui.DEFAULT_FRAME_X, Ui.DEFAULT_FRAME_Y + 150);
-        Step.end();
+        GenerateDocAssetsCommon.boot();
+        GenerateDocAssetsCommon.showBdvTreeDisplay();
 
         Step.begin("load-raw-czi",
                 "We load the raw LLS7 HeLa dataset through Bio-Formats — "
                         + "three channels, multi-timepoint, lazily backed by the .czi.");
         Step.say("Right-clicking the Sources root opens the BDV Playground context menu — "
                 + "we'll walk it to the Bio-Formats importer: "
-                + CommandExecutor.menuPath(DatasetFromBioFormatsCreateCommand.class));
+                + CommandExecutor.menuPath(DatasetFromBioFormatsCreateCommand.class, 2));
         CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
                 .args("datasetname", fileDataset.getName(),
                         "unit", "MICROMETER",

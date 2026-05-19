@@ -6,6 +6,7 @@ import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateComman
 import ch.epfl.biop.command.process.labkit.SourcesLabkitClassifyCommand;
 import ch.epfl.biop.command.process.labkit.SourcesLabkitOpenCommand;
 import ch.epfl.biop.docs.videos.CommandExecutor;
+import ch.epfl.biop.docs.videos.GenerateDocAssetsCommon;
 import ch.epfl.biop.docs.videos.bdv.Bdv;
 import ch.epfl.biop.docs.videos.core.Assets;
 import ch.epfl.biop.docs.videos.core.Layout;
@@ -98,24 +99,8 @@ public class GenerateLabkitDocAssets {
         Layout bdvArea = Layout.area(Ui.DEFAULT_FRAME_X + 450,
                 Ui.DEFAULT_FRAME_Y + 150, 900, 600);
 
-        Step.begin("boot-fiji",
-                "We start Fiji and place its main window on the secondary monitor.");
-        Step.say("Booting a fresh Fiji instance with the BIOP update site enabled — "
-                + "this brings in BDV Playground and the Labkit-on-sources command.");
-        Fiji.startFiji();
-        Step.end();
-
-        Step.begin("open-bdv-tree",
-                "From Fiji's search bar we open the BDV Playground Sources tree, "
-                        + "where every loaded source will land.");
-        Step.say("Using Fiji's search bar, let's type 'show bdv play' to find BigDataViewer Playground tree display.");
-        CommandExecutor.of(SourceServiceShowCommand.class)
-                .viaSearch("show bdv play")
-                .execute();
-        Frame bdvSources = Ui.waitForFrame("BDV Sources", Timings.FRAME_WAIT_TIMEOUT_MS);
-        Ui.resizeFrame(bdvSources, 450, 600);
-        Ui.dragFrame(bdvSources, Ui.DEFAULT_FRAME_X, Ui.DEFAULT_FRAME_Y + 150);
-        Step.end();
+        GenerateDocAssetsCommon.boot();
+        GenerateDocAssetsCommon.showBdvTreeDisplay();
 
         Step.begin("load-raw-czi",
                 "We load a Zeiss LLS7 HeLa Kyoto dataset through Bio-Formats — "
@@ -168,26 +153,34 @@ public class GenerateLabkitDocAssets {
                 .execute();
         Step.end();
 
-        Step.begin("open-labkit",
-                "We send both channels to Labkit. Labkit opens its own window where we'll "
-                        + "draw scribbles for three classes: background, cytoplasm and nucleus.");
-        Step.say("Pulling both sources out of the BDV state — sending the pair to Labkit "
-                + "lets the classifier use joint intensity (cytoplasm vs nucleus signal) to separate the classes.");
         BdvHandle rawBdv = SourceServices.getBdvDisplayService().getActiveBdv();
         List<SourceAndConverter<?>> sources = rawBdv.getViewerPanel().state().getSources();
         SourceAndConverter<?>[] sourceArray = sources.toArray(new SourceAndConverter<?>[0]);
 
-        Step.say("Launching SourcesLabkitOpenCommand — we don't await its Future because Labkit "
-                + "blocks until its window closes, and we want to drive the next steps while it stays open.");
+        //Step.say("Launching SourcesLabkitOpenCommand — we don't await its Future because Labkit "
+        //        + "blocks until its window closes, and we want to drive the next steps while it stays open.");
         // Labkit blocks until the user closes its window — fire it and let
         // the demo continue. We never await: at the end of the labkit phase
         // the window is minimized (not closed) so the tree is visible for
         // the apply-classifier step without losing the live Labkit session.
         // The returned Future is intentionally discarded.
-        CommandService cs = Fiji.context().getService(CommandService.class);
+        /*CommandService cs = Fiji.context().getService(CommandService.class);
         cs.run(SourcesLabkitOpenCommand.class, true,
                 "sources", sourceArray,
-                "resolution_level", 0);
+                "resolution_level", 0);*/
+
+        Step.begin("open-labkit",
+                "We send both channels to Labkit. Labkit opens its own window where we'll "
+                        + "draw scribbles for three classes: background, cytoplasm and nucleus.");
+        Step.say("Pulling both sources and sending the pair to Labkit "
+                + "lets the classifier use joint intensity (cytoplasm vs nucleus signal) to separate the classes.");
+        Step.say("Right-clicking the sources to classify — walking to: "
+                + CommandExecutor.menuPath(SourcesLabkitOpenCommand.class, 2));
+        CommandExecutor.of(SourcesLabkitOpenCommand.class)
+                .args("resolution_level", 0)
+                .sayOnDialog("Dialog: the dataset has a single resolution level: 0 (= highest resolution)")
+                .viaTreePath(fileDataset.getName())
+                .execute();
 
         // Find the Labkit window once it appears and place it in the BDV
         // area, covering the BDV Raw view. The BDV Sources tree on the left
@@ -197,7 +190,6 @@ public class GenerateLabkitDocAssets {
             throw new IllegalStateException("Labkit window (title starting 'Labkit -') did not appear");
         }
         Ui.pause(1500);
-
         bdvArea.place(labkitFrame, 1, 1, 0, 0);
         Step.end();
 
