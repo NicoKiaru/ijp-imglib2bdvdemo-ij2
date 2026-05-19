@@ -72,9 +72,10 @@ public class GenerateDeconvolutionDocAssets {
         GenerateDocAssetsCommon.boot();
         GenerateDocAssetsCommon.showBdvTreeDisplay();
 
-        Step.begin("load-raw-czi",
-                "We load the raw LLS7 HeLa dataset through Bio-Formats — "
-                        + "three channels, multi-timepoint, lazily backed by the .czi.");
+        Step.begin("Open Hela Demo Dataset",
+                "We open the raw LLS7 HeLa dataset — "
+                        + "three channels, multi-timepoint, lazily loaded through Bio-Formats, "+
+                        "voxel size = 144 x 144 x 400nm");
         Step.say("Right-clicking the Sources root opens the BDV Playground context menu — "
                 + "we'll walk it to the Bio-Formats importer: "
                 + CommandExecutor.menuPath(DatasetFromBioFormatsCreateCommand.class, 2));
@@ -86,19 +87,18 @@ public class GenerateDeconvolutionDocAssets {
                         "auto_pyramidize", true,
                         "disable_memo", false,
                         "plane_origin_convention", "TOP LEFT")
-                .sayOnDialog("Filling the importer dialog: micrometre units, pyramid generation on, "
-                        + "and the top-left plane-origin convention (not relevant for this demo).")
+                .sayOnDialog("Filling the importer dialog. The parameters are not very important for this demo.")
                 .viaTreePath()
                 .execute();
-        Step.say("The CZI is opened lazily — nothing is read until a viewer asks for tiles, "
-                + "which is what lets us handle this multi-gigabyte volume on a laptop.");
+        Step.say("The CZI is opened lazily — nothing is read unless data is requested, for instance by a viewer."
+                + "That's the reason why we can handle this multi-gigabyte fairly easily on a low-end computer.");
         Ui.rawPause(1500);
         Step.end();
 
-        Step.begin("load-psf",
-                "Then the matching 400 nm point-spread function — also through "
-                        + "Bio-Formats so units and conventions match the dataset.");
-        Step.say("Same Bio-Formats path again for the PSF: "
+        Step.begin("Open Matching Point Spread Function",
+                "We open the matching point-spread function (obtained via PSF distillation) — also through "
+                        + "Bio-Formats.");
+        Step.say("We walk through the same Bio-Formats command: "
                 + CommandExecutor.menuPath(DatasetFromBioFormatsCreateCommand.class));
         CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
                 .args("datasetname", filePSF.getName(),
@@ -108,25 +108,24 @@ public class GenerateDeconvolutionDocAssets {
                         "auto_pyramidize", true,
                         "disable_memo", false,
                         "plane_origin_convention", "TOP LEFT")
-                .sayOnDialog("Same dialog as before, but pointed at the 400 nm PSF — voxel sizes "
-                        + "match the dataset so the Richardson-Lucy kernel will line up voxel for voxel.")
+                .sayOnDialog("Same dialog as before.")
                 .viaTreePath()
                 .execute();
         Step.say("Both datasets now live in the Sources tree, ready to feed the deconvolution command.");
         Ui.rawPause(1500);
         Step.end();
 
-        Step.begin("show-raw-bdv",
-                "Right-clicking the dataset shows it in a new BigDataViewer window — "
-                        + "we'll call this one Raw Sources and place it next to the tree.");
+        Step.begin("Show Hela Dataset",
+                "We can display the original raw dataset in a BigDataViewer window — "
+                        + "we'll set its title to 'BDV - Raw Sources'.");
         Step.say("Right-clicking the CZI node — walking to: "
-                + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class));
+                + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class, 2));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
                 .args("adjust_view", true,
                         "auto_contrast", true,
                         "interpolate", false,
                         "make_new_window", true)
-                .sayOnDialog("Dialog: auto-contrast on so the cells are visible immediately, "
+                .sayOnDialog("Dialog: auto-contrast on, "
                         + "make_new_window=true so the raw view gets its own viewer.")
                 .viaTreePath(fileDataset.getName())
                 .execute();
@@ -143,13 +142,13 @@ public class GenerateDeconvolutionDocAssets {
                 .execute();
         Step.end();
 
-        Step.begin("tune-raw-display",
+        Step.begin("Adjust Display Of Hela Dataset",
                 "We jump to timepoint 30 and set a per-channel display range so all "
-                        + "three channels read distinctly before we deconvolve.");
+                        + "three channels are not displayed with saturation.");
         BdvHandle rawBdv = SourceServices.getBdvDisplayService().getActiveBdv();
         Step.say("Stepping the time slider to frame 30 — that's the timepoint where we can see a mitosis event.");
         Bdv.setTimepoint(rawBdv, 30);
-        Step.say("Opening the source card so we can dial in the display range per channel - mind the location of the blue arrow.");
+        Step.say("Opening the source card so we can dial in the display range per channel - mind the location of the blue arrow!");
         Bdv.setCardPanelExpanded(rawBdv, true);
 
         List<SourceAndConverter<?>> sources = rawBdv.getViewerPanel().state().getSources();
@@ -167,12 +166,12 @@ public class GenerateDeconvolutionDocAssets {
         Bdv.setCardPanelExpanded(rawBdv, false);
         Step.end();
 
-        Step.begin("deconvolve",
+        Step.begin("Richardson-Lucy Deconvolution (Tiled & Lazy)",
                 "Now we run lazy Richardson-Lucy: 20 iterations, 256-by-256-by-64 "
                         + "blocks with 16-pixel overlap, non-circulant, light regularization.");
         Step.say("Right-clicking the Sources root — this is the heavy step; everything else "
                 + "has been setup for this. Walking to: "
-                + CommandExecutor.menuPath(SourcesDeconvolveCommand.class));
+                + CommandExecutor.menuPath(SourcesDeconvolveCommand.class, 2));
         CommandExecutor.of(SourcesDeconvolveCommand.class)
                 .args("sources", fileDataset.getName(),
                         "psf", filePSF.getName(),
@@ -194,14 +193,14 @@ public class GenerateDeconvolutionDocAssets {
                 + "computed block by block on the GPU pool only when requested (by a viewer for instance).");
         Step.end();
 
-        Step.begin("show-deconvolved-bdv",
+        Step.begin("Show Deconvolved Dataset",
                 "The deconvolved sources land under Other Sources. We open them in a "
                         + "second BDV beneath the raw view, sized to share the same width.");
         bdvArea.place(bdvRaw, 2, 1, 0, 0);
 
         Step.say("Right-clicking the new \"Other Sources\" branch (where the deconvolved channels "
                 + "landed) — walking to: "
-                + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class));
+                + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class, 2));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
                 .args("adjust_view", true,
                         "auto_contrast", false,
@@ -226,11 +225,11 @@ public class GenerateDeconvolutionDocAssets {
         Ui.rawPause(2000);
         Step.end();
 
-        Step.begin("sync-views",
-                "Finally, ViewSynchronizeCommand keeps both windows tracking each other "
+        Step.begin("Synchronize Raw And Deconvolved Sources Display",
+                "Finally, we set both windows to track each other "
                         + "live — pan, zoom and timepoint stay in sync as we navigate.");
         Step.say("Right-clicking the Sources root — walking to: "
-                + CommandExecutor.menuPath(ViewSynchronizeCommand.class));
+                + CommandExecutor.menuPath(ViewSynchronizeCommand.class, 2));
         CommandExecutor.of(ViewSynchronizeCommand.class)
                 .args("bdvhs", new String[]{"BDV - Raw Sources", "BDV - Deconvolved Sources"},
                         "bvvhs", null,

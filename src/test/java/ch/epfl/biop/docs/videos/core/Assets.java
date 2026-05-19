@@ -44,6 +44,7 @@ public class Assets {
         }
         Screenshotter.resetCounter();
         ScreenRecorder.resetCounter();
+        Events.onSessionStart();
         return currentDir;
     }
 

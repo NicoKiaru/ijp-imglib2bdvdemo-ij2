@@ -210,6 +210,7 @@ public class Step {
         flushPending(System.currentTimeMillis());
         if (AUTO_SNAP_END) Screenshotter.ofRecordingArea(currentName);
         ScreenRecorder.stop();
+        Events.flush();
         currentName = null;
     }
 
@@ -384,6 +385,17 @@ public class Step {
     }
 
     public static String currentName() { return currentName; }
+
+    /**
+     * Elapsed milliseconds since the first {@link #begin} of the session
+     * — the same anchor used by {@code script.md} timestamps and
+     * {@link Events#flush() events.json} rows. Returns {@code 0} before
+     * any {@code begin} has run.
+     */
+    public static long elapsedMs() {
+        if (sessionStartMs == 0) return 0;
+        return System.currentTimeMillis() - sessionStartMs;
+    }
 
     private static void flushPending(long endMs) {
         if (pending == null) return;
