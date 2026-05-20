@@ -90,7 +90,7 @@ public class GenerateDeconvolutionDocAssets {
                 .sayOnDialog("Filling the importer dialog. The parameters are not very important for this demo.")
                 .viaTreePath()
                 .execute();
-        Step.say("The CZI is opened lazily — nothing is read unless data is requested, for instance by a viewer."
+        Step.say("The CZI is opened lazily — nothing is read unless data is requested, for instance by a viewer. "
                 + "That's the reason why we can handle this multi-gigabyte fairly easily on a low-end computer.");
         Ui.rawPause(1500);
         Step.end();
