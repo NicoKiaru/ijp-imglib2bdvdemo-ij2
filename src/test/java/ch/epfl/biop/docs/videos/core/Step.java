@@ -17,10 +17,6 @@ import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -41,23 +37,24 @@ import java.util.concurrent.CountDownLatch;
  *
  * Each pair:
  * <ul>
- *   <li>appends timestamped lines to {@code script.md} in {@link Assets#dir()},
- *       each as {@code [mm:ss → mm:ss] text} where the end stamp is the
- *       moment the next {@link #say} (or {@link #end}) fires — i.e. the
- *       subtitle naturally spans the action that follows it. Times are
- *       elapsed from the first {@code begin} of the session, so the same
- *       source-of-truth file feeds both the YouTube voice-over and a
- *       written tutorial;</li>
  *   <li>brackets a screen-recorded clip via {@link ScreenRecorder} (named
  *       to match the step), so re-running the demo regenerates the
- *       per-step clip set ready for stitching with ffmpeg.</li>
+ *       per-step clip set ready for stitching with ffmpeg;</li>
+ *   <li>contributes one {@code steps[]} entry to {@code timeline.json} via
+ *       {@link Timeline}: the {@code begin} narration becomes the step's
+ *       {@code description} (chapter title), each {@link #say} becomes a
+ *       {@code comments[]} sub-step, and every mouse gesture in the phase
+ *       becomes an {@code events[]} entry. All timestamps are relative to
+ *       the first captured frame of that step's own clip, so they map
+ *       directly onto the per-step {@code .mp4} without session-global
+ *       drift.</li>
  * </ul>
  *
  * <p>Toggles for fast iteration:</p>
  * <ul>
  *   <li>{@link ScreenRecorder#ENABLED} = false → no video clips</li>
  *   <li>{@link Screenshotter#ENABLED} = false → no screenshots</li>
- *   <li>{@link #WRITE_SCRIPT} = false → no script file</li>
+ *   <li>{@link Timeline#ENABLED} = false → no {@code timeline.json}</li>
  * </ul>
  *
  * <p>A JVM shutdown hook ensures any in-flight ffmpeg recording is
@@ -65,8 +62,6 @@ import java.util.concurrent.CountDownLatch;
  * exception, Ctrl+C, …) — otherwise the clip would be left truncated.</p>
  */
 public class Step {
-
-    public static boolean WRITE_SCRIPT = true;
 
     /**
      * Held at the end of every {@link #end()}: the final frame stays on
@@ -116,49 +111,26 @@ public class Step {
         }, "Step-shutdown-stop-recorder"));
     }
 
-    private static long sessionStartMs;
     private static String currentName;
-
-    /**
-     * A narration line whose start time is known but whose end time is
-     * resolved later — when the next {@link #say} or {@link #end} fires.
-     * That way each subtitle naturally spans the action that follows it.
-     */
-    private static final class PendingLine {
-        final long startMs;
-        final String text;
-        /** Non-null for the {@link #begin}-header line; null for {@link #say} lines. */
-        final String stepName;
-        PendingLine(long startMs, String text, String stepName) {
-            this.startMs = startMs;
-            this.text = text;
-            this.stepName = stepName;
-        }
-    }
-
-    private static PendingLine pending;
 
     public static void begin(String name, String narration) {
         if (currentName != null) {
             throw new IllegalStateException("Step '" + currentName
                     + "' is still open — call Step.end() first.");
         }
-        if (sessionStartMs == 0) sessionStartMs = System.currentTimeMillis();
         currentName = name;
-        long now = System.currentTimeMillis();
-        // Defensive: a stray pending line from a malformed prior step would
-        // otherwise eat the time gap between steps. Flush it at "now" so the
-        // new begin-header gets a clean start stamp.
-        flushPending(now);
-        pending = new PendingLine(now, narration, name);
+        // Start the recorder first so the clip name / index are available
+        // when Timeline opens the matching step record.
         ScreenRecorder.start(name);
+        Timeline.beginStep(name, narration);
     }
 
     /**
-     * Append a narration line inside the currently-open step. The line's
+     * Append a narration sub-step inside the currently-open step — it lands
+     * in the step's {@code comments[]} in {@code timeline.json}. The line's
      * end time is filled in when the next {@code say} (or {@link #end})
-     * runs — so write the {@code say} call <em>before</em> the action it
-     * describes, and the resulting subtitle will span that action.
+     * runs, so write the {@code say} call <em>before</em> the action it
+     * describes and the resulting subtitle will span that action.
      *
      * <pre>
      * Step.say("Resizing the window to half-width.");
@@ -171,9 +143,7 @@ public class Step {
         if (currentName == null) {
             throw new IllegalStateException("Step.say(...) called with no open step — wrap it in begin/end.");
         }
-        long now = System.currentTimeMillis();
-        flushPending(now);
-        pending = new PendingLine(now, text, null);
+        Timeline.comment(text);
     }
 
     /**
@@ -204,13 +174,14 @@ public class Step {
     public static void end() {
         if (currentName == null) return;
         if (ScreenRecorder.isRecording()) Ui.rawPause(END_PAUSE_MS);
-        // Resolve the last pending subtitle's end stamp *before* the
-        // ffmpeg shutdown wait + screenshot, so its duration reflects the
-        // visible dwell at the end of the step, not the recorder cleanup.
-        flushPending(System.currentTimeMillis());
+        // Resolve the last narration line's end stamp *before* the ffmpeg
+        // shutdown wait + screenshot, so its duration reflects the visible
+        // dwell at the end of the step, not the recorder cleanup.
+        Timeline.resolvePending(System.currentTimeMillis());
         if (AUTO_SNAP_END) Screenshotter.ofRecordingArea(currentName);
         ScreenRecorder.stop();
-        Events.flush();
+        // endStep runs after stop() so the clip's first-frame anchor is in.
+        Timeline.endStep();
         currentName = null;
     }
 
@@ -385,43 +356,4 @@ public class Step {
     }
 
     public static String currentName() { return currentName; }
-
-    /**
-     * Elapsed milliseconds since the first {@link #begin} of the session
-     * — the same anchor used by {@code script.md} timestamps and
-     * {@link Events#flush() events.json} rows. Returns {@code 0} before
-     * any {@code begin} has run.
-     */
-    public static long elapsedMs() {
-        if (sessionStartMs == 0) return 0;
-        return System.currentTimeMillis() - sessionStartMs;
-    }
-
-    private static void flushPending(long endMs) {
-        if (pending == null) return;
-        appendScript(pending, endMs);
-        pending = null;
-    }
-
-    private static void appendScript(PendingLine entry, long endMs) {
-        if (!WRITE_SCRIPT) return;
-        if (entry.text == null || entry.text.isEmpty()) return;
-        String startStamp = formatStamp(entry.startMs - sessionStartMs);
-        String endStamp = formatStamp(endMs - sessionStartMs);
-        String line = entry.stepName != null
-                ? String.format("[%s → %s] **%s** — %s%n", startStamp, endStamp, entry.stepName, entry.text)
-                : String.format("[%s → %s]   %s%n", startStamp, endStamp, entry.text);
-        File f = new File(Assets.dir(), "script.md");
-        try {
-            Files.write(f.toPath(), line.getBytes(StandardCharsets.UTF_8),
-                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-        } catch (IOException e) {
-            throw new RuntimeException("Could not append to " + f, e);
-        }
-    }
-
-    private static String formatStamp(long elapsedMs) {
-        long s = Math.max(0, elapsedMs) / 1000;
-        return String.format("%02d:%02d", s / 60, s % 60);
-    }
 }

@@ -77,7 +77,7 @@ public class GenerateLabkitDocAssets {
         // Asset capture toggles. Flip these to false while iterating; flip
         // them back on for the recording pass. Output lands in
         // target/video-assets/LabkitVideoDemo/ as NNN-step.{mp4,png} plus a
-        // single script.md transcript.
+        // single timeline.json transcript.
         Assets.session("LabkitVideoDemo");
         ScreenRecorder.ENABLED = false;//true;
         Screenshotter.ENABLED = false;//true;
@@ -337,7 +337,7 @@ public class GenerateLabkitDocAssets {
         // Notify that capture is done so the user knows it's safe to close
         // Fiji. The popup is shown after the last Step.end() — recorder is
         // already stopped, so the popup won't appear in the final clip.
-        Step.waitForUser("Video acquisition complete — clips, screenshots and script.md "
+        Step.waitForUser("Video acquisition complete — clips, screenshots and timeline.json "
                 + "are written. Click Continue to dismiss.");
     }
 }

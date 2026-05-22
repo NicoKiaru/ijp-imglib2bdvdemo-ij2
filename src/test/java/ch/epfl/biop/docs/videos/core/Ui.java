@@ -406,7 +406,7 @@ public class Ui {
      * cursor.
      */
     public static void drag(int startX, int startY, int endX, int endY) {
-        Events.mouseDrag(startX, startY, endX, endY);
+        Timeline.mouseDrag(startX, startY, endX, endY);
         moveTo(startX, startY);
         pause(Timings.PAUSE_AFTER_MOVE_MS);
         robot().mousePress(InputEvent.BUTTON1_DOWN_MASK);
@@ -668,7 +668,7 @@ public class Ui {
     // ===== Clicks / keys ==========================================================
 
     public static void click() {
-        Events.mouseClick();
+        Timeline.mouseClick();
         robot().mousePress(InputEvent.BUTTON1_DOWN_MASK);
         robot().delay(Timings.CLICK_HOLD_MS);
         robot().mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
@@ -682,7 +682,7 @@ public class Ui {
      * sees two separate clicks instead of a double-click.
      */
     public static void doubleClick() {
-        Events.mouseDoubleClick();
+        Timeline.mouseDoubleClick();
         Robot r = robot();
         r.mousePress(InputEvent.BUTTON1_DOWN_MASK);
         r.delay(Timings.DOUBLE_CLICK_HOLD_MS);
@@ -694,7 +694,7 @@ public class Ui {
     }
 
     public static void rightClick() {
-        Events.mouseRightClick();
+        Timeline.mouseRightClick();
         robot().mousePress(InputEvent.BUTTON3_DOWN_MASK);
         robot().delay(Timings.CLICK_HOLD_MS);
         robot().mouseRelease(InputEvent.BUTTON3_DOWN_MASK);
@@ -708,7 +708,7 @@ public class Ui {
      * over the intended scroll target before calling.
      */
     public static void mouseWheel(int notches) {
-        Events.mouseWheel(notches);
+        Timeline.mouseWheel(notches);
         robot().mouseWheel(notches);
     }
 

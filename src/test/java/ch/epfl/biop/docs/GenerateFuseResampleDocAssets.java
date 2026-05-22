@@ -71,7 +71,7 @@ public class GenerateFuseResampleDocAssets {
         // Asset capture toggles. Flip these to false while iterating on the
         // demo; flip them back on for the recording pass. Output lands in
         // target/video-assets/FuseResampleVideoDemo/ as NNN-step.{mp4,png}
-        // plus a single script.md transcript.
+        // plus a single timeline.json transcript.
         Assets.session("FuseResampleVideoDemo");
         ScreenRecorder.ENABLED = false;
         Screenshotter.ENABLED = false;
@@ -380,7 +380,7 @@ public class GenerateFuseResampleDocAssets {
         // Notify that capture is done so the user knows it's safe to close
         // Fiji. The popup is shown after the last Step.end() — recorder is
         // already stopped, so the popup won't appear in the final clip.
-        Step.waitForUser("Video acquisition complete — clips, screenshots and script.md "
+        Step.waitForUser("Video acquisition complete — clips, screenshots and timeline.json "
                 + "are written. Click Continue to dismiss.");
     }
 }

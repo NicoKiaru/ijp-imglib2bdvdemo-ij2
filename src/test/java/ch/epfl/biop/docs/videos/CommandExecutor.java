@@ -158,7 +158,7 @@ public class CommandExecutor {
      *       just as the dialog appears.</li>
      *   <li>{@link Mode#PROGRAMMATIC PROGRAMMATIC} — fires immediately at
      *       {@link #execute()} (no visible dialog to bracket), so the line
-     *       still appears in {@code script.md}.</li>
+     *       still appears in {@code timeline.json}.</li>
      * </ul>
      */
     public CommandExecutor sayOnDialog(String text) {
@@ -227,7 +227,7 @@ public class CommandExecutor {
         switch (effective) {
             case PROGRAMMATIC:
                 // No visible dialog to bracket — fire any sayOnDialog text
-                // immediately so it still lands in script.md in order.
+                // immediately so it still lands in timeline.json in order.
                 if (dialogSayText != null) Step.say(dialogSayText);
                 awaitProgrammatic();
                 break;

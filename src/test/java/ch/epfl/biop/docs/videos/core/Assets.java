@@ -24,8 +24,8 @@ public class Assets {
 
     /**
      * Start (or reset) a session for {@code demoName}. Creates the directory
-     * and clears any prior {@code script.md} so re-running the demo gives a
-     * fresh transcript. Does not delete existing PNGs / MP4s — those are
+     * and clears any prior {@code timeline.json} so re-running the demo gives
+     * a fresh transcript. Does not delete existing PNGs / MP4s — those are
      * overwritten as the counters rewrite the same NN-name.* slots.
      */
     public static File session(String demoName) {
@@ -34,17 +34,17 @@ public class Assets {
         if (!currentDir.exists() && !currentDir.mkdirs()) {
             throw new RuntimeException("Could not create assets dir " + currentDir);
         }
-        File script = new File(currentDir, "script.md");
-        if (script.exists()) {
+        File timeline = new File(currentDir, Timeline.FILENAME);
+        if (timeline.exists()) {
             try {
-                Files.delete(script.toPath());
+                Files.delete(timeline.toPath());
             } catch (IOException e) {
-                throw new RuntimeException("Could not clear " + script, e);
+                throw new RuntimeException("Could not clear " + timeline, e);
             }
         }
         Screenshotter.resetCounter();
         ScreenRecorder.resetCounter();
-        Events.onSessionStart();
+        Timeline.onSessionStart();
         return currentDir;
     }
 
