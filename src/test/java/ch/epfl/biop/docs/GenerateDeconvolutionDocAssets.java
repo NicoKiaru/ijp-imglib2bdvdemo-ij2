@@ -5,6 +5,7 @@ import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
 import ch.epfl.biop.command.process.deconvolve.SourcesDeconvolveCommand;
 import ch.epfl.biop.docs.videos.CommandExecutor;
+import ch.epfl.biop.docs.videos.Demo;
 import ch.epfl.biop.docs.videos.GenerateDocAssetsCommon;
 import ch.epfl.biop.docs.videos.bdv.Bdv;
 import ch.epfl.biop.docs.videos.core.Assets;
@@ -47,16 +48,25 @@ public class GenerateDeconvolutionDocAssets {
         // Flip both to true while iterating on this demo — every CommandExecutor
         // runs programmatically (no Robot, no dialog) and Ui frame placement /
         // pauses become instant. Flip back to false to record.
-        CommandExecutor.FORCE_PROGRAMMATIC = false;
-        Ui.FAST_MODE = false;
+        CommandExecutor.FORCE_PROGRAMMATIC = true;
+        Ui.FAST_MODE = true;
 
         // Asset capture toggles. Flip these to false while iterating on the
         // demo; flip them back on for the recording pass. Output lands in
         // target/video-assets/DeconvolutionVideoDemo/ as NNN-step.{mp4,png}
         // plus a single timeline.json transcript.
         Assets.session("DeconvolutionVideoDemo");
-        ScreenRecorder.ENABLED = true;
-        Screenshotter.ENABLED = true;
+        ScreenRecorder.ENABLED = false;
+        Screenshotter.ENABLED = false;
+
+        // Intro / title-card metadata — the "why should I watch this" hook.
+        // Lands in timeline.json's intro block and the youtube-description.md.
+        Demo.intro("Lazy Richardson-Lucy Deconvolution in Fiji",
+                "Deconvolve a multi-gigabyte LLS7 light-sheet dataset in Fiji — "
+                        + "without ever loading it into memory.",
+                "Streams data block-by-block — multi-gigabyte datasets on a modest computer",
+                "Scales across every available GPU",
+                "Lazy by design — a block is computed only when a viewer asks for it");
 
         // Prepare = cache necessary files
         File fileDataset = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/19047136/files/ZeissLLS7Demo.czi");
@@ -246,10 +256,21 @@ public class GenerateDeconvolutionDocAssets {
         Ui.rawPause(90000);
         Step.end();
 
+        // Outro / closing-card metadata. The command list is harvested
+        // automatically from every Fiji command this demo invoked, so it
+        // lands in timeline.json's outro block and in youtube-description.md.
+        Demo.outro("You've seen tiled, lazy Richardson-Lucy deconvolution end to end — "
+                        + "from a raw multi-gigabyte CZI to a synchronized side-by-side comparison, "
+                        + "all without loading the dataset into memory.",
+                "Plugin & source: https://github.com/BIOP/ijp-imglib2bdvdemo-ij2",
+                "BIOP — EPFL: https://www.epfl.ch/research/facilities/ptbiop/",
+                "Sample LLS7 dataset: https://zenodo.org/records/19047136",
+                "PSF dataset: https://zenodo.org/records/14505724");
+
         // Notify that capture is done so the user knows it's safe to close
         // Fiji. The popup is shown after the last Step.end() — recorder is
         // already stopped, so the popup won't appear in the final clip.
-        Step.waitForUser("Video acquisition complete — clips, screenshots and timeline.json "
-                + "are written. Click Continue to dismiss.");
+        Step.waitForUser("Video acquisition complete — clips, screenshots, timeline.json "
+                + "and youtube-description.md are written. Click Continue to dismiss.");
     }
 }

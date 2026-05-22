@@ -31,8 +31,15 @@ import java.util.List;
  * {@code description} is the chapter-title text; {@code comments[]} carries
  * the narration sub-steps (what {@code script.md} held). Event {@code type}
  * is namespaced ({@code mouse.*}) so other categories can be added later
- * without a format break — {@code version} is bumped to {@code 2} so a
- * consumer can detect the format.</p>
+ * without a format break — {@code version} is {@code 3} so a consumer can
+ * detect the format.</p>
+ *
+ * <p><b>Intro / outro.</b> Optional top-level {@code intro} (title, tagline,
+ * {@code highlights[]}) and {@code outro} (closing line, {@code commands[]}
+ * harvested from the demo's actually-invoked Fiji commands, {@code links[]})
+ * blocks let the downstream pipeline render a title card and a closing card.
+ * Set via {@link #setIntro} / {@link #setOutro} — the demo-side authoring
+ * facade is {@code videos/Demo}, which also emits a {@code youtube-description.md}.</p>
  *
  * <p><b>Coordinates.</b> {@code x}/{@code y} (and {@code endX}/{@code endY}
  * for drags) are absolute screen coordinates in logical AWT pixels — the
@@ -51,11 +58,13 @@ public class Timeline {
 
     public static String FILENAME = "timeline.json";
 
-    public static final int VERSION = 2;
+    public static final int VERSION = 3;
 
     private static final List<StepRecord> steps = new ArrayList<>();
     private static StepRecord current;
     private static PendingComment pending;
+    private static Intro intro;
+    private static Outro outro;
     private static boolean shutdownHookRegistered;
 
     /** One recorded clip: chapter metadata + its narration and mouse events. */
@@ -122,12 +131,63 @@ public class Timeline {
         }
     }
 
+    /** Optional title-card metadata, shown before the first step. */
+    private static final class Intro {
+        final String title;
+        final String tagline;
+        final List<String> highlights;
+        Intro(String title, String tagline, List<String> highlights) {
+            this.title = title;
+            this.tagline = tagline;
+            this.highlights = highlights;
+        }
+    }
+
+    /** Optional closing-card metadata, shown after the last step. */
+    private static final class Outro {
+        final String closing;
+        final List<CommandRef> commands;
+        final List<String> links;
+        Outro(String closing, List<CommandRef> commands, List<String> links) {
+            this.closing = closing;
+            this.commands = commands;
+            this.links = links;
+        }
+    }
+
     /** Called by {@link Assets#session(String)} to drop any prior run's timeline. */
     static void onSessionStart() {
         steps.clear();
         current = null;
         pending = null;
+        intro = null;
+        outro = null;
         registerShutdownHook();
+    }
+
+    /**
+     * Set the demo's title-card metadata. Called once by {@code videos/Demo}
+     * at the start of a demo, before the first step. Triggers a {@link #flush()}
+     * so the data is on disk even if the demo crashes before the first
+     * {@link Step#end()}.
+     */
+    public static void setIntro(String title, String tagline, List<String> highlights) {
+        intro = new Intro(title, tagline,
+                highlights == null ? new ArrayList<>() : new ArrayList<>(highlights));
+        flush();
+    }
+
+    /**
+     * Set the demo's closing-card metadata. Called once by {@code videos/Demo}
+     * at the end of a demo; {@code commands} is harvested from the Fiji
+     * commands the demo actually invoked. Triggers a {@link #flush()} since the
+     * last {@link Step#end()} has usually already run by the time this fires.
+     */
+    public static void setOutro(String closing, List<CommandRef> commands, List<String> links) {
+        outro = new Outro(closing,
+                commands == null ? new ArrayList<>() : new ArrayList<>(commands),
+                links == null ? new ArrayList<>() : new ArrayList<>(links));
+        flush();
     }
 
     /**
@@ -215,6 +275,7 @@ public class Timeline {
         sb.append("{\n");
         sb.append("  \"version\": ").append(VERSION).append(",\n");
         sb.append("  \"session\": ").append(jsonStr(Assets.demoName())).append(",\n");
+        if (intro != null) appendIntro(sb);
         sb.append("  \"recordingBounds\": {\"x\":").append(b.x)
                 .append(",\"y\":").append(b.y)
                 .append(",\"w\":").append(b.width)
@@ -224,7 +285,13 @@ public class Timeline {
             appendStep(sb, steps.get(i));
             sb.append(i < steps.size() - 1 ? ",\n" : "\n");
         }
-        sb.append("  ]\n");
+        sb.append("  ]");
+        if (outro != null) {
+            sb.append(",\n");
+            appendOutro(sb);
+        } else {
+            sb.append("\n");
+        }
         sb.append("}\n");
         try {
             Files.write(f.toPath(), sb.toString().getBytes(StandardCharsets.UTF_8));
@@ -274,6 +341,46 @@ public class Timeline {
         }
         sb.append(s.events.isEmpty() ? "]\n" : "\n      ]\n");
         sb.append("    }");
+    }
+
+    private static void appendIntro(StringBuilder sb) {
+        sb.append("  \"intro\": {\n");
+        sb.append("    \"title\": ").append(jsonStr(intro.title)).append(",\n");
+        sb.append("    \"tagline\": ").append(jsonStr(intro.tagline)).append(",\n");
+        sb.append("    \"highlights\": ");
+        appendStrArray(sb, "    ", intro.highlights);
+        sb.append("\n  },\n");
+    }
+
+    private static void appendOutro(StringBuilder sb) {
+        sb.append("  \"outro\": {\n");
+        sb.append("    \"closing\": ").append(jsonStr(outro.closing)).append(",\n");
+        sb.append("    \"commands\": [");
+        for (int i = 0; i < outro.commands.size(); i++) {
+            CommandRef c = outro.commands.get(i);
+            sb.append(i == 0 ? "\n" : ",\n");
+            sb.append("      {\"name\":").append(jsonStr(c.name))
+                    .append(",\"version\":").append(jsonStr(c.version))
+                    .append(",\"sourceUrl\":").append(jsonStr(c.sourceUrl)).append("}");
+        }
+        sb.append(outro.commands.isEmpty() ? "],\n" : "\n    ],\n");
+        sb.append("    \"links\": ");
+        appendStrArray(sb, "    ", outro.links);
+        sb.append("\n  }\n");
+    }
+
+    /** Append a JSON array of strings, one item per line, indented under {@code indent}. */
+    private static void appendStrArray(StringBuilder sb, String indent, List<String> items) {
+        if (items == null || items.isEmpty()) {
+            sb.append("[]");
+            return;
+        }
+        sb.append("[\n");
+        for (int i = 0; i < items.size(); i++) {
+            sb.append(indent).append("  ").append(jsonStr(items.get(i)));
+            sb.append(i < items.size() - 1 ? ",\n" : "\n");
+        }
+        sb.append(indent).append("]");
     }
 
     private static String jsonStr(String s) {
