@@ -48,16 +48,16 @@ public class GenerateDeconvolutionDocAssets {
         // Flip both to true while iterating on this demo — every CommandExecutor
         // runs programmatically (no Robot, no dialog) and Ui frame placement /
         // pauses become instant. Flip back to false to record.
-        CommandExecutor.FORCE_PROGRAMMATIC = true;
-        Ui.FAST_MODE = true;
+        CommandExecutor.FORCE_PROGRAMMATIC = false;
+        Ui.FAST_MODE = false;
 
         // Asset capture toggles. Flip these to false while iterating on the
         // demo; flip them back on for the recording pass. Output lands in
         // target/video-assets/DeconvolutionVideoDemo/ as NNN-step.{mp4,png}
         // plus a single timeline.json transcript.
         Assets.session("DeconvolutionVideoDemo");
-        ScreenRecorder.ENABLED = false;
-        Screenshotter.ENABLED = false;
+        ScreenRecorder.ENABLED = true;
+        Screenshotter.ENABLED = true;
 
         // Intro / title-card metadata — the "why should I watch this" hook.
         // Lands in timeline.json's intro block and the youtube-description.md.

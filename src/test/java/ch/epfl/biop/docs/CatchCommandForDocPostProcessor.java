@@ -1,6 +1,8 @@
 package ch.epfl.biop.docs;
 
 import org.scijava.Context;
+import org.scijava.MenuEntry;
+import org.scijava.MenuPath;
 import org.scijava.command.Command;
 import org.scijava.command.CommandInfo;
 import org.scijava.command.DynamicCommandInfo;
@@ -42,7 +44,7 @@ public class CatchCommandForDocPostProcessor extends AbstractPostprocessorPlugin
                 } catch (SourceNotFoundException e) {
                     throw new RuntimeException(e);
                 }
-                cd.name = ci.getName();
+                cd.name = commandName(ci.getMenuPath(), ci.getPluginClass().getName());
                 usedCommands.put(ci.getPluginClass().getName(), cd);
             }
 
@@ -56,7 +58,7 @@ public class CatchCommandForDocPostProcessor extends AbstractPostprocessorPlugin
                 } catch (SourceNotFoundException | ClassNotFoundException e) {
                     throw new RuntimeException(e);
                 }
-                cd.name = ci.getName();
+                cd.name = commandName(ci.getMenuPath(), ci.getDelegateClassName());
                 usedCommands.put(ci.getDelegateClassName(), cd);
             }
         }
@@ -76,6 +78,23 @@ public class CatchCommandForDocPostProcessor extends AbstractPostprocessorPlugin
         }
         refs.sort(Comparator.comparing(c -> c.name == null ? "" : c.name));
         return refs;
+    }
+
+    /**
+     * Human-readable command name. {@code CommandInfo.getName()} is empty for
+     * most SciJava commands, so we use the menu-path leaf (the label shown in
+     * Fiji's menus, e.g. "Display sources"), falling back to the simple class
+     * name when the command has no menu path.
+     */
+    private static String commandName(MenuPath menuPath, String className) {
+        if (menuPath != null) {
+            MenuEntry leaf = menuPath.getLeaf();
+            if (leaf != null && leaf.getName() != null && !leaf.getName().isEmpty()) {
+                return leaf.getName();
+            }
+        }
+        int dot = className.lastIndexOf('.');
+        return dot < 0 ? className : className.substring(dot + 1);
     }
 
     static class CommandDoc {
