@@ -100,7 +100,7 @@ public class GenerateLabkitDocAssets {
                 Ui.DEFAULT_FRAME_Y + 150, 900, 600);
 
         GenerateDocAssetsCommon.boot();
-        GenerateDocAssetsCommon.showBdvTreeDisplay();
+        GenerateDocAssetsCommon.showBdvTreeDisplay(false);
 
         Step.begin("load-raw-czi",
                 "We load a Zeiss LLS7 HeLa Kyoto dataset through Bio-Formats — "

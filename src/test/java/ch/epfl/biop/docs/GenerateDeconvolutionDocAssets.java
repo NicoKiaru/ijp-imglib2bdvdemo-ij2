@@ -16,13 +16,17 @@ import ch.epfl.biop.docs.videos.core.Step;
 import ch.epfl.biop.docs.videos.core.Timings;
 import ch.epfl.biop.docs.videos.core.Ui;
 import ch.epfl.biop.docs.videos.fiji.Fiji;
+import ch.epfl.biop.docs.videos.widgets.Tree;
 import net.imagej.patcher.LegacyInjector;
+import org.apache.commons.io.FilenameUtils;
 import sc.fiji.bdvpg.command.display.ViewSynchronizeCommand;
 import sc.fiji.bdvpg.command.display.bdv.SingleBdvSourcesShowCommand;
 import sc.fiji.bdvpg.command.display.bdv.settings.BdvTitleSetCommand;
-import sc.fiji.bdvpg.command.workspace.SourceServiceShowCommand;
+import sc.fiji.bdvpg.scijava.service.SourceService;
+import sc.fiji.bdvpg.scijava.service.tree.SourceTree;
 import sc.fiji.bdvpg.service.SourceServices;
 
+import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.util.List;
@@ -61,26 +65,28 @@ public class GenerateDeconvolutionDocAssets {
 
         // Intro / title-card metadata — the "why should I watch this" hook.
         // Lands in timeline.json's intro block and the youtube-description.md.
-        Demo.intro("Lazy Richardson-Lucy Deconvolution in Fiji",
+        Demo.intro("Richardson-Lucy Deconvolution in Fiji",
                 "Deconvolve a multi-gigabyte LLS7 light-sheet dataset in Fiji — "
                         + "without ever loading it into memory.",
                 "Streams data block-by-block — multi-gigabyte datasets on a modest computer",
                 "Scales across every available GPU",
-                "Lazy by design — a block is computed only when a viewer asks for it");
+                "Lazy by design — a block is computed only when requested");
 
         // Prepare = cache necessary files
         File fileDataset = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/19047136/files/ZeissLLS7Demo.czi");
         File filePSF = ch.epfl.biop.DatasetHelper.getDataset("https://zenodo.org/records/14505724/files/psf-400nm.tif");
+        String datasetName = FilenameUtils.removeExtension(fileDataset.getName());
+        String psfName = FilenameUtils.removeExtension(filePSF.getName());
 
         // Single placement area for the two BDV windows in this demo. The raw
         // window fills the whole area while it's alone, then we re-partition
         // into a 2×1 stack — raw on top, deconvolved beneath — so each pane
         // is 800×400 with no overlap.y
         Layout bdvArea = Layout.area(Ui.DEFAULT_FRAME_X + 450,
-                Ui.DEFAULT_FRAME_Y + 150, 900, 600);
+                Ui.DEFAULT_FRAME_Y, 800, 700);
 
         GenerateDocAssetsCommon.boot();
-        GenerateDocAssetsCommon.showBdvTreeDisplay();
+        GenerateDocAssetsCommon.showBdvTreeDisplay(true);
 
         Step.begin("Open Hela Demo Dataset",
                 "We open the raw LLS7 HeLa dataset — "
@@ -90,45 +96,22 @@ public class GenerateDeconvolutionDocAssets {
                 + "we'll walk it to the Bio-Formats importer: "
                 + CommandExecutor.menuPath(DatasetFromBioFormatsCreateCommand.class, 2));
         CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
-                .arg("datasetname", fileDataset.getName(),
+                .arg("datasetname", datasetName,
                         "We name the dataset after the file itself — keeps the source tree readable.")
                 .arg("unit", "MICROMETER",
-                        "Coordinates in microns — the usual convention for light-sheet data.")
+                        "Coordinates in microns.")
                 .arg("files", new File[]{fileDataset},
-                        "Browsing to the HeLa CZI — fetched from Zenodo into the on-disk cache.")
-                .arg("split_rgb_channels", false)
+                        "Browsing to the Hela example file.")
+                .arg("split_rgb_channels", false, "RGB is irrelevant for this dataset.")
                 .arg("auto_pyramidize", true,
-                        "Auto-pyramidize so multi-resolution requests stay cheap on a big dataset.")
-                .arg("disable_memo", false)
-                .arg("plane_origin_convention", "TOP LEFT")
+                        "Auto-pyramidize is not relevant for this dataset.")
+                .arg("disable_memo", false, "We keep memoization - fast file opening.")
+                .arg("plane_origin_convention", "TOP LEFT", "The origin convention does not matter since there's only one tile in this dataset.")
                 .sayOnDialog("Walking through the Bio-Formats importer dialog.")
                 .viaTreePath()
                 .execute();
         Step.say("The CZI is opened lazily — nothing is read unless data is requested, for instance by a viewer. "
-                + "That's the reason why we can handle this multi-gigabyte fairly easily on a low-end computer.");
-        Ui.rawPause(1500);
-        Step.end();
-
-        Step.begin("Open Matching Point Spread Function",
-                "We open the matching point-spread function (obtained via PSF distillation) — also through "
-                        + "Bio-Formats.");
-        Step.say("We walk through the same Bio-Formats command: "
-                + CommandExecutor.menuPath(DatasetFromBioFormatsCreateCommand.class));
-        CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
-                .arg("datasetname", filePSF.getName(),
-                        "Same naming convention — the PSF file's own name.")
-                .arg("unit", "MICROMETER",
-                        "Same axis units as the data so the PSF lines up in micron-space.")
-                .arg("files", new File[]{filePSF},
-                        "Browsing to the 400 nm PSF — same Zenodo cache.")
-                .arg("split_rgb_channels", false)
-                .arg("auto_pyramidize", true)
-                .arg("disable_memo", false)
-                .arg("plane_origin_convention", "TOP LEFT")
-                .sayOnDialog("Same Bio-Formats dialog as before.")
-                .viaTreePath()
-                .execute();
-        Step.say("Both datasets now live in the Sources tree, ready to feed the deconvolution command.");
+                + "That's the reason why we can handle this multi-gigabyte dataset fairly easily on a low-end computer.");
         Ui.rawPause(1500);
         Step.end();
 
@@ -138,15 +121,15 @@ public class GenerateDeconvolutionDocAssets {
         Step.say("Right-clicking the CZI node — walking to: "
                 + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class, 2));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
-                .arg("adjust_view", true,
-                        "Re-centering the view on the loaded sources.")
                 .arg("auto_contrast", true,
                         "Auto-contrast on so we start with sensible display ranges per channel.")
-                .arg("interpolate", false)
+                .arg("adjust_view", true,
+                        "Re-centering the view on the loaded sources.")
                 .arg("make_new_window", true,
                         "Open a fresh BDV window — leave any existing viewers untouched.")
+                .arg("interpolate", false, "Avoiding interpolation facilitates the visualisation of voxels.")
                 .sayOnDialog("Walking through the show-sources dialog.")
-                .viaTreePath(fileDataset.getName(),
+                .viaTreePath(datasetName,
                         "We select the raw CZI sources for display.")
                 .execute();
 
@@ -166,7 +149,7 @@ public class GenerateDeconvolutionDocAssets {
                 "We jump to timepoint 30 and set a per-channel display range so all "
                         + "three channels are not displayed with saturation.");
         BdvHandle rawBdv = SourceServices.getBdvDisplayService().getActiveBdv();
-        Step.say("Stepping the time slider to frame 30 — that's the timepoint where we can see a mitosis event.");
+        Step.say("Stepping the time slider to frame 30 — where we can see a nice mitosis event.");
         Bdv.setTimepoint(rawBdv, 30);
         Step.say("Opening the source card so we can dial in the display range per channel - mind the location of the blue arrow!");
         Bdv.setCardPanelExpanded(rawBdv, true);
@@ -186,6 +169,27 @@ public class GenerateDeconvolutionDocAssets {
         Bdv.setCardPanelExpanded(rawBdv, false);
         Step.end();
 
+        Step.begin("Open Matching Point Spread Function",
+                "We open the matching point-spread function (obtained via PSF distillation) — also through "
+                        + "Bio-Formats.");
+        Step.say("We walk through the same Bio-Formats command: "
+                + CommandExecutor.menuPath(DatasetFromBioFormatsCreateCommand.class, 2));
+        CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
+                .arg("datasetname", psfName)
+                .arg("unit", "MICROMETER")
+                .arg("files", new File[]{filePSF},"Browsing to the 400 nm PSF which matches this dataset.")
+                .arg("split_rgb_channels", false, "Do need to modify the other parameters")
+                .arg("auto_pyramidize", true)
+                .arg("disable_memo", false)
+                .arg("plane_origin_convention", "TOP LEFT")
+                .sayOnDialog("We fill it as before.")
+                .viaTreePath()
+                .execute();
+        Ui.rawPause(1500);
+        Step.say("Both datasets now live in the Sources tree, ready to feed the deconvolution command.");
+        Ui.rawPause(1500);
+        Step.end();
+
         Step.begin("Richardson-Lucy Deconvolution (Tiled & Lazy)",
                 "Now we run lazy Richardson-Lucy: 20 iterations, 256-by-256-by-64 "
                         + "blocks with 16-pixel overlap, non-circulant, light regularization.");
@@ -193,16 +197,16 @@ public class GenerateDeconvolutionDocAssets {
                 + "has been setup for this. Walking to: "
                 + CommandExecutor.menuPath(SourcesDeconvolveCommand.class, 2));
         CommandExecutor.of(SourcesDeconvolveCommand.class)
-                .arg("sources", fileDataset.getName(),
-                        "Picking the raw HeLa dataset as the input to deconvolve.")
-                .arg("psf", filePSF.getName(),
+                .arg("sources", datasetName,
+                        "Picking the HeLa dataset as the input to deconvolve.")
+                .arg("psf", psfName,
                         "Picking the matching 400 nm PSF as the kernel.")
                 .arg("output_pixel_type", "Keep Pixel Type Of Original Image",
-                        "Keep 16-bit output so the deconvolved view stays comparable to the raw.")
+                        "Keep original pixel type (16-bit) to save memory.")
                 .arg("suffix", "_deconvolved",
                         "Suffix appended to each new source name so the two sets stay distinguishable.")
                 .arg("block_size_x", 256,
-                        "Processing in 256×256×64 blocks — sized to fit the GPU and amortize the overlap cost.")
+                        "Processing in 256×256×64 blocks.")
                 .arg("block_size_y", 256)
                 .arg("block_size_z", 64)
                 .arg("overlap_size", 16,
@@ -211,7 +215,7 @@ public class GenerateDeconvolutionDocAssets {
                         "20 Richardson-Lucy iterations — a sweet spot for this PSF and noise level.")
                 .arg("non_circulant", true,
                         "Non-circulant mode avoids wrap-around artefacts at block edges.")
-                .arg("regularization_factor", 0.002f,
+                .arg("regularization_factor", 0.001f,
                         "Light regularization — just enough to tame noise amplification.")
                 .arg("n_threads", 4,
                         "Four streams in flight at once to keep the GPU pool saturated.")
@@ -222,13 +226,22 @@ public class GenerateDeconvolutionDocAssets {
                 + "computed block by block on the GPU pool only when requested (by a viewer for instance).");
         Step.end();
 
+        Ui.rawPause(1500);
+
         Step.begin("Show Deconvolved Dataset",
                 "The deconvolved sources land under Other Sources. We open them in a "
                         + "second BDV beneath the raw view, sized to share the same width.");
         bdvArea.place(bdvRaw, 2, 1, 0, 0);
 
-        Step.say("Right-clicking the new \"Other Sources\" branch (where the deconvolved channels "
-                + "landed) — walking to: "
+        SourceService bss = Fiji.context().service(SourceService.class);
+        SourceTree sourceTree = bss.tree();
+        JTree jtree = sourceTree.getJTree();
+
+        Step.say("Let's double click the \"Other Sources\" node to expand it and display the generated sources.");
+
+        Tree.doubleClickPath(jtree,"Other Sources");
+
+        Step.say("Right-clicking the \"Other Sources\" branch — walking to: "
                 + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class, 2));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
                 .arg("adjust_view", true,
@@ -271,8 +284,14 @@ public class GenerateDeconvolutionDocAssets {
                 .sayOnDialog("Walking through the synchronize dialog.")
                 .viaTreePath()
                 .execute();
-        Step.say("Holding the final frame for a minute while the deconvolved view streams in — "
+        Step.say("Holding the final frame while the deconvolved view streams in — "
                 + "GPU tiles fill in block by block, and the side-by-side reveals noise reduction and intensity gain.");
+
+        Ui.FAST_MODE = false;
+        Frame syncWindow = Ui.waitForFrame("Close window to stop synchronization", 6000);
+        Ui.resizeFrame(syncWindow, 450, 100);
+        Ui.dragFrame(syncWindow, Ui.DEFAULT_FRAME_X, Ui.DEFAULT_FRAME_Y);
+
         // The deconvolved view fills in over several seconds as the GPU
         // streams tiles — hold long enough that the final frame shows
         // both windows fully resolved before the clip ends.

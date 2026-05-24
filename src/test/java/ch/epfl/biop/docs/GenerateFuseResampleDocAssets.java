@@ -86,7 +86,7 @@ public class GenerateFuseResampleDocAssets {
                 Ui.DEFAULT_FRAME_Y + 150, 900, 600);
 
         GenerateDocAssetsCommon.boot();
-        GenerateDocAssetsCommon.showBdvTreeDisplay();
+        GenerateDocAssetsCommon.showBdvTreeDisplay(false);
 
         Step.begin("load-tiles",
                 "We load the tiled Dentate Gyrus brain-section .lif through Bio-Formats — "

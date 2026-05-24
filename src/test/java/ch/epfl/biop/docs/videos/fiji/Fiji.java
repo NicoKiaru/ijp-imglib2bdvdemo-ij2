@@ -34,6 +34,7 @@ public class Fiji {
         return IJ_INSTANCE.getContext();
     }
 
+    static Frame frame;
     /**
      * Starts Fiji, waits for the legacy IJ main frame, places it on the
      * target screen via {@link Ui#placeFrame(Frame)}, and returns it.
@@ -42,11 +43,15 @@ public class Fiji {
         ImageJ ij = new ImageJ();
         IJ_INSTANCE = ij;
         DemoHelper.startFiji(ij);
-        Frame frame = waitForIJFrame(Timings.FRAME_WAIT_TIMEOUT_MS);
+        frame = waitForIJFrame(Timings.FRAME_WAIT_TIMEOUT_MS);
         if (frame == null) throw new IllegalStateException("ImageJ main frame not available after "
                 + Timings.FRAME_WAIT_TIMEOUT_MS + "ms");
         Ui.placeFrame(frame);
         Ui.pause(Timings.PAUSE_AFTER_FRAME_PLACEMENT_MS);
+        return frame;
+    }
+
+    public static Frame getFijiFrame() {
         return frame;
     }
 

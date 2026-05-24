@@ -20,7 +20,7 @@ public class GenerateDocAssetsCommon {
         Step.end();
     }
 
-    public static void showBdvTreeDisplay() {
+    public static void showBdvTreeDisplay(boolean minimize) {
 
         Step.begin("open-bdv-tree",
                 "From Fiji's search bar we open the BDV Playground Sources tree, "
@@ -31,7 +31,10 @@ public class GenerateDocAssetsCommon {
                 .execute();
         Frame bdvSources = Ui.waitForFrame("BDV Sources", Timings.FRAME_WAIT_TIMEOUT_MS);
         Ui.resizeFrame(bdvSources, 450, 600);
-        Ui.dragFrame(bdvSources, Ui.DEFAULT_FRAME_X, Ui.DEFAULT_FRAME_Y + 150);
+        if (minimize) {
+            Ui.minimizeWithMouse(Fiji.getFijiFrame());
+        }
+        Ui.dragFrame(bdvSources, Ui.DEFAULT_FRAME_X, Ui.DEFAULT_FRAME_Y + 100);
         Step.end();
     }
 }

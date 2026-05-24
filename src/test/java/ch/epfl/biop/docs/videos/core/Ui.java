@@ -303,31 +303,31 @@ public class Ui {
     }
 
     /**
-     * Visibly drags the given frame by its title bar to a new position,
-     * specified relative to the target screen's top-left (same convention as
-     * {@link #placeFrame(Frame, int, int)}).
+     * Visibly drags the given window (Frame or Dialog) by its title bar to a
+     * new position, specified relative to the target screen's top-left (same
+     * convention as {@link #placeFrame(Frame, int, int)}).
      *
      * The grab point is on the title bar, well left of the right-side
      * window buttons. Requires the native title bar (Windows-style); will
-     * not work for borderless / undecorated frames.
+     * not work for borderless / undecorated windows.
      */
-    public static void dragFrame(Frame frame, int dxOnTargetScreen, int dyOnTargetScreen) {
+    public static void dragFrame(Window window, int dxOnTargetScreen, int dyOnTargetScreen) {
         Rectangle screen = targetScreenBounds();
         int newAbsX = screen.x + dxOnTargetScreen;
         int newAbsY = screen.y + dyOnTargetScreen;
 
         if (FAST_MODE) {
-            runOnEdt(() -> frame.setLocation(newAbsX, newAbsY));
+            runOnEdt(() -> window.setLocation(newAbsX, newAbsY));
             return;
         }
 
-        Insets insets = frame.getInsets();
+        Insets insets = window.getInsets();
         int titleBarHeight = Math.max(insets.top, 24);
-        int grabOffsetX = frame.getWidth()-200;//Math.min(60, Math.max(20, frame.getWidth() / 2));
+        int grabOffsetX = window.getWidth()-200;//Math.min(60, Math.max(20, window.getWidth() / 2));
         int grabOffsetY = titleBarHeight / 2;
 
-        int startX = frame.getX() + grabOffsetX;
-        int startY = frame.getY() + grabOffsetY;
+        int startX = window.getX() + grabOffsetX;
+        int startY = window.getY() + grabOffsetY;
         int endX   = newAbsX + grabOffsetX;
         int endY   = newAbsY + grabOffsetY;
 
