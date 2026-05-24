@@ -220,6 +220,7 @@ public class Harvester {
         }
 
         Ui.dragFrame(dialog, dialog.getX(),40);
+        Ui.rawPause(1000);
 
         // Let the dialog finish realizing before we touch screen positions.
         Ui.pause(Timings.PAUSE_AFTER_FRAME_PLACEMENT_MS);
