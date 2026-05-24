@@ -120,6 +120,34 @@ public class Timings {
      */
     public static long PAUSE_AFTER_SCROLL_MS = 500;
 
+    /**
+     * Breathing room appended after each filled field inside a SciJava
+     * harvester dialog (one beat per {@code Harvester.driveDialog} loop
+     * iteration). Lets the just-set widget dwell on screen so the viewer
+     * registers the change before the cursor starts moving toward the next
+     * field — otherwise consecutive edits blur into one continuous motion
+     * even with the 300 ms per-click {@link #PAUSE_AFTER_CLICK_MS}.
+     * Stacks on top of {@code PAUSE_AFTER_CLICK_MS}.
+     */
+    public static long PAUSE_AFTER_FIELD_MS = 400;
+
+    /**
+     * Beat held after the harvester dialog's OK button is clicked, before
+     * control returns to the demo script. Covers two things at once: the
+     * dialog dismiss animation, and the command's immediate visible side
+     * effects (a viewer opening, sources appearing in the tree, …). Without
+     * this beat the next {@link Step#say(String) Step.say} in the demo
+     * script lands a few ms after the click — its {@code tMs} in
+     * {@code timeline.json} would predate the visible result the narration
+     * is supposed to describe.
+     *
+     * <p>Longer than {@link #PAUSE_AFTER_CLICK_MS} on purpose: a generic
+     * click-settling pause isn't enough cover for a command's spawned UI.
+     * Bump higher for commands that open heavy viewers; drop to 0 to
+     * restore the pre-pause behaviour.</p>
+     */
+    public static long PAUSE_AFTER_DIALOG_OK_MS = 700;
+
     // ===== Polling / timeouts (NOT scaled) ========================================
 
     /** Safety cap on the number of wheel notches issued by {@code scrollIntoView}. */

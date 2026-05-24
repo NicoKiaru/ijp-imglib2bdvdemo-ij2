@@ -17,7 +17,9 @@ import sc.fiji.bdvpg.scijava.service.SourceService;
 import sc.fiji.bdvpg.scijava.service.tree.SourceTree;
 
 import javax.swing.JTree;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -48,10 +50,18 @@ import java.util.concurrent.Future;
  * <p>Typical use:</p>
  * <pre>
  * CommandExecutor.of(SingleBdvSourcesShowCommand.class)
- *     .args("adjust_view", true, "make_new_window", true)
+ *     .arg("adjust_view", true, "Re-centering the view on the loaded sources.")
+ *     .arg("make_new_window", true, "Open a fresh BDV window rather than reusing the active one.")
  *     .viaTreePath("Sources&gt;Other Sources")
  *     .execute();
  * </pre>
+ *
+ * <p>Each {@link #arg(String, Object, String)} carries an optional narration:
+ * {@link Harvester} fires {@link Step#say} with that text just before the
+ * matching field is driven, so the subtitle's {@code tMs} in
+ * {@code timeline.json} lines up with the moment the widget is filled. Use
+ * the 2-arg {@link #arg(String, Object)} for boilerplate parameters where
+ * a subtitle would just add noise.</p>
  */
 public class CommandExecutor {
 
@@ -72,7 +82,7 @@ public class CommandExecutor {
     private static final String TREE_SOURCES_PARAM = "sources";
 
     private final Class<? extends Command> commandClass;
-    private Object[] args = new Object[0];
+    private final List<ArgEntry> argList = new ArrayList<>();
     private Mode mode = Mode.PROGRAMMATIC;
     private String searchQuery;
     private String treePath;
@@ -89,6 +99,12 @@ public class CommandExecutor {
      * command's harvester dialog becomes active — see {@link #sayOnDialog}.
      */
     private String dialogSayText;
+    /**
+     * Narration text fired via {@link Step#say(String)} just before the
+     * source-tree right-click in {@link Mode#TREE TREE} mode — see
+     * {@link #viaTreePath(String, String)}.
+     */
+    private String treeClickNarration;
 
     private CommandExecutor(Class<? extends Command> commandClass) {
         this.commandClass = commandClass;
@@ -128,13 +144,48 @@ public class CommandExecutor {
     }
 
     /**
-     * Set the command inputs as alternating {@code "name", value} pairs — same shape
-     * as {@code CommandService.run(...)} and {@link Harvester#run(Class, Object...)}.
-     * Replaces any previously-set args.
+     * Append one command input with no narration. Use this for boilerplate
+     * parameters where a per-field subtitle would be noise (e.g. flags the
+     * tutorial doesn't talk about). Order matters: the {@link Harvester}
+     * fills parameters in insertion order, so {@code arg(...)} calls
+     * determine the on-screen filling order.
      */
+    public CommandExecutor arg(String name, Object value) {
+        return arg(name, value, null);
+    }
+
+    /**
+     * Append one command input with a per-field narration. The narration is
+     * fired via {@link Step#say} from inside {@link Harvester#runOpenDialog}
+     * just before this field is driven — so the resulting {@code comments[]}
+     * entry in {@code timeline.json} has a {@code tMs} that lines up with
+     * the moment the corresponding widget is filled, letting the downstream
+     * video pipeline pace explanation vs. action precisely.
+     */
+    public CommandExecutor arg(String name, Object value, String narration) {
+        if (name == null) {
+            throw new IllegalArgumentException("arg name must not be null");
+        }
+        argList.add(new ArgEntry(name, value, narration));
+        return this;
+    }
+
+    /**
+     * Bulk form of {@link #arg(String, Object)} taking alternating
+     * {@code "name", value} pairs — same shape as {@code CommandService.run(...)}.
+     * Replaces any previously-set args and never attaches narration. Prefer
+     * the per-arg {@link #arg(String, Object, String)} form so each field can
+     * carry its own subtitle.
+     *
+     * @deprecated use {@link #arg(String, Object)} / {@link #arg(String, Object, String)}.
+     */
+    @Deprecated
     public CommandExecutor args(Object... namedInputs) {
         validatePairs(namedInputs);
-        this.args = namedInputs;
+        argList.clear();
+        for (int i = 0; i < namedInputs.length; i += 2) {
+            argList.add(new ArgEntry((String) namedInputs[i], namedInputs[i + 1], null));
+        }
         return this;
     }
 
@@ -191,14 +242,34 @@ public class CommandExecutor {
      * {@link #FORCE_PROGRAMMATIC}), this variant injects
      * {@code "sources" = sourceTreePath} into the args before
      * {@link CommandService#run cs.run(...)}, unless the caller already supplied
-     * {@code "sources"} via {@link #args(Object...)} (explicit args always win).
+     * {@code "sources"} via {@link #arg(String, Object)} (explicit args always win).
+     * The injection is for programmatic mode only — in TREE mode the dialog has
+     * no {@code sources} widget, so passing it to {@link Harvester} would throw
+     * "no input container found for parameter 'sources'".
      * Use the no-arg {@link #viaTreePath()} variant for commands that don't
      * consume sources.</p>
      */
     public CommandExecutor viaTreePath(String sourceTreePath) {
+        return viaTreePath(sourceTreePath, null);
+    }
+
+    /**
+     * Same as {@link #viaTreePath(String)} but with a narration line fired via
+     * {@link Step#say(String)} just before the right-click — so the subtitle's
+     * {@code tMs} in {@code timeline.json} lines up with the source-selection
+     * gesture. The right-click on a specific source node <em>is</em> the
+     * "sources" parameter assignment in TREE mode, so this is the
+     * {@code arg(name, value, narration)} equivalent for that implicit
+     * parameter.
+     *
+     * <p>Pass {@code null} for {@code narration} to skip the {@code Step.say}
+     * call — equivalent to {@link #viaTreePath(String)}.</p>
+     */
+    public CommandExecutor viaTreePath(String sourceTreePath, String narration) {
         this.mode = Mode.TREE;
         this.treePath = sourceTreePath;
         this.treeInjectsSources = true;
+        this.treeClickNarration = narration;
         return this;
     }
 
@@ -237,7 +308,7 @@ public class CommandExecutor {
                 }
                 Fiji.searchAndRun(searchQuery);
                 fireDialogSayWhenReady();
-                Harvester.runOpenDialog(commandClass, args);
+                Harvester.runOpenDialog(commandClass, narrationsMap(), harvesterArgs());
                 break;
             case TREE:
                 if (treePath == null) {
@@ -273,6 +344,11 @@ public class CommandExecutor {
         SourceService bss = Fiji.context().service(SourceService.class);
         SourceTree sourceTree = bss.tree();
         JTree jtree = sourceTree.getJTree();
+        // Fire the source-selection narration before the right-click, so its
+        // tMs in timeline.json lines up with the gesture itself. The right-
+        // click on a specific node is the "sources" parameter assignment in
+        // TREE mode — there is no harvester widget to attach narration to.
+        if (treeClickNarration != null) Step.say(treeClickNarration);
         Tree.rightClickPath(jtree, treePath);
 
         CommandService cs = Fiji.context().getService(CommandService.class);
@@ -290,7 +366,7 @@ public class CommandExecutor {
         Ui.pause(Timings.scaled(Timings.PAUSE_AFTER_CLICK_MS));
 
         fireDialogSayWhenReady();
-        Harvester.runOpenDialog(commandClass, args);
+        Harvester.runOpenDialog(commandClass, narrationsMap(), harvesterArgs());
     }
 
     /**
@@ -320,33 +396,92 @@ public class CommandExecutor {
 
     private Future<CommandModule> runProgrammatic() {
         CommandService cs = Fiji.context().service(CommandService.class);
-        StringToSourceArray s;
-        return cs.run(commandClass, true, effectiveArgs());
+        return cs.run(commandClass, true, programmaticArgs());
     }
 
     /**
-     * Args passed to {@code cs.run(...)} in programmatic mode. If this executor
-     * was configured via {@link #viaTreePath(String)}, prepend
-     * {@code "sources" = treePath} so the command receives the same source
-     * context it would get from a tree right-click — unless the caller already
-     * supplied {@code "sources"} explicitly via {@link #args(Object...)}, in
-     * which case their value is left untouched.
+     * Args as a flat {@code [name, value, name, value, …]} array in
+     * {@link #arg(String, Object) arg(...)} insertion order — exactly the
+     * args the caller supplied. Used to drive the {@link Harvester} dialog
+     * in {@link Mode#SEARCH SEARCH} / {@link Mode#TREE TREE} modes, where
+     * each entry must map to a real widget in the dialog.
+     *
+     * <p>In TREE mode the right-click on the source-tree node already
+     * pre-fills the command's {@code "sources"} parameter — and the dialog
+     * is rendered <em>without</em> a {@code sources} widget — so injecting
+     * a {@code "sources"} entry here would make {@link Harvester} throw
+     * "no input container found for parameter 'sources'". The injection
+     * is therefore confined to {@link #programmaticArgs()}.</p>
      */
-    private Object[] effectiveArgs() {
-        if (!treeInjectsSources || treePath == null) return args;
-        if (hasNamedArg(TREE_SOURCES_PARAM)) return args;
-        Object[] withSources = new Object[args.length + 2];
-        withSources[0] = TREE_SOURCES_PARAM;
-        withSources[1] = treePath; // Removes Sources
-        System.arraycopy(args, 0, withSources, 2, args.length);
-        return withSources;
+    private Object[] harvesterArgs() {
+        Object[] out = new Object[argList.size() * 2];
+        int i = 0;
+        for (ArgEntry e : argList) {
+            out[i++] = e.key;
+            out[i++] = e.value;
+        }
+        return out;
+    }
+
+    /**
+     * Args passed to {@code cs.run(...)} in {@link Mode#PROGRAMMATIC} mode.
+     * Same as {@link #harvesterArgs()}, but if this executor was configured
+     * via {@link #viaTreePath(String)} the {@code "sources" = treePath} pair
+     * is prepended so the command receives the same source context it would
+     * get from a tree right-click. Skipped when the caller already supplied
+     * {@code "sources"} explicitly (their value wins).
+     */
+    private Object[] programmaticArgs() {
+        boolean injectSources = treeInjectsSources && treePath != null
+                && !hasNamedArg(TREE_SOURCES_PARAM);
+        if (!injectSources) return harvesterArgs();
+        int n = argList.size() * 2 + 2;
+        Object[] out = new Object[n];
+        out[0] = TREE_SOURCES_PARAM;
+        out[1] = treePath;
+        int i = 2;
+        for (ArgEntry e : argList) {
+            out[i++] = e.key;
+            out[i++] = e.value;
+        }
+        return out;
+    }
+
+    /**
+     * Per-parameter narrations collected from {@link #arg(String, Object, String)
+     * arg(name, value, narration)} calls, keyed by parameter name. Entries with
+     * a {@code null} narration are filtered out so {@link Harvester} can use a
+     * simple {@code map.get(name) != null} check. Iteration order matches the
+     * {@code arg(...)} call order ({@link LinkedHashMap}), purely cosmetic since
+     * the harvester loop reads by key.
+     */
+    private Map<String, String> narrationsMap() {
+        Map<String, String> m = new LinkedHashMap<>();
+        for (ArgEntry e : argList) {
+            if (e.narration != null) m.put(e.key, e.narration);
+        }
+        return m;
     }
 
     private boolean hasNamedArg(String name) {
-        for (int i = 0; i < args.length; i += 2) {
-            if (name.equals(args[i])) return true;
+        for (ArgEntry e : argList) {
+            if (name.equals(e.key)) return true;
         }
         return false;
+    }
+
+    /** One {@link #arg(String, Object, String) arg(...)} call: the parameter
+     * name, its value, and an optional per-field narration ({@code null} = no
+     * subtitle for this field). */
+    private static final class ArgEntry {
+        final String key;
+        final Object value;
+        final String narration;
+        ArgEntry(String key, Object value, String narration) {
+            this.key = key;
+            this.value = value;
+            this.narration = narration;
+        }
     }
 
     private void awaitProgrammatic() {

@@ -90,14 +90,18 @@ public class GenerateDeconvolutionDocAssets {
                 + "we'll walk it to the Bio-Formats importer: "
                 + CommandExecutor.menuPath(DatasetFromBioFormatsCreateCommand.class, 2));
         CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
-                .args("datasetname", fileDataset.getName(),
-                        "unit", "MICROMETER",
-                        "files", new File[]{fileDataset},
-                        "split_rgb_channels", false,
-                        "auto_pyramidize", true,
-                        "disable_memo", false,
-                        "plane_origin_convention", "TOP LEFT")
-                .sayOnDialog("Filling the importer dialog. The parameters are not very important for this demo.")
+                .arg("datasetname", fileDataset.getName(),
+                        "We name the dataset after the file itself — keeps the source tree readable.")
+                .arg("unit", "MICROMETER",
+                        "Coordinates in microns — the usual convention for light-sheet data.")
+                .arg("files", new File[]{fileDataset},
+                        "Browsing to the HeLa CZI — fetched from Zenodo into the on-disk cache.")
+                .arg("split_rgb_channels", false)
+                .arg("auto_pyramidize", true,
+                        "Auto-pyramidize so multi-resolution requests stay cheap on a big dataset.")
+                .arg("disable_memo", false)
+                .arg("plane_origin_convention", "TOP LEFT")
+                .sayOnDialog("Walking through the Bio-Formats importer dialog.")
                 .viaTreePath()
                 .execute();
         Step.say("The CZI is opened lazily — nothing is read unless data is requested, for instance by a viewer. "
@@ -111,14 +115,17 @@ public class GenerateDeconvolutionDocAssets {
         Step.say("We walk through the same Bio-Formats command: "
                 + CommandExecutor.menuPath(DatasetFromBioFormatsCreateCommand.class));
         CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
-                .args("datasetname", filePSF.getName(),
-                        "unit", "MICROMETER",
-                        "files", new File[]{filePSF},
-                        "split_rgb_channels", false,
-                        "auto_pyramidize", true,
-                        "disable_memo", false,
-                        "plane_origin_convention", "TOP LEFT")
-                .sayOnDialog("Same dialog as before.")
+                .arg("datasetname", filePSF.getName(),
+                        "Same naming convention — the PSF file's own name.")
+                .arg("unit", "MICROMETER",
+                        "Same axis units as the data so the PSF lines up in micron-space.")
+                .arg("files", new File[]{filePSF},
+                        "Browsing to the 400 nm PSF — same Zenodo cache.")
+                .arg("split_rgb_channels", false)
+                .arg("auto_pyramidize", true)
+                .arg("disable_memo", false)
+                .arg("plane_origin_convention", "TOP LEFT")
+                .sayOnDialog("Same Bio-Formats dialog as before.")
                 .viaTreePath()
                 .execute();
         Step.say("Both datasets now live in the Sources tree, ready to feed the deconvolution command.");
@@ -131,13 +138,16 @@ public class GenerateDeconvolutionDocAssets {
         Step.say("Right-clicking the CZI node — walking to: "
                 + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class, 2));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
-                .args("adjust_view", true,
-                        "auto_contrast", true,
-                        "interpolate", false,
-                        "make_new_window", true)
-                .sayOnDialog("Dialog: auto-contrast on, "
-                        + "make_new_window=true so the raw view gets its own viewer.")
-                .viaTreePath(fileDataset.getName())
+                .arg("adjust_view", true,
+                        "Re-centering the view on the loaded sources.")
+                .arg("auto_contrast", true,
+                        "Auto-contrast on so we start with sensible display ranges per channel.")
+                .arg("interpolate", false)
+                .arg("make_new_window", true,
+                        "Open a fresh BDV window — leave any existing viewers untouched.")
+                .sayOnDialog("Walking through the show-sources dialog.")
+                .viaTreePath(fileDataset.getName(),
+                        "We select the raw CZI sources for display.")
                 .execute();
 
         Frame bdvRaw = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
@@ -145,9 +155,9 @@ public class GenerateDeconvolutionDocAssets {
         bdvArea.place(bdvRaw, 1, 1, 0, 0);
 
         CommandExecutor.of(BdvTitleSetCommand.class)
-                .args("title", "BDV - Raw Sources")
-                .sayOnDialog("Renaming the window to \"BDV - Raw Sources\" so the upcoming sync "
-                        + "command can address it by title.")
+                .arg("title", "BDV - Raw Sources",
+                        "Naming this window so the upcoming sync command can address it by title.")
+                .sayOnDialog("Setting the window title.")
                 .viaTreePath()
                 .execute();
         Step.end();
@@ -183,20 +193,29 @@ public class GenerateDeconvolutionDocAssets {
                 + "has been setup for this. Walking to: "
                 + CommandExecutor.menuPath(SourcesDeconvolveCommand.class, 2));
         CommandExecutor.of(SourcesDeconvolveCommand.class)
-                .args("sources", fileDataset.getName(),
-                        "psf", filePSF.getName(),
-                        "output_pixel_type", "Keep Pixel Type Of Original Image",
-                        "suffix", "_deconvolved",
-                        "block_size_x", 256,
-                        "block_size_y", 256,
-                        "block_size_z", 64,
-                        "overlap_size", 16,
-                        "num_iterations", 20,
-                        "non_circulant", true,
-                        "regularization_factor", 0.002f,
-                        "n_threads", 4)
-                .sayOnDialog("Filling the deconvolve dialog: raw dataset as input, 400 nm PSF, "
-                        + "reasonably-sized blocks with overlap, low iteration count for speed, light regularization.")
+                .arg("sources", fileDataset.getName(),
+                        "Picking the raw HeLa dataset as the input to deconvolve.")
+                .arg("psf", filePSF.getName(),
+                        "Picking the matching 400 nm PSF as the kernel.")
+                .arg("output_pixel_type", "Keep Pixel Type Of Original Image",
+                        "Keep 16-bit output so the deconvolved view stays comparable to the raw.")
+                .arg("suffix", "_deconvolved",
+                        "Suffix appended to each new source name so the two sets stay distinguishable.")
+                .arg("block_size_x", 256,
+                        "Processing in 256×256×64 blocks — sized to fit the GPU and amortize the overlap cost.")
+                .arg("block_size_y", 256)
+                .arg("block_size_z", 64)
+                .arg("overlap_size", 16,
+                        "16-pixel overlap between blocks to hide tile boundaries in the result.")
+                .arg("num_iterations", 20,
+                        "20 Richardson-Lucy iterations — a sweet spot for this PSF and noise level.")
+                .arg("non_circulant", true,
+                        "Non-circulant mode avoids wrap-around artefacts at block edges.")
+                .arg("regularization_factor", 0.002f,
+                        "Light regularization — just enough to tame noise amplification.")
+                .arg("n_threads", 4,
+                        "Four streams in flight at once to keep the GPU pool saturated.")
+                .sayOnDialog("Walking through the deconvolve dialog — the parameters that shape the result.")
                 .viaTreePath()
                 .execute();
         Step.say("The command returns immediately — the deconvolution itself is lazy, "
@@ -212,13 +231,16 @@ public class GenerateDeconvolutionDocAssets {
                 + "landed) — walking to: "
                 + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class, 2));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
-                .args("adjust_view", true,
-                        "auto_contrast", false,
-                        "interpolate", false,
-                        "make_new_window", true)
-                .sayOnDialog("Dialog: auto_contrast off this time so we can carry the raw display "
-                        + "ranges over manually for a fair visual comparison, make_new_window=true for a fresh viewer.")
-                .viaTreePath("Other Sources")
+                .arg("adjust_view", true,
+                        "Re-centering on the deconvolved sources.")
+                .arg("auto_contrast", false,
+                        "Auto-contrast off this time — we'll carry the raw ranges over manually for a fair side-by-side.")
+                .arg("interpolate", false)
+                .arg("make_new_window", true,
+                        "New window so the raw view stays untouched next to it.")
+                .sayOnDialog("Walking through the show-sources dialog again.")
+                .viaTreePath("Other Sources",
+                        "We pick the deconvolved sources that just landed under \"Other Sources\".")
                 .execute();
 
         Frame bdvDeconvolved = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
@@ -226,9 +248,9 @@ public class GenerateDeconvolutionDocAssets {
         bdvArea.place(bdvDeconvolved, 2, 1, 1, 0);
 
         CommandExecutor.of(BdvTitleSetCommand.class)
-                .args("title", "BDV - Deconvolved Sources")
-                .sayOnDialog("Renaming it \"BDV - Deconvolved Sources\" so the sync command "
-                        + "can find it by title.")
+                .arg("title", "BDV - Deconvolved Sources",
+                        "Naming this one so the sync command can pair the two windows by title.")
+                .sayOnDialog("Setting the window title.")
                 .viaTreePath()
                 .execute();
 
@@ -241,11 +263,12 @@ public class GenerateDeconvolutionDocAssets {
         Step.say("Right-clicking the Sources root — walking to: "
                 + CommandExecutor.menuPath(ViewSynchronizeCommand.class, 2));
         CommandExecutor.of(ViewSynchronizeCommand.class)
-                .args("bdvhs", new String[]{"BDV - Raw Sources", "BDV - Deconvolved Sources"},
-                        "bvvhs", null,
-                        "synchronizetime", true)
-                .sayOnDialog("Dialog: both BDV titles selected, synchronizetime=true — from this "
-                        + "moment the two viewers share pan, zoom and timepoint.")
+                .arg("bdvhs", new String[]{"BDV - Raw Sources", "BDV - Deconvolved Sources"},
+                        "Selecting both BDV windows we just named — the two viewers that will share state.")
+                .arg("bvvhs", null)
+                .arg("synchronizetime", true,
+                        "Lock timepoints too — scrubbing one slider scrubs both.")
+                .sayOnDialog("Walking through the synchronize dialog.")
                 .viaTreePath()
                 .execute();
         Step.say("Holding the final frame for a minute while the deconvolved view streams in — "

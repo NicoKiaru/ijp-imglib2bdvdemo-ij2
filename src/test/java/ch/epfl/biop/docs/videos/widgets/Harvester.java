@@ -32,6 +32,7 @@ import java.awt.event.KeyEvent;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -121,13 +122,37 @@ public class Harvester {
         Map<String, Object> values = parseValues(namedInputs);
         CommandService cs = Fiji.context().service(CommandService.class);
         Future<CommandModule> future = cs.run(cmdClass, true);
-        driveDialog(cmdClass, values);
+        driveDialog(cmdClass, values, Collections.emptyMap());
         return future;
     }
 
     public static <C extends Command> void runOpenDialog(Class<C> cmdClass, Object... namedInputs) {
+        runOpenDialog(cmdClass, Collections.emptyMap(), namedInputs);
+    }
+
+    /**
+     * Same as {@link #runOpenDialog(Class, Object...)} but with a per-parameter
+     * narration map: just before each widget is driven, if {@code narrations}
+     * contains an entry keyed by that parameter's field name, {@link Step#say}
+     * fires with the narration text. The {@code tMs} of the resulting
+     * {@code comments[]} entry in {@code timeline.json} therefore lines up
+     * with the moment the corresponding field is filled — so the downstream
+     * video pipeline can correlate the narration to the specific gesture.
+     *
+     * <p>Narration fires <em>before</em> {@link Ui#scrollIntoView}: when the
+     * harvester panel is wrapped in a {@link javax.swing.JScrollPane}, the
+     * cursor's scroll-then-click travel toward the widget plays out under
+     * the subtitle, which reads as "we're heading to the next thing
+     * because…".</p>
+     *
+     * <p>Parameters without a narration entry are filled silently. Empty
+     * map = same behaviour as {@link #runOpenDialog(Class, Object...)}.</p>
+     */
+    public static <C extends Command> void runOpenDialog(Class<C> cmdClass,
+                                                          Map<String, String> narrations,
+                                                          Object... namedInputs) {
         Map<String, Object> values = parseValues(namedInputs);
-        driveDialog(cmdClass, values);
+        driveDialog(cmdClass, values, narrations);
     }
 
     /**
@@ -152,7 +177,7 @@ public class Harvester {
                                                         Object... namedInputs) {
         Map<String, Object> values = parseValues(namedInputs);
         Fiji.searchAndRun(searchQuery);
-        driveDialog(cmdClass, values);
+        driveDialog(cmdClass, values, Collections.emptyMap());
     }
 
     private static Map<String, Object> parseValues(Object[] namedInputs) {
@@ -184,7 +209,8 @@ public class Harvester {
     }
 
     /** Wait for the active dialog, fill each named parameter, click OK. */
-    private static <C extends Command> void driveDialog(Class<C> cmdClass, Map<String, Object> values) {
+    private static <C extends Command> void driveDialog(Class<C> cmdClass, Map<String, Object> values,
+                                                         Map<String, String> narrations) {
         Map<String, String> fieldToLabel = labelsFor(cmdClass);
 
         Dialog dialog = Ui.waitForActiveDialog(Timings.FRAME_WAIT_FOR_DIALOG_MS);
@@ -222,11 +248,22 @@ public class Harvester {
                         + fieldName + "' (label: '" + label + "')");
             }
             System.out.println("[Harvester] " + fieldName + " (" + label + ") <- " + value);
+            // Per-parameter narration, fired before the scroll-then-click
+            // travel begins — the resulting comments[] tMs in timeline.json
+            // marks the moment this field's filling started, so the video
+            // pipeline can correlate the subtitle to the specific gesture.
+            String narration = narrations.get(fieldName);
+            if (narration != null) Step.say(narration);
             // No-op when the harvester panel isn't wrapped in a JScrollPane.
             // When it is, brings the widget to the top of the viewport so it
             // (and as many subsequent widgets as possible) are reachable.
             Ui.scrollIntoView(inputContainer);
             fillWidget(inputContainer, value);
+            // Breathing room before the next field's narration + cursor
+            // travel — each per-field edit reads as its own beat on video
+            // rather than blurring into the next one. Stacks on top of
+            // fillWidget's per-click PAUSE_AFTER_CLICK_MS.
+            Ui.pause(Timings.PAUSE_AFTER_FIELD_MS);
         }
         Ui.pause(1000);
         clickOk(dialog);
@@ -880,6 +917,11 @@ public class Harvester {
         // Tutorial PNG: dialog fully filled, cursor on OK, just before the click.
         Step.snapMoment("dialog");
         Ui.click();
+        // Beat to let the dialog dismiss and the command's immediate UI
+        // side effects (viewer opening, sources appearing, …) materialize
+        // before the demo script's next Step.say lands — otherwise the
+        // next narration's tMs predates the visible result it describes.
+        Ui.pause(Timings.PAUSE_AFTER_DIALOG_OK_MS);
     }
 
     private static AbstractButton findButton(Container root, String text) {
