@@ -81,7 +81,9 @@ public class Layout {
         int y = dy + row * cellH;
         int w = colSpan * cellW;
         int h = rowSpan * cellH;
+
         Ui.resizeFrame(frame, w, h);
         Ui.dragFrame(frame, x, y);
+
     }
 }

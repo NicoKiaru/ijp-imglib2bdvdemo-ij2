@@ -323,7 +323,7 @@ public class Ui {
 
         Insets insets = window.getInsets();
         int titleBarHeight = Math.max(insets.top, 24);
-        int grabOffsetX = window.getWidth()-200;//Math.min(60, Math.max(20, window.getWidth() / 2));
+        int grabOffsetX = 10;//window.getWidth()-200;//Math.min(60, Math.max(20, window.getWidth() / 2));
         int grabOffsetY = titleBarHeight / 2;
 
         int startX = window.getX() + grabOffsetX;
