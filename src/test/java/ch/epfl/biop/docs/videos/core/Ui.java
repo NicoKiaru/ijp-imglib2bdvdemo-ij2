@@ -407,13 +407,22 @@ public class Ui {
      */
     public static void drag(int startX, int startY, int endX, int endY) {
         Timeline.mouseDrag(startX, startY, endX, endY);
-        moveTo(startX, startY);
-        pause(Timings.PAUSE_AFTER_MOVE_MS);
-        robot().mousePress(InputEvent.BUTTON1_DOWN_MASK);
-        rawPause(Timings.DRAG_GRAB_DELAY_MS);
-        moveTo(endX, endY);
-        rawPause(Timings.DRAG_GRAB_DELAY_MS);
-        robot().mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+        // Bracket the whole press/move/release with the EventRecorder
+        // suppress flag so the synthetic press / drag / release this
+        // generates aren't re-captured as a second mouse.drag.
+        EventRecorder.suppress(true);
+        try {
+            moveTo(startX, startY);
+            pause(Timings.PAUSE_AFTER_MOVE_MS);
+            robot().mousePress(InputEvent.BUTTON1_DOWN_MASK);
+            rawPause(Timings.DRAG_GRAB_DELAY_MS);
+            moveTo(endX, endY);
+            rawPause(Timings.DRAG_GRAB_DELAY_MS);
+            robot().mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+            waitForRobotIdle();
+        } finally {
+            EventRecorder.suppress(false);
+        }
     }
 
     /**
@@ -669,9 +678,15 @@ public class Ui {
 
     public static void click() {
         Timeline.mouseClick();
-        robot().mousePress(InputEvent.BUTTON1_DOWN_MASK);
-        robot().delay(Timings.CLICK_HOLD_MS);
-        robot().mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+        EventRecorder.suppress(true);
+        try {
+            robot().mousePress(InputEvent.BUTTON1_DOWN_MASK);
+            robot().delay(Timings.CLICK_HOLD_MS);
+            robot().mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+            waitForRobotIdle();
+        } finally {
+            EventRecorder.suppress(false);
+        }
     }
 
     /**
@@ -683,21 +698,33 @@ public class Ui {
      */
     public static void doubleClick() {
         Timeline.mouseDoubleClick();
-        Robot r = robot();
-        r.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-        r.delay(Timings.DOUBLE_CLICK_HOLD_MS);
-        r.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-        r.delay(Timings.DOUBLE_CLICK_GAP_MS);
-        r.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-        r.delay(Timings.DOUBLE_CLICK_HOLD_MS);
-        r.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+        EventRecorder.suppress(true);
+        try {
+            Robot r = robot();
+            r.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+            r.delay(Timings.DOUBLE_CLICK_HOLD_MS);
+            r.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+            r.delay(Timings.DOUBLE_CLICK_GAP_MS);
+            r.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+            r.delay(Timings.DOUBLE_CLICK_HOLD_MS);
+            r.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+            waitForRobotIdle();
+        } finally {
+            EventRecorder.suppress(false);
+        }
     }
 
     public static void rightClick() {
         Timeline.mouseRightClick();
-        robot().mousePress(InputEvent.BUTTON3_DOWN_MASK);
-        robot().delay(Timings.CLICK_HOLD_MS);
-        robot().mouseRelease(InputEvent.BUTTON3_DOWN_MASK);
+        EventRecorder.suppress(true);
+        try {
+            robot().mousePress(InputEvent.BUTTON3_DOWN_MASK);
+            robot().delay(Timings.CLICK_HOLD_MS);
+            robot().mouseRelease(InputEvent.BUTTON3_DOWN_MASK);
+            waitForRobotIdle();
+        } finally {
+            EventRecorder.suppress(false);
+        }
     }
 
     /**
@@ -709,7 +736,26 @@ public class Ui {
      */
     public static void mouseWheel(int notches) {
         Timeline.mouseWheel(notches);
-        robot().mouseWheel(notches);
+        EventRecorder.suppress(true);
+        try {
+            robot().mouseWheel(notches);
+            waitForRobotIdle();
+        } finally {
+            EventRecorder.suppress(false);
+        }
+    }
+
+    /**
+     * Drain pending AWT events (synthetic mouse / wheel / key events
+     * just emitted by {@link Robot}) so they have all been dispatched
+     * before the caller drops the {@link EventRecorder} suppress flag —
+     * otherwise the listener might process a still-queued synthetic event
+     * after we've already re-armed capture, and double-count it. No-op on
+     * the EDT, where {@link Robot#waitForIdle()} would throw.
+     */
+    private static void waitForRobotIdle() {
+        if (SwingUtilities.isEventDispatchThread()) return;
+        robot().waitForIdle();
     }
 
     public static void key(int keyCode) {

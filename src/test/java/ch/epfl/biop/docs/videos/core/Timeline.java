@@ -105,13 +105,24 @@ public class Timeline {
         }
     }
 
-    /** A single mouse gesture. {@code endX/endY} non-null for drags, {@code notches} for the wheel. */
+    /**
+     * A single mouse gesture. {@code endX/endY} non-null for drags,
+     * {@code notches} for the wheel, {@code points} for the count of
+     * {@code MOUSE_DRAGGED} samples captured between press and release
+     * (only set by {@link EventRecorder}, not by the Robot-driven path).
+     * {@code modifiers} is the list of keyboard modifiers held at event
+     * time — empty / {@code null} for the Robot-driven path, populated by
+     * {@link EventRecorder} from {@link java.awt.event.InputEvent#getModifiersEx()}.
+     */
     private static final class Evt {
         final String type;
         final long wallMs;
         final int x, y;
-        final Integer endX, endY, notches;
-        Evt(String type, long wallMs, int x, int y, Integer endX, Integer endY, Integer notches) {
+        final Integer endX, endY, notches, points;
+        final List<String> modifiers;
+        Evt(String type, long wallMs, int x, int y,
+            Integer endX, Integer endY, Integer notches, Integer points,
+            List<String> modifiers) {
             this.type = type;
             this.wallMs = wallMs;
             this.x = x;
@@ -119,6 +130,8 @@ public class Timeline {
             this.endX = endX;
             this.endY = endY;
             this.notches = notches;
+            this.points = points;
+            this.modifiers = modifiers;
         }
     }
 
@@ -236,21 +249,48 @@ public class Timeline {
     static void mouseWheel(int notches) {
         if (!ENABLED || current == null) return;
         Point p = MouseInfo.getPointerInfo().getLocation();
-        current.events.add(new Evt("mouse.wheel", System.currentTimeMillis(),
-                p.x, p.y, null, null, notches));
+        addEvent("mouse.wheel", p.x, p.y, null, null, notches, null, null);
     }
 
     static void mouseDrag(int startX, int startY, int endX, int endY) {
-        if (!ENABLED || current == null) return;
-        current.events.add(new Evt("mouse.drag", System.currentTimeMillis(),
-                startX, startY, endX, endY, null));
+        addEvent("mouse.drag", startX, startY, endX, endY, null, null, null);
+    }
+
+    // --- EventRecorder-side variants: explicit screen coords + modifiers ---
+
+    static void mouseClickAt(int x, int y, List<String> modifiers) {
+        addEvent("mouse.click", x, y, null, null, null, null, modifiers);
+    }
+
+    static void mouseDoubleClickAt(int x, int y, List<String> modifiers) {
+        addEvent("mouse.double_click", x, y, null, null, null, null, modifiers);
+    }
+
+    static void mouseRightClickAt(int x, int y, List<String> modifiers) {
+        addEvent("mouse.right_click", x, y, null, null, null, null, modifiers);
+    }
+
+    static void mouseWheelAt(int x, int y, int notches, List<String> modifiers) {
+        addEvent("mouse.wheel", x, y, null, null, notches, null, modifiers);
+    }
+
+    static void mouseDragAt(int startX, int startY, int endX, int endY,
+                            int points, List<String> modifiers) {
+        addEvent("mouse.drag", startX, startY, endX, endY, null, points, modifiers);
     }
 
     private static void addAtCursor(String type) {
         if (!ENABLED || current == null) return;
         Point p = MouseInfo.getPointerInfo().getLocation();
+        addEvent(type, p.x, p.y, null, null, null, null, null);
+    }
+
+    private static void addEvent(String type, int x, int y,
+                                 Integer endX, Integer endY, Integer notches,
+                                 Integer points, List<String> modifiers) {
+        if (!ENABLED || current == null) return;
         current.events.add(new Evt(type, System.currentTimeMillis(),
-                p.x, p.y, null, null, null));
+                x, y, endX, endY, notches, points, modifiers));
     }
 
     private static void flushPending(long endWallMs) {
@@ -336,6 +376,17 @@ public class Timeline {
             }
             if (ev.notches != null) {
                 sb.append(",\"notches\":").append(ev.notches);
+            }
+            if (ev.points != null) {
+                sb.append(",\"points\":").append(ev.points);
+            }
+            if (ev.modifiers != null && !ev.modifiers.isEmpty()) {
+                sb.append(",\"modifiers\":[");
+                for (int m = 0; m < ev.modifiers.size(); m++) {
+                    if (m > 0) sb.append(",");
+                    sb.append(jsonStr(ev.modifiers.get(m)));
+                }
+                sb.append("]");
             }
             sb.append("}");
         }

@@ -17,7 +17,8 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`, split into subpa
 |---|---|
 | `core/Timings` | Central timing constants + `GLOBAL_SPEED`. One knob to speed every video pace up or down. |
 | `core/Ui` | Robot wrapper: target-screen handling, frame placement, sin-eased `moveTo`, click/key/`type(String)`, `paste(String)` (clipboard-based, layout-independent), `mouseWheel(notches)` + `scrollIntoView(Component)` (mouse-wheel a `JScrollPane` ancestor until a target widget sits at the viewport top), `pause`. Each mouse primitive (`click`, `doubleClick`, `rightClick`, `drag`, `mouseWheel`) also emits an entry to `core/Timeline` so the downstream video pipeline gets a machine-readable timeline of every visible gesture. |
-| `core/Timeline` | Single per-session output file, `timeline.json` (v3) — replaces the old `events.json` + `script.md` pair. One `steps[]` entry per recorded clip, in capture order (every step, including pipeline-skipped ones like `boot-fiji`): `index`/`slug`/`clip` (exact mp4 filename), `description` (chapter title — the `Step.begin` narration), `comments[]` (narration sub-steps from `Step.say`, each `{tMs,endMs,text}`), `events[]` (`mouse.click` / `mouse.double_click` / `mouse.right_click` / `mouse.drag` with `endX`/`endY` / `mouse.wheel` with `notches`; screen-absolute `x`/`y`), and an ISO `startedAt`. **Every `tMs`/`endMs` is relative to the first captured frame of that step's own clip** — no session-global clock — so per-clip mapping never drifts. Top-level `recordingBounds` + `version`, plus optional `intro` (`title`/`tagline`/`highlights[]` — the title card) and `outro` (`closing`/`commands[]`/`links[]` — the closing card) blocks set via `setIntro`/`setOutro` (see `videos/Demo`). `type` is namespaced (`mouse.…`) for future categories. Rewritten on every `Step.end()`, on `setIntro`/`setOutro`, and from a JVM shutdown hook. |
+| `core/Timeline` | Single per-session output file, `timeline.json` (v3) — replaces the old `events.json` + `script.md` pair. One `steps[]` entry per recorded clip, in capture order (every step, including pipeline-skipped ones like `boot-fiji`): `index`/`slug`/`clip` (exact mp4 filename), `description` (chapter title — the `Step.begin` narration), `comments[]` (narration sub-steps from `Step.say`, each `{tMs,endMs,text}`), `events[]` (`mouse.click` / `mouse.double_click` / `mouse.right_click` / `mouse.drag` with `endX`/`endY` (and `points` count when captured by `EventRecorder`) / `mouse.wheel` with `notches`; screen-absolute `x`/`y`; optional `modifiers[]` carrying any combination of `"shift"` / `"ctrl"` / `"alt"` / `"meta"` held at event time — emitted only by the `EventRecorder` path, omitted on Robot-driven emissions where no modifier is held), and an ISO `startedAt`. **Every `tMs`/`endMs` is relative to the first captured frame of that step's own clip** — no session-global clock — so per-clip mapping never drifts. Top-level `recordingBounds` + `version`, plus optional `intro` (`title`/`tagline`/`highlights[]` — the title card) and `outro` (`closing`/`commands[]`/`links[]` — the closing card) blocks set via `setIntro`/`setOutro` (see `videos/Demo`). `type` is namespaced (`mouse.…`) for future categories. Rewritten on every `Step.end()`, on `setIntro`/`setOutro`, and from a JVM shutdown hook. |
+| `core/EventRecorder` | Global AWT listener (installed via `Toolkit.addAWTEventListener` on the `MOUSE_EVENT_MASK | MOUSE_MOTION_EVENT_MASK | MOUSE_WHEEL_EVENT_MASK | KEY_EVENT_MASK` masks) that captures the human operator's real mouse activity and forwards it to `Timeline` in the same shape as the Robot-driven emissions, with `modifiers[]` decoded from `InputEvent.getModifiersEx()`. Closes the blind spot left by `Step.waitForUser` manual phases (Labkit scribbling, hand-drawn ROIs, …) so the resulting `timeline.json` carries one continuous gesture log for the full clip. Press → drag → release collapses into one `mouse.drag` with a `points` count of intermediate samples; per-pixel polyline capture is gated behind `EventRecorder.CAPTURE_DRAG_PATH` for a future overlay feature. Click dispatch comes from `MOUSE_CLICKED` (which doesn't fire when a drag occurs in between, keeping click and drag paths mutually exclusive); `clickCount==1` → `mouse.click`, `==2` → `mouse.double_click`, BUTTON3 → `mouse.right_click`. Robot-synthesized events are indistinguishable from real ones at the AWT layer — `Ui`'s `click` / `doubleClick` / `rightClick` / `drag` / `mouseWheel` bracket their native calls with `EventRecorder.suppress(true)` and `Robot.waitForIdle()` so the listener early-returns on the synthetic events and they aren't double-counted. Idempotent `enable()` is auto-armed by `ScreenRecorder.start()` when `EventRecorder.ENABLED` is true; the listener gates on `Step.currentName()` so it only emits inside an open step. AWT-only — clicks outside the JVM (browser, OS native file picker) are not captured. |
 | `core/CommandRef` | Plain Fiji-unaware DTO — `name`/`version`/`sourceUrl` of one invoked Fiji command. Lets `Timeline`'s `outro.commands[]` carry the harvested command list without `core/` importing anything SciJava. |
 | `videos/Demo` | Demo-side authoring facade for the video intro / outro. `intro(title, tagline, highlights…)` sets the title-card metadata; `outro(closing, links…)` sets the closing card — the command list is harvested automatically from `CatchCommandForDocPostProcessor` (every Fiji command the demo ran) into `core/CommandRef`s. Both push into `core/Timeline`; `outro` also writes a ready-to-paste `youtube-description.md` next to the clips. Lives in `videos/` (not `core/`) because it touches the SciJava-side postprocessor. |
 | `core/Inspector` | Recursive AWT/Swing tree walker. Returns a `LinkedHashMap<String, ComponentInfo>` with hierarchical path keys, local bounds and absolute screen positions. Includes `prettyPrint`. |
@@ -397,6 +398,37 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`, split into subpa
   `SplitPanel.isCollapsed()`: no-op when already in the requested state, no
   cursor motion either. `BdvSliderDemo` exercises both expand and collapse
   end to end after the slider drags.
+
+- **Capturing the human operator's mouse activity during manual phases.**
+  `core/EventRecorder` installs a global AWT listener via
+  `Toolkit.addAWTEventListener` and forwards every real mouse gesture
+  (click, drag, wheel) to `Timeline` in the same shape as `Ui.click()` /
+  `Ui.drag()` emissions — so `Step.waitForUser` blocks (Labkit
+  scribbling, hand-picked BDV navigation, ROI sketching) no longer leave
+  a gap in `timeline.json`. Each captured event carries a `modifiers[]`
+  list decoded from `InputEvent.getModifiersEx()` (any combination of
+  `"shift"` / `"ctrl"` / `"alt"` / `"meta"` held at event time) so the
+  downstream pipeline can render modifier badges next to the cursor.
+  Press → drag → release is collapsed into one `mouse.drag` with a
+  `points` count of intermediate samples (the count separates a
+  click-with-jitter at ~5 points from a Labkit scribble at thousands);
+  per-pixel polyline capture is gated behind `EventRecorder.CAPTURE_DRAG_PATH`
+  for a future overlay feature. Click dispatch comes from `MOUSE_CLICKED`
+  — which doesn't fire when a drag occurs between press and release, so
+  the click and drag paths are mutually exclusive — and emits exactly
+  one event per CLICKED (so a fast double-click yields a `mouse.click`
+  followed by a `mouse.double_click`, which the consumer coalesces by
+  short Δt at the same screen position if it wants a single marker per
+  gesture). Robot-synthesized events are indistinguishable from real
+  ones at the AWT layer; `Ui`'s `click` / `doubleClick` / `rightClick` /
+  `drag` / `mouseWheel` bracket their native calls with
+  `EventRecorder.suppress(true)` plus `Robot.waitForIdle()` (drains
+  pending synthetic events before the flag drops) so the listener
+  doesn't double-count automated gestures. Auto-armed by
+  `ScreenRecorder.start()` when `EventRecorder.ENABLED` is true; the
+  listener gates on `Step.currentName()` so it only emits inside an
+  open step. AWT-only — clicks outside the JVM (browser, OS file
+  picker, system tray) are not captured; that would need JNativeHook.
 
 ## Known limitations
 

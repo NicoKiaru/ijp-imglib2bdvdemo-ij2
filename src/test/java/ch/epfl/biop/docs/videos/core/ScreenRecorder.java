@@ -113,6 +113,11 @@ public class ScreenRecorder {
             throw new IllegalStateException("Already recording '" + currentClip
                     + "' — call stop() before starting a new clip.");
         }
+        // Auto-arm the human-gesture capture. Idempotent — installs the
+        // global AWT listener exactly once, regardless of how many clips
+        // get recorded; the listener itself gates on Step.currentName()
+        // so it only emits inside an open step.
+        if (EventRecorder.ENABLED) EventRecorder.enable();
         String safe = clipName.replaceAll("[^A-Za-z0-9._-]+", "_");
         currentIndex = ++counter;
         String fileName = String.format("%03d-%s.mp4", currentIndex, safe);
