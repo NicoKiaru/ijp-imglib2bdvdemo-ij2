@@ -106,13 +106,16 @@ public class Timeline {
     }
 
     /**
-     * A single mouse gesture. {@code endX/endY} non-null for drags,
+     * A single input gesture. {@code endX/endY} non-null for drags,
      * {@code notches} for the wheel, {@code points} for the count of
      * {@code MOUSE_DRAGGED} samples captured between press and release
      * (only set by {@link EventRecorder}, not by the Robot-driven path).
      * {@code modifiers} is the list of keyboard modifiers held at event
      * time — empty / {@code null} for the Robot-driven path, populated by
      * {@link EventRecorder} from {@link java.awt.event.InputEvent#getModifiersEx()}.
+     * {@code key} carries the human-readable key name for {@code key.*}
+     * events (e.g. {@code "Right"}, {@code "X"}, {@code "F2"}); null on
+     * mouse events.
      */
     private static final class Evt {
         final String type;
@@ -120,9 +123,10 @@ public class Timeline {
         final int x, y;
         final Integer endX, endY, notches, points;
         final List<String> modifiers;
+        final String key;
         Evt(String type, long wallMs, int x, int y,
             Integer endX, Integer endY, Integer notches, Integer points,
-            List<String> modifiers) {
+            List<String> modifiers, String key) {
             this.type = type;
             this.wallMs = wallMs;
             this.x = x;
@@ -132,6 +136,7 @@ public class Timeline {
             this.notches = notches;
             this.points = points;
             this.modifiers = modifiers;
+            this.key = key;
         }
     }
 
@@ -279,6 +284,19 @@ public class Timeline {
         addEvent("mouse.drag", startX, startY, endX, endY, null, points, modifiers);
     }
 
+    /**
+     * Record a key press captured by {@link EventRecorder}. {@code key} is
+     * the human-readable name (e.g. {@code "Right"}, {@code "X"},
+     * {@code "F2"}); the cursor position at press time is used for
+     * {@code x}/{@code y} so an overlay can place a key badge near the
+     * cursor.
+     */
+    static void keyPressAt(String key, List<String> modifiers) {
+        if (!ENABLED || current == null) return;
+        Point p = MouseInfo.getPointerInfo().getLocation();
+        addEvent("key.press", p.x, p.y, null, null, null, null, modifiers, key);
+    }
+
     private static void addAtCursor(String type) {
         if (!ENABLED || current == null) return;
         Point p = MouseInfo.getPointerInfo().getLocation();
@@ -288,9 +306,15 @@ public class Timeline {
     private static void addEvent(String type, int x, int y,
                                  Integer endX, Integer endY, Integer notches,
                                  Integer points, List<String> modifiers) {
+        addEvent(type, x, y, endX, endY, notches, points, modifiers, null);
+    }
+
+    private static void addEvent(String type, int x, int y,
+                                 Integer endX, Integer endY, Integer notches,
+                                 Integer points, List<String> modifiers, String key) {
         if (!ENABLED || current == null) return;
         current.events.add(new Evt(type, System.currentTimeMillis(),
-                x, y, endX, endY, notches, points, modifiers));
+                x, y, endX, endY, notches, points, modifiers, key));
     }
 
     private static void flushPending(long endWallMs) {
@@ -379,6 +403,9 @@ public class Timeline {
             }
             if (ev.points != null) {
                 sb.append(",\"points\":").append(ev.points);
+            }
+            if (ev.key != null) {
+                sb.append(",\"key\":").append(jsonStr(ev.key));
             }
             if (ev.modifiers != null && !ev.modifiers.isEmpty()) {
                 sb.append(",\"modifiers\":[");

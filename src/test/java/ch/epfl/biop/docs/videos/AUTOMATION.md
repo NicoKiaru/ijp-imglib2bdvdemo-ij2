@@ -430,6 +430,26 @@ All code lives under `src/test/java/ch/epfl/biop/docs/videos/`, split into subpa
   open step. AWT-only — clicks outside the JVM (browser, OS file
   picker, system tray) are not captured; that would need JNativeHook.
 
+- **Capturing the human operator's keystrokes during manual phases.**
+  The same global AWT listener forwards `KEY_PRESSED` events as
+  `key.press` entries in `timeline.json`, carrying the human-readable
+  key name (`KeyEvent.getKeyText` — `"Right"`, `"X"`, `"F2"`, …) plus
+  the standard `modifiers[]` array. `x`/`y` are filled from the current
+  cursor position so the downstream overlay can place a key badge next
+  to where the user is looking. Pure modifier presses (Shift / Ctrl /
+  Alt / Meta / Win held on their own) are filtered out at the source —
+  they'd just be noise, and the modifier will surface on the next
+  non-modifier press's `modifiers[]` regardless. OS auto-repeat
+  (holding ← to step through BDV slices) naturally produces one
+  emission per repeat, which is what the overlay wants. Robot-driven
+  keystrokes from `Ui.key` / `Ui.paste` / `Ui.type` and from any
+  `widgets/*` helper that synthesizes a Ctrl-chord (e.g.
+  `selectAllAndDelete`) bracket their `Robot.keyPress`/`keyRelease`
+  with `EventRecorder.suppress(true)` + `Robot.waitForIdle()` so they
+  do not double-count as user input. Captures any in-focus AWT/Swing
+  surface — BDV viewer (arrows, x/y/z, [/]), search-bar typing, dialog
+  shortcuts — but not native OS shortcuts handled outside the JVM.
+
 ## Known limitations
 
 - **AWT menus have no bounds.** The IJ1 main frame uses `java.awt.MenuBar` /

@@ -4,6 +4,7 @@ import java.awt.AWTEvent;
 import java.awt.Toolkit;
 import java.awt.event.AWTEventListener;
 import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.util.ArrayList;
@@ -144,10 +145,9 @@ public class EventRecorder {
                         handleWheel((MouseWheelEvent) event);
                     } else if (event instanceof MouseEvent) {
                         handleMouse((MouseEvent) event);
+                    } else if (event instanceof KeyEvent) {
+                        handleKey((KeyEvent) event);
                     }
-                    // KeyEvents are listened to (mask requested) but not
-                    // processed — modifier state at gesture time is already
-                    // carried by each MouseEvent's getModifiersEx().
                 } catch (RuntimeException ignored) {
                     // A global AWT listener must never throw — would
                     // poison every subsequent event dispatch in the JVM.
@@ -236,6 +236,33 @@ public class EventRecorder {
     private static void handleWheel(MouseWheelEvent e) {
         Timeline.mouseWheelAt(e.getXOnScreen(), e.getYOnScreen(),
                 e.getWheelRotation(), decodeModifiers(e.getModifiersEx()));
+    }
+
+    /**
+     * Emit one {@code key.press} per physical key down. OS auto-repeat
+     * (e.g. holding Right arrow to step through BDV slices) naturally
+     * produces multiple PRESSED events and therefore multiple emissions,
+     * which matches what the overlay should show. Pure modifier presses
+     * (Shift / Ctrl / Alt / Meta / Win alone) are filtered out — the
+     * modifier surfaces in the next non-modifier press's {@code modifiers}
+     * array, so emitting them separately would just be noise.
+     */
+    private static void handleKey(KeyEvent e) {
+        if (e.getID() != KeyEvent.KEY_PRESSED) return;
+        int code = e.getKeyCode();
+        if (code == KeyEvent.VK_UNDEFINED) return;
+        if (isPureModifier(code)) return;
+        Timeline.keyPressAt(KeyEvent.getKeyText(code),
+                decodeModifiers(e.getModifiersEx()));
+    }
+
+    private static boolean isPureModifier(int code) {
+        return code == KeyEvent.VK_SHIFT
+                || code == KeyEvent.VK_CONTROL
+                || code == KeyEvent.VK_ALT
+                || code == KeyEvent.VK_ALT_GRAPH
+                || code == KeyEvent.VK_META
+                || code == KeyEvent.VK_WINDOWS;
     }
 
     /**

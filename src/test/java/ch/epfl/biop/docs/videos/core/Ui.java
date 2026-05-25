@@ -759,9 +759,15 @@ public class Ui {
     }
 
     public static void key(int keyCode) {
-        robot().keyPress(keyCode);
-        robot().delay(Timings.KEY_HOLD_MS);
-        robot().keyRelease(keyCode);
+        EventRecorder.suppress(true);
+        try {
+            robot().keyPress(keyCode);
+            robot().delay(Timings.KEY_HOLD_MS);
+            robot().keyRelease(keyCode);
+            waitForRobotIdle();
+        } finally {
+            EventRecorder.suppress(false);
+        }
     }
 
     public static void escape() {
@@ -786,12 +792,18 @@ public class Ui {
                 .setContents(new StringSelection(s), null);
         rawPause(50); // give the clipboard a beat to settle before Ctrl+V
         Robot r = robot();
-        r.keyPress(KeyEvent.VK_CONTROL);
-        r.delay(Timings.KEY_HOLD_MS);
-        r.keyPress(KeyEvent.VK_V);
-        r.delay(Timings.KEY_HOLD_MS);
-        r.keyRelease(KeyEvent.VK_V);
-        r.keyRelease(KeyEvent.VK_CONTROL);
+        EventRecorder.suppress(true);
+        try {
+            r.keyPress(KeyEvent.VK_CONTROL);
+            r.delay(Timings.KEY_HOLD_MS);
+            r.keyPress(KeyEvent.VK_V);
+            r.delay(Timings.KEY_HOLD_MS);
+            r.keyRelease(KeyEvent.VK_V);
+            r.keyRelease(KeyEvent.VK_CONTROL);
+            waitForRobotIdle();
+        } finally {
+            EventRecorder.suppress(false);
+        }
         rawPause(100); // let the paste complete before the next action
     }
 
@@ -808,16 +820,22 @@ public class Ui {
     public static void type(String s) {
         Robot r = robot();
         long interChar = Timings.scaled(Timings.TYPE_INTER_CHAR_MS);
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            int code = keyCodeFor(c);
-            boolean shift = needsShift(c);
-            if (shift) r.keyPress(KeyEvent.VK_SHIFT);
-            r.keyPress(code);
-            r.delay(Timings.TYPE_KEY_HOLD_MS);
-            r.keyRelease(code);
-            if (shift) r.keyRelease(KeyEvent.VK_SHIFT);
-            r.delay((int) interChar);
+        EventRecorder.suppress(true);
+        try {
+            for (int i = 0; i < s.length(); i++) {
+                char c = s.charAt(i);
+                int code = keyCodeFor(c);
+                boolean shift = needsShift(c);
+                if (shift) r.keyPress(KeyEvent.VK_SHIFT);
+                r.keyPress(code);
+                r.delay(Timings.TYPE_KEY_HOLD_MS);
+                r.keyRelease(code);
+                if (shift) r.keyRelease(KeyEvent.VK_SHIFT);
+                r.delay((int) interChar);
+            }
+            waitForRobotIdle();
+        } finally {
+            EventRecorder.suppress(false);
         }
     }
 

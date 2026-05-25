@@ -1,6 +1,7 @@
 package ch.epfl.biop.docs.videos.widgets;
 
 import ch.epfl.biop.docs.videos.bdv.Bdv;
+import ch.epfl.biop.docs.videos.core.EventRecorder;
 import ch.epfl.biop.docs.videos.core.Inspector;
 import ch.epfl.biop.docs.videos.core.Step;
 import ch.epfl.biop.docs.videos.core.Timings;
@@ -139,14 +140,19 @@ public class Harvester {
      * with the moment the corresponding field is filled — so the downstream
      * video pipeline can correlate the narration to the specific gesture.
      *
-     * <p>Narration fires <em>before</em> {@link Ui#scrollIntoView}: when the
-     * harvester panel is wrapped in a {@link javax.swing.JScrollPane}, the
-     * cursor's scroll-then-click travel toward the widget plays out under
-     * the subtitle, which reads as "we're heading to the next thing
-     * because…".</p>
+     * <p>Per-field flow when a narration is provided: scroll the widget
+     * into view (no-op when the harvester panel isn't wrapped in a
+     * {@link javax.swing.JScrollPane}), then visibly move the cursor onto
+     * the field's {@link JLabel} (falling back to the input container if
+     * no label is reachable), <em>then</em> fire {@link Step#say} — so
+     * the subtitle starts while the cursor is already hovering the row
+     * being described, and the click that follows reads as the natural
+     * follow-up to the description.</p>
      *
-     * <p>Parameters without a narration entry are filled silently. Empty
-     * map = same behaviour as {@link #runOpenDialog(Class, Object...)}.</p>
+     * <p>Parameters without a narration entry are filled silently — no
+     * hover beat is added either, since adding cursor travel without a
+     * subtitle to motivate it just lengthens the video. Empty map = same
+     * behaviour as {@link #runOpenDialog(Class, Object...)}.</p>
      */
     public static <C extends Command> void runOpenDialog(Class<C> cmdClass,
                                                           Map<String, String> narrations,
@@ -252,16 +258,35 @@ public class Harvester {
                         + fieldName + "' (label: '" + label + "')");
             }
             System.out.println("[Harvester] " + fieldName + " (" + label + ") <- " + value);
-            // Per-parameter narration, fired before the scroll-then-click
-            // travel begins — the resulting comments[] tMs in timeline.json
-            // marks the moment this field's filling started, so the video
-            // pipeline can correlate the subtitle to the specific gesture.
-            String narration = narrations.get(fieldName);
-            if (narration != null) Step.say(narration);
             // No-op when the harvester panel isn't wrapped in a JScrollPane.
             // When it is, brings the widget to the top of the viewport so it
-            // (and as many subsequent widgets as possible) are reachable.
+            // (and as many subsequent widgets as possible) are reachable —
+            // must happen before the hover below, otherwise the label may
+            // still be off-screen when we try to read its location.
             Ui.scrollIntoView(inputContainer);
+            // Per-parameter narration. When provided, hover the cursor onto
+            // the field's JLabel first so the viewer's eye is drawn to the
+            // field being described — the subtitle then plays while the
+            // cursor is already pointing at the right row, and the click
+            // that fillWidget issues next reads as the natural follow-up.
+            // Fallback to the input container when no JLabel is reachable
+            // (unusual harvester layout). Skipped when no narration is set:
+            // adding a hover beat to silent fields would just lengthen the
+            // video without any subtitle to motivate it.
+            String narration = narrations.get(fieldName);
+            if (narration != null) {
+                JLabel jl = findLabel(dialog, label);
+                Component hoverTarget = (jl != null && jl.isShowing()) ? jl : inputContainer;
+                if (hoverTarget.isShowing()) {
+                    Point hp = hoverTarget.getLocationOnScreen();
+                    Ui.moveTo(hp.x + hoverTarget.getWidth() / 2,
+                              hp.y + hoverTarget.getHeight() / 2);
+
+                }
+                Ui.rawPause(1000);
+                Step.say(narration);
+                Ui.rawPause(500);
+            }
             fillWidget(inputContainer, value);
             // Breathing room before the next field's narration + cursor
             // travel — each per-field edit reads as its own beat on video
@@ -767,15 +792,21 @@ public class Harvester {
     /** Ctrl+A then Delete — clears whatever the field currently contains. */
     private static void selectAllAndDelete() {
         java.awt.Robot r = Ui.robot();
-        r.keyPress(KeyEvent.VK_CONTROL);
-        r.keyPress(KeyEvent.VK_A);
-        r.delay(Timings.KEY_HOLD_MS);
-        r.keyRelease(KeyEvent.VK_A);
-        r.keyRelease(KeyEvent.VK_CONTROL);
-        r.delay(Timings.KEY_HOLD_MS);
-        r.keyPress(KeyEvent.VK_DELETE);
-        r.delay(Timings.KEY_HOLD_MS);
-        r.keyRelease(KeyEvent.VK_DELETE);
+        EventRecorder.suppress(true);
+        try {
+            r.keyPress(KeyEvent.VK_CONTROL);
+            r.keyPress(KeyEvent.VK_A);
+            r.delay(Timings.KEY_HOLD_MS);
+            r.keyRelease(KeyEvent.VK_A);
+            r.keyRelease(KeyEvent.VK_CONTROL);
+            r.delay(Timings.KEY_HOLD_MS);
+            r.keyPress(KeyEvent.VK_DELETE);
+            r.delay(Timings.KEY_HOLD_MS);
+            r.keyRelease(KeyEvent.VK_DELETE);
+            r.waitForIdle();
+        } finally {
+            EventRecorder.suppress(false);
+        }
     }
 
     /**
