@@ -16,12 +16,17 @@ import ch.epfl.biop.docs.videos.core.Screenshotter;
 import ch.epfl.biop.docs.videos.core.Step;
 import ch.epfl.biop.docs.videos.core.Timings;
 import ch.epfl.biop.docs.videos.core.Ui;
+import ch.epfl.biop.docs.videos.fiji.Fiji;
+import ch.epfl.biop.docs.videos.widgets.Tree;
 import net.imagej.patcher.LegacyInjector;
 import sc.fiji.bdvpg.command.display.ViewSynchronizeCommand;
 import sc.fiji.bdvpg.command.display.bdv.SingleBdvSourcesShowCommand;
 import sc.fiji.bdvpg.command.display.bdv.settings.BdvTitleSetCommand;
+import sc.fiji.bdvpg.scijava.service.SourceService;
+import sc.fiji.bdvpg.scijava.service.tree.SourceTree;
 import sc.fiji.bdvpg.service.SourceServices;
 
+import javax.swing.*;
 import java.awt.Frame;
 import java.io.File;
 import java.util.List;
@@ -152,8 +157,8 @@ public class GenerateLabkitDocAssets {
                         "Re-centering the view on the loaded sources.")
                 .arg("make_new_window", true,
                         "Open a fresh BDV window — leave any existing viewers untouched.")
-                .arg("interpolate", true,
-                        "Linear interpolation — smoother rendering at this scale.")
+                .arg("interpolate", false,
+                        "No interpolation.")
                 .sayOnDialog("Walking through the show-sources dialog.")
                 .viaTreePath(fileDataset.getName(),
                         "We select the raw CZI sources for display.")
@@ -292,6 +297,16 @@ public class GenerateLabkitDocAssets {
         Step.begin("Show Classified Sources",
                 "The classified source lands under Other Sources. We open it in a second BDV "
                         + "next to the raw view, with display range 0..3 to show the three classes.");
+
+
+        SourceService bss = Fiji.context().service(SourceService.class);
+        SourceTree sourceTree = bss.tree();
+        JTree jtree = sourceTree.getJTree();
+
+        Step.say("Let's double click the \"Other Sources\" node to expand it and display the generated source.");
+
+        Tree.doubleClickPath(jtree,"Other Sources");
+
         // Shrink the raw viewer to the left column so the classified one
         // can take the right column.
         bdvArea.place(bdvRaw, 1, 2, 0, 0);

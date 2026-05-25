@@ -9,6 +9,8 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreePath;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.Robot;
+import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -91,6 +93,58 @@ public class Tree {
         TreePath target = navigateAndExpand(tree, "Sources>"+path);
         clickRow(tree, target, false);
         Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Ui.rightClick();
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
+    }
+
+    /**
+     * Multi-path variant of {@link #rightClickPath}: select several tree nodes
+     * with a Ctrl+click pattern, then right-click in place on the last one so
+     * the popup operates on the full multi-selection.
+     *
+     * <p>Gesture: navigate-and-expand every target up front (so later clicks
+     * never trip over a still-collapsed ancestor), then plain-click the first
+     * row (replaces selection), then Ctrl+click each subsequent row (additive
+     * selection under the tree's selection model — the BDV-Playground
+     * {@code SourceTree} uses {@code DISCONTIGUOUS_TREE_SELECTION} via Swing
+     * default, so each Ctrl+click toggles its row into the selection). The
+     * final right-click is dispatched without a preceding left-click — a plain
+     * left-click would clear the multi-selection. Standard Swing
+     * {@code BasicTreeUI} does not alter selection on right-click, so the
+     * accumulated selection survives into the popup handler.</p>
+     *
+     * <p>Single-element arrays delegate to {@link #rightClickPath} (no Ctrl
+     * modifier needed). Empty / {@code null} arrays throw — caller bug.</p>
+     *
+     * <p>Row pixel positions are recomputed per click via
+     * {@link #rowScreenCenter}, since prior expansions / scrolls can have
+     * shifted the visible y of any given path.</p>
+     */
+    public static void rightClickPaths(JTree tree, String[] paths) {
+        if (paths == null || paths.length == 0) {
+            throw new IllegalArgumentException("rightClickPaths requires at least one path");
+        }
+        if (paths.length == 1) {
+            rightClickPath(tree, paths[0]);
+            return;
+        }
+        TreePath[] targets = new TreePath[paths.length];
+        for (int i = 0; i < paths.length; i++) {
+            targets[i] = navigateAndExpand(tree, paths[i]);
+        }
+        clickRow(tree, targets[0], false);
+        Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        Robot r = Ui.robot();
+        for (int i = 1; i < paths.length; i++) {
+            Point center = rowScreenCenter(tree, targets[i]);
+            Ui.moveTo(center.x, center.y);
+            Ui.pause(Timings.PAUSE_AFTER_MOVE_MS);
+            r.keyPress(KeyEvent.VK_CONTROL);
+            r.delay(Timings.KEY_HOLD_MS);
+            Ui.click();
+            r.keyRelease(KeyEvent.VK_CONTROL);
+            Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
+        }
         Ui.rightClick();
         Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
     }

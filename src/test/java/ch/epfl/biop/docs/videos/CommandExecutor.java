@@ -87,6 +87,15 @@ public class CommandExecutor {
     private String searchQuery;
     private String treePath;
     /**
+     * Multi-path variant set by {@link #viaTreePaths(String[], String)}.
+     * Mutually exclusive with {@link #treePath} — whichever was set last wins.
+     * In {@link Mode#TREE TREE} mode the Robot does a Ctrl+click select of every
+     * path before the right-click; in {@link Mode#PROGRAMMATIC PROGRAMMATIC} the
+     * whole array is injected as {@code "sources" = treePaths} and resolved by
+     * {@code StringArrayToSourceArray} on the bdvpg side.
+     */
+    private String[] treePaths;
+    /**
      * Whether to inject {@code "sources" = treePath} into the command's args in
      * programmatic mode. Set by {@link #viaTreePath(String)} (true) and the
      * no-arg {@link #viaTreePath()} (false) — mirrors the Robot-mode behaviour
@@ -268,6 +277,45 @@ public class CommandExecutor {
     public CommandExecutor viaTreePath(String sourceTreePath, String narration) {
         this.mode = Mode.TREE;
         this.treePath = sourceTreePath;
+        this.treePaths = null;
+        this.treeInjectsSources = true;
+        this.treeClickNarration = narration;
+        return this;
+    }
+
+    /**
+     * Multi-path variant of {@link #viaTreePath(String)}: select several source
+     * nodes with a Ctrl+click pattern and then right-click in place to open the
+     * command's menu against the full selection. The visible gesture is
+     * "click first → Ctrl+click rest → right-click" on the BDV-Playground
+     * source tree — see {@link Tree#rightClickPaths} for the details.
+     *
+     * <p>In {@link Mode#PROGRAMMATIC PROGRAMMATIC} mode (e.g. under
+     * {@link #FORCE_PROGRAMMATIC}) this injects {@code "sources" = paths} (a
+     * {@code String[]}) into the args, relying on the bdvpg
+     * {@code StringArrayToSourceArray} converter to resolve each path against
+     * the {@code SourceService} tree and flatten the result. The injection is
+     * skipped when the caller already supplied {@code "sources"} via
+     * {@link #arg(String, Object)} — explicit args always win.</p>
+     */
+    public CommandExecutor viaTreePaths(String[] paths) {
+        return viaTreePaths(paths, null);
+    }
+
+    /**
+     * Same as {@link #viaTreePaths(String[])} but with a narration line fired
+     * via {@link Step#say(String)} just before the first left-click — so the
+     * subtitle's {@code tMs} in {@code timeline.json} lines up with the
+     * source-selection gesture. Pass {@code null} for {@code narration} to
+     * skip the {@code Step.say} call.
+     */
+    public CommandExecutor viaTreePaths(String[] paths, String narration) {
+        if (paths == null || paths.length == 0) {
+            throw new IllegalArgumentException("viaTreePaths requires at least one path");
+        }
+        this.mode = Mode.TREE;
+        this.treePaths = paths;
+        this.treePath = null;
         this.treeInjectsSources = true;
         this.treeClickNarration = narration;
         return this;
@@ -284,6 +332,7 @@ public class CommandExecutor {
     public CommandExecutor viaTreePath() {
         this.mode = Mode.TREE;
         this.treePath = DEFAULT_TREE_ROOT;
+        this.treePaths = null;
         this.treeInjectsSources = false;
         return this;
     }
@@ -311,7 +360,7 @@ public class CommandExecutor {
                 Harvester.runOpenDialog(commandClass, narrationsMap(), harvesterArgs());
                 break;
             case TREE:
-                if (treePath == null) {
+                if (treePath == null && treePaths == null) {
                     throw new IllegalStateException("viaTreePath(...) was not configured");
                 }
                 runViaTreePopup();
@@ -349,7 +398,11 @@ public class CommandExecutor {
         // click on a specific node is the "sources" parameter assignment in
         // TREE mode — there is no harvester widget to attach narration to.
         if (treeClickNarration != null) Step.say(treeClickNarration);
-        Tree.rightClickPath(jtree, treePath);
+        if (treePaths != null) {
+            Tree.rightClickPaths(jtree, treePaths);
+        } else {
+            Tree.rightClickPath(jtree, treePath);
+        }
 
         CommandService cs = Fiji.context().getService(CommandService.class);
         MenuPath menuPath = cs.getCommand(commandClass).getMenuPath();
@@ -432,13 +485,18 @@ public class CommandExecutor {
      * {@code "sources"} explicitly (their value wins).
      */
     private Object[] programmaticArgs() {
-        boolean injectSources = treeInjectsSources && treePath != null
+        boolean injectSources = treeInjectsSources
+                && (treePath != null || treePaths != null)
                 && !hasNamedArg(TREE_SOURCES_PARAM);
         if (!injectSources) return harvesterArgs();
+        // String[] for the multi-path case (resolved by bdvpg's
+        // StringArrayToSourceArray converter), String for the single-path case
+        // (resolved by StringToSourceArray).
+        Object sourcesValue = treePaths != null ? treePaths : treePath;
         int n = argList.size() * 2 + 2;
         Object[] out = new Object[n];
         out[0] = TREE_SOURCES_PARAM;
-        out[1] = treePath;
+        out[1] = sourcesValue;
         int i = 2;
         for (ArgEntry e : argList) {
             out[i++] = e.key;

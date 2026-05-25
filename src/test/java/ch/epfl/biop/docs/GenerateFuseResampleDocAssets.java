@@ -66,16 +66,16 @@ public class GenerateFuseResampleDocAssets {
         // Flip both to true while iterating on this demo — every CommandExecutor
         // runs programmatically (no Robot, no dialog) and Ui frame placement /
         // pauses become instant. Flip back to false to record.
-        CommandExecutor.FORCE_PROGRAMMATIC = true;
-        Ui.FAST_MODE = true;
+        CommandExecutor.FORCE_PROGRAMMATIC = false;
+        Ui.FAST_MODE = false;
 
         // Asset capture toggles. Flip these to false while iterating on the
         // demo; flip them back on for the recording pass. Output lands in
         // target/video-assets/FuseResampleVideoDemo/ as NNN-step.{mp4,png}
         // plus a single timeline.json transcript.
         Assets.session("FuseResampleVideoDemo");
-        ScreenRecorder.ENABLED = false;
-        Screenshotter.ENABLED = false;
+        ScreenRecorder.ENABLED = true;
+        Screenshotter.ENABLED = true;
 
         // Intro / title-card metadata — the "why should I watch this" hook.
         // Lands in timeline.json's intro block and the youtube-description.md.
@@ -97,7 +97,7 @@ public class GenerateFuseResampleDocAssets {
                 Ui.DEFAULT_FRAME_Y + 150, 900, 600);
 
         GenerateDocAssetsCommon.boot();
-        GenerateDocAssetsCommon.showBdvTreeDisplay(false);
+        GenerateDocAssetsCommon.showBdvTreeDisplay(true);
 
         Step.begin("Open Brain Tile Dataset",
                 "We load the tiled Dentate Gyrus brain-section .lif through Bio-Formats — "
@@ -303,28 +303,27 @@ public class GenerateFuseResampleDocAssets {
         Step.end();
 
         Step.begin("Show Fused Sources",
-                "The fused channels land under Other Sources. We open them in a second BDV "
-                        + "next to the Raw Tiles window — first ch0 creates the window, then ch1 "
-                        + "is added to it.");
+                "The fused channels land under Other Sources. We Ctrl+click both, then "
+                        + "open them together in a second BDV next to the Raw Tiles window.");
         // Shrink Raw Tiles to the left column to make room for the fused window.
         bdvArea.place(bdvTiles, 1, 3, 0, 0);
         Ui.rawPause(1500);
 
-        Step.say("Right-clicking fused_ch0 — walking to: "
+        Step.say("Click fused_ch0, Ctrl+click fused_ch1, then walk: "
                 + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class, 2));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
                 .arg("adjust_view", true,
                         "Re-centering on the fused mosaic.")
                 .arg("auto_contrast", true,
-                        "Auto-contrast for ch0 in this fresh viewer.")
+                        "Auto-contrast each channel independently.")
                 .arg("interpolate", true,
                         "Linear interpolation — the fused source is one continuous mosaic now, "
                                 + "smoother reads better than voxel-edge crunch.")
                 .arg("make_new_window", true,
                         "Fresh BDV dedicated to the fused output, separate from the Raw Tiles viewer.")
-                .sayOnDialog("Walking through the show-sources dialog for the fused channel.")
-                .viaTreePath("Other Sources>fused_ch0",
-                        "We pick the fused channel-0 source that just landed under Other Sources.")
+                .sayOnDialog("Walking through the show-sources dialog for both fused channels.")
+                .viaTreePaths(new String[]{"Other Sources>fused_ch0", "Other Sources>fused_ch1"},
+                        "We pick both fused channels — Ctrl+click adds ch1 to the ch0 selection.")
                 .execute();
 
         Frame bdvFused = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
@@ -339,68 +338,48 @@ public class GenerateFuseResampleDocAssets {
                 .viaTreePath()
                 .execute();
 
-        // Add ch1 to the same (now active) BDV.
-        CommandExecutor.of(SingleBdvSourcesShowCommand.class)
-                .arg("adjust_view", false,
-                        "Don't move the view — we want ch1 to overlay on the existing ch0 mosaic.")
-                .arg("auto_contrast", true,
-                        "Auto-contrast for ch1 independently.")
-                .arg("interpolate", true,
-                        "Same linear interpolation as ch0 for a consistent look.")
-                .arg("make_new_window", false,
-                        "Reuse the active viewer — both fused channels overlay in the Fused window.")
-                .sayOnDialog("Adding fused_ch1 to the same (now active) BDV.")
-                .viaTreePath("Other Sources>fused_ch1",
-                        "We pick the fused channel-1 source — it will overlay on top of ch0.")
-                .execute();
-
         Ui.rawPause(2000);
         Step.end();
 
-        Step.begin("Pyramidize Fused Channel 0",
-                "We wrap fused channel 0 in a lazy multi-resolution pyramid — same data, "
-                        + "but with downsampled levels for smooth zoom-out.");
-        Step.say("Right-clicking fused_ch0 — walking to: "
+        Step.begin("Pyramidize Both Fused Channels",
+                "We wrap both fused channels in a lazy multi-resolution pyramid — same data, "
+                        + "but with downsampled levels for smooth zoom-out. One command call, "
+                        + "two pyramid outputs.");
+        Step.say("Click fused_ch0, Ctrl+click fused_ch1, then walk: "
                 + CommandExecutor.menuPath(SourcesPyramidizeCommand.class, 2));
         CommandExecutor.of(SourcesPyramidizeCommand.class)
-                .sayOnDialog("Walking through the pyramidize dialog — the fused source has only one "
+                .sayOnDialog("Walking through the pyramidize dialog — the fused sources have only one "
                         + "resolution level, so zooming out pulls full-res tiles. The pyramid wrapper "
-                        + "adds downsampled levels lazily.")
-                .viaTreePath("Other Sources>fused_ch0",
-                        "We pick the fused channel-0 source as the input to pyramidize.")
-                .execute();
-        Step.end();
-
-        Step.begin("Pyramidize Fused Channel 1",
-                "Same pyramidize pass for fused channel 1.");
-        CommandExecutor.of(SourcesPyramidizeCommand.class)
-                .sayOnDialog("Same pyramidize pass on fused_ch1 — a matching pyramid lands as fused_ch1_pyramid.")
-                .viaTreePath("Other Sources>fused_ch1",
-                        "Same command, second channel.")
+                        + "adds downsampled levels lazily, one pyramid per input source.")
+                .viaTreePaths(new String[]{"Other Sources>fused_ch0", "Other Sources>fused_ch1"},
+                        "We pick both fused channels — each gets its own pyramid wrapper.")
                 .execute();
         Step.end();
 
         Step.begin("Show Pyramidized Sources",
-                "Each pyramidized source lands under Other Sources as <name>_pyramid. We open them "
-                        + "in a third BDV — zooming out now reads smoothly thanks to the pyramid levels.");
+                "Each pyramidized source lands under Other Sources as <name>_pyramid. We "
+                        + "Ctrl+click both and open them together in a third BDV — zooming out "
+                        + "now reads smoothly thanks to the pyramid levels.");
         // Shrink the fused window to its own column so the pyramidized one can take col 2.
         bdvArea.place(bdvFused, 1, 3, 0, 1);
         Ui.rawPause(500);
 
-        Step.say("Right-clicking fused_ch0_pyramid — walking to: "
+        Step.say("Click fused_ch0_pyramid, Ctrl+click fused_ch1_pyramid, then walk: "
                 + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class, 2));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
                 .arg("adjust_view", true,
                         "Re-centering on the pyramidized mosaic.")
                 .arg("auto_contrast", true,
-                        "Auto-contrast for ch0_pyramid in this fresh viewer.")
+                        "Auto-contrast each channel independently.")
                 .arg("interpolate", true,
                         "Linear interpolation — same look as the Fused viewer for a fair comparison.")
                 .arg("make_new_window", true,
                         "Third BDV so we can watch the pyramid path against the raw and the flat-fused views.")
-                .sayOnDialog("Walking through the show-sources dialog for the pyramidized channel.")
-                .viaTreePath("Other Sources>fused_ch0_pyramid",
-                        "We pick the pyramidized channel-0 source.")
+                .sayOnDialog("Walking through the show-sources dialog for both pyramidized channels.")
+                .viaTreePaths(new String[]{
+                                "Other Sources>fused_ch0_pyramid",
+                                "Other Sources>fused_ch1_pyramid"},
+                        "We pick both pyramidized channels at once.")
                 .execute();
 
         Frame bdvPyr = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
@@ -412,20 +391,6 @@ public class GenerateFuseResampleDocAssets {
                         "Naming this third viewer so the sync command can pair all three by title.")
                 .sayOnDialog("Setting the window title.")
                 .viaTreePath()
-                .execute();
-
-        CommandExecutor.of(SingleBdvSourcesShowCommand.class)
-                .arg("adjust_view", false,
-                        "Don't move the view — ch1_pyramid overlays the existing ch0_pyramid.")
-                .arg("auto_contrast", true,
-                        "Auto-contrast for ch1_pyramid independently.")
-                .arg("interpolate", true,
-                        "Same linear interpolation as ch0_pyramid.")
-                .arg("make_new_window", false,
-                        "Reuse the Pyramidized window so both pyramid channels overlay in it.")
-                .sayOnDialog("Adding fused_ch1_pyramid into the same viewer.")
-                .viaTreePath("Other Sources>fused_ch1_pyramid",
-                        "We pick the pyramidized channel-1 source — overlays on ch0_pyramid.")
                 .execute();
 
         Ui.rawPause(2000);

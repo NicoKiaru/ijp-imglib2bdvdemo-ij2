@@ -199,7 +199,7 @@ public class DemoHelper {
             SwingUtilities.invokeAndWait(() -> ij.ui().showUI());
             try {
                 // Increase default font size
-                UIManager.put("defaultFont", new Font("SansSerif", Font.PLAIN, 16));
+                UIManager.put("defaultFont", new Font("SansSerif", Font.PLAIN, 14));
                 FlatDarkLaf.setup();
             } catch (Exception e) {
                 System.err.println("Failed to set FlatLaf look and feel: " + e.getMessage());
