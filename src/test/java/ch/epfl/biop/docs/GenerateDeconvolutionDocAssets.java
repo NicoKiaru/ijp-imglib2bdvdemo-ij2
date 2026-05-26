@@ -67,7 +67,7 @@ public class GenerateDeconvolutionDocAssets {
         // Intro / title-card metadata — the "why should I watch this" hook.
         // Lands in timeline.json's intro block and the youtube-description.md.
         Demo.intro("Richardson-Lucy Deconvolution in Fiji",
-                "Deconvolve a multi-gigabyte LLS7 light-sheet dataset in Fiji — "
+                "Deconvolve, view and save a multi-gigabyte LLS7 light-sheet dataset in Fiji — "
                         + "without ever loading it into memory.",
                 "Streams data block-by-block — multi-gigabyte datasets on a modest computer",
                 "Scales across every available GPU",
@@ -83,8 +83,10 @@ public class GenerateDeconvolutionDocAssets {
         // a viewer of the resulting file knows what's inside. Wiped at start so
         // the export step always runs against a clean slate (otherwise
         // OMETiffWriter throws when the target exists).
+        int tIni = 28;
+        int tEnd = 30;
         File exportFile = new File("C:\\Users\\Nicolas\\Desktop",
-                datasetName + "_deconvolved_t25-30.ome.tiff");
+                datasetName + "_deconvolved_t"+tIni+"-"+tEnd+".ome.tiff");
         if (exportFile.exists() && !exportFile.delete()) {
             throw new IllegalStateException(
                     "Could not delete pre-existing export file: " + exportFile);
@@ -102,7 +104,7 @@ public class GenerateDeconvolutionDocAssets {
         Step.begin("Open Tasks Window",
                 "Before we shrink Fiji out of the way, we open the Tasks panel — "
                         + "a click in the bottom-right corner of the Fiji main window. "
-                        + "We'll watch the OME-TIFF export progress here at the end.");
+                        + "We'll watch the OME-TIFF export progress here at the end of the video.");
         Step.say("Clicking the small Tasks indicator at the bottom-right of the Fiji status bar.");
         Frame fijiFrame = Fiji.getFijiFrame();
         Insets fijiInsets = fijiFrame.getInsets();
@@ -119,7 +121,7 @@ public class GenerateDeconvolutionDocAssets {
 
         Step.begin("Open Hela Demo Dataset",
                 "We open the raw LLS7 HeLa dataset — "
-                        + "three channels, multi-timepoint, lazily loaded through Bio-Formats, "+
+                        + "three channels, multi-timepoint, opened through Bio-Formats, "+
                         "voxel size = 144 x 144 x 400nm");
         Step.say("Right-clicking the Sources root opens the BDV Playground context menu — "
                 + "we'll walk it to the Bio-Formats importer: "
@@ -134,8 +136,8 @@ public class GenerateDeconvolutionDocAssets {
                 .arg("split_rgb_channels", false, "RGB is irrelevant for this dataset.")
                 .arg("auto_pyramidize", true,
                         "Auto-pyramidize is not relevant for this dataset.")
-                .arg("disable_memo", false, "We keep memoization - fast file opening.")
                 .arg("plane_origin_convention", "TOP LEFT", "The origin convention does not matter since there's only one tile in this dataset.")
+                .arg("disable_memo", false, "We keep memoization - fast file opening.")
                 .sayOnDialog("Walking through the Bio-Formats importer dialog.")
                 .viaTreePath()
                 .execute();
@@ -209,8 +211,8 @@ public class GenerateDeconvolutionDocAssets {
                 .arg("files", new File[]{filePSF},"Browsing to the 400 nm PSF which matches this dataset.")
                 .arg("split_rgb_channels", false, "Do need to modify the other parameters")
                 .arg("auto_pyramidize", true)
-                .arg("disable_memo", false)
                 .arg("plane_origin_convention", "TOP LEFT")
+                .arg("disable_memo", false)
                 .sayOnDialog("We fill it as before.")
                 .viaTreePath()
                 .execute();
@@ -235,7 +237,7 @@ public class GenerateDeconvolutionDocAssets {
                 .arg("suffix", "_deconvolved",
                         "Suffix appended to each new source name so the two sets stay distinguishable.")
                 .arg("block_size_x", 256,
-                        "Processing in 256×256×64 blocks.")
+                        "Processing by blocks of 256×256×64 pixels.")
                 .arg("block_size_y", 256)
                 .arg("block_size_z", 64)
                 .arg("overlap_size", 16,
@@ -269,17 +271,18 @@ public class GenerateDeconvolutionDocAssets {
         Step.say("Let's double click the \"Other Sources\" node to expand it and display the generated sources.");
 
         Tree.doubleClickPath(jtree,"Other Sources");
+        Ui.rawPause(1500);
 
         Step.say("Right-clicking the \"Other Sources\" branch — walking to: "
                 + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class, 2));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
-                .arg("adjust_view", true,
-                        "Re-centering on the deconvolved sources.")
                 .arg("auto_contrast", false,
                         "Auto-contrast off this time — we'll carry the raw ranges over manually for a fair side-by-side.")
-                .arg("interpolate", false)
+                .arg("adjust_view", true,
+                        "Re-centering on the deconvolved sources.")
                 .arg("make_new_window", true,
                         "New window so the raw view stays untouched next to it.")
+                .arg("interpolate", false)
                 .sayOnDialog("Walking through the show-sources dialog again.")
                 .viaTreePath("Other Sources",
                         "We pick the deconvolved sources that just landed under \"Other Sources\".")
@@ -328,7 +331,7 @@ public class GenerateDeconvolutionDocAssets {
         Step.end();
 
         Step.begin("Save Deconvolved Sources To OME-TIFF",
-                "We export timepoints 25 to 30 of the deconvolved sources as a "
+                "We export timepoints "+tIni+" to "+tEnd+" of the deconvolved sources as a "
                         + "multi-resolution OME-TIFF — written straight to the desktop, "
                         + "ready to be reopened in any OME-TIFF reader.");
         // Close the sync window so the Tasks panel placed underneath becomes
@@ -338,17 +341,23 @@ public class GenerateDeconvolutionDocAssets {
         Step.say("Right-clicking the \"Other Sources\" branch — walking to: "
                 + CommandExecutor.menuPath(KheopsExportSourcesCommand.class, 2));
         CommandExecutor.of(KheopsExportSourcesCommand.class)
-                .arg("range_frames", "25:30",
-                        "Export only timepoints 25 to 30 — six frames around the mitosis event, fast enough to demo.")
+                .arg("range_frames", tIni+":"+tEnd,
+                        "Export only timepoints "+tIni+" to "+tEnd+" — fast enough to demo.")
                 .arg("file", exportFile,
                         "Saving straight to the desktop.")
                 .arg("unit", "MICROMETER",
                         "Coordinates in micrometers.")
-                .arg("vox_size_xy_um", 0.144)
-                .arg("vox_size_z_um", 0.4)
+                .arg("override_voxel_size", false, "No need to override the voxel sizes: they will be carried over since the deconvolved data is already well calibrated."+
+                        " As a result the parameters below are ignored")
+                .arg("n_resolution_levels", 1, "No need to build multiple resolution levels since the dataset is small enough.")
+                .arg("tile_size_x", 512, "Pretty standard block saving size: 512 x 512 pixels")
+                .arg("tile_size_y", 512)
+
+                //.arg("vox_size_xy_um", 0.144)
+                //.arg("vox_size_z_um", 0.4)
                 .arg("n_threads", 4,
-                        "Four writer threads so IO doesn't bottleneck the GPU pool.")
-                .sayOnDialog("Walking through the OME-TIFF export dialog — only the frame range and the output file really matter here.")
+                        "Four fetcher threads so IO doesn't bottleneck the GPU pool.")
+                .sayOnDialog("Walking through the OME-TIFF export dialog.")
                 .viaTreePath("Other Sources",
                         "We pick the deconvolved sources — they live under \"Other Sources\".")
                 .execute();
@@ -375,17 +384,18 @@ public class GenerateDeconvolutionDocAssets {
             Ui.rawPause(1000);
         }
         Step.say("Done — the OME-TIFF is ready on the desktop.");
-        Ui.rawPause(2000);
+        Ui.rawPause(5000);
         Step.end();
 
         // Outro / closing-card metadata. The command list is harvested
         // automatically from every Fiji command this demo invoked, so it
         // lands in timeline.json's outro block and in youtube-description.md.
         Demo.outro("You've seen tiled, lazy Richardson-Lucy deconvolution end to end — "
-                        + "from a raw multi-gigabyte CZI to a synchronized side-by-side comparison, "
+                        + "from a raw multi-gigabyte CZI to a synchronized side-by-side comparison and OME-TIFF export, "
                         + "all without loading the dataset into memory.",
                 "Plugin & source: https://github.com/BIOP/ijp-imglib2bdvdemo-ij2",
                 "BIOP — EPFL: https://www.epfl.ch/research/facilities/ptbiop/",
+                "UNIGE - Biochemistry: https://www.unige.ch/sciences/biochimie/",
                 "Sample LLS7 dataset: https://zenodo.org/records/19047136",
                 "PSF dataset: https://zenodo.org/records/14505724");
 

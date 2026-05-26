@@ -8,7 +8,7 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>40.0.0</version> <!-- bumping to 43 causes issues with jpeg-2000 -->
+		<version>43.0.0</version> <!-- bumping to 43 causes issues with jpeg-2000 -->
 		<relativePath />
 	</parent>
 
@@ -90,6 +90,8 @@
 		<bigdataviewer-image-loaders.version>0.20.2</bigdataviewer-image-loaders.version>
 		<clij2-fft_.version>2.2.0.22</clij2-fft_.version>
 		<mobie-io.version>4.0.8</mobie-io.version>
+
+		<scijava-common.version>2.100.0</scijava-common.version>
 		<!--bigwarp.version>9.1.2</bigwarp.version>
 		<bigwarp_fiji.version>9.1.2</bigwarp_fiji.version -->
 		<!--<bigdataviewer-core.version>10.2.0</bigdataviewer-core.version>
@@ -222,6 +224,12 @@
 		</dependency>
 
 		<dependency>
+			<groupId>org.scijava</groupId>
+			<artifactId>scijava-ui-swing</artifactId>
+			<version>1.0.5-SNAPSHOT</version>
+		</dependency>
+
+		<dependency>
 			<groupId>net.haesleinhuepf</groupId>
 			<artifactId>clij2-fft_</artifactId>
 			<version>${clij2-fft_.version}</version>
@@ -230,6 +238,13 @@
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.scijava</groupId>
+			<artifactId>scijava-common</artifactId>
+			<classifier>tests</classifier>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

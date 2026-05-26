@@ -280,10 +280,10 @@ public class Harvester {
                 if (hoverTarget.isShowing()) {
                     Point hp = hoverTarget.getLocationOnScreen();
                     Ui.moveTo(hp.x + hoverTarget.getWidth() / 2,
-                              hp.y + hoverTarget.getHeight() / 2);
+                              hp.y + hoverTarget.getHeight() / 2, 100, 30);
 
                 }
-                Ui.rawPause(1000);
+                Ui.rawPause(1500);
                 Step.say(narration);
                 Ui.rawPause(500);
             }
