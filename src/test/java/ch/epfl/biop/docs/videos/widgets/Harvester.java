@@ -785,7 +785,11 @@ public class Harvester {
         Ui.click();
         Ui.pause(Timings.PAUSE_AFTER_CLICK_MS);
         selectAllAndDelete();
-        Ui.type(text);
+        // Paste rather than type — Robot.keyPress is keyboard-layout-dependent
+        // and rejects characters like ':' or '\\' on Swiss/French/etc. layouts
+        // (same trap as fillNumberField and the path branch of fillFile). The
+        // trade-off is instant materialization on video instead of char-by-char.
+        Ui.paste(text);
         Ui.pause(Timings.PAUSE_AFTER_TYPING_MS);
     }
 

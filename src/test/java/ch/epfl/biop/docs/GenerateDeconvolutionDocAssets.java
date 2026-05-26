@@ -5,6 +5,7 @@ import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.bdv.img.bioformats.command.DatasetFromBioFormatsCreateCommand;
 import ch.epfl.biop.command.process.deconvolve.SourcesDeconvolveCommand;
 import ch.epfl.biop.docs.videos.CommandExecutor;
+import ch.epfl.biop.kheops.command.KheopsExportSourcesCommand;
 import ch.epfl.biop.docs.videos.Demo;
 import ch.epfl.biop.docs.videos.GenerateDocAssetsCommon;
 import ch.epfl.biop.docs.videos.bdv.Bdv;
@@ -78,6 +79,17 @@ public class GenerateDeconvolutionDocAssets {
         String datasetName = FilenameUtils.removeExtension(fileDataset.getName());
         String psfName = FilenameUtils.removeExtension(filePSF.getName());
 
+        // OME-TIFF export target — desktop, frame range encoded in the name so
+        // a viewer of the resulting file knows what's inside. Wiped at start so
+        // the export step always runs against a clean slate (otherwise
+        // OMETiffWriter throws when the target exists).
+        File exportFile = new File("C:\\Users\\Nicolas\\Desktop",
+                datasetName + "_deconvolved_t25-30.ome.tiff");
+        if (exportFile.exists() && !exportFile.delete()) {
+            throw new IllegalStateException(
+                    "Could not delete pre-existing export file: " + exportFile);
+        }
+
         // Single placement area for the two BDV windows in this demo. The raw
         // window fills the whole area while it's alone, then we re-partition
         // into a 2×1 stack — raw on top, deconvolved beneath — so each pane
@@ -86,6 +98,23 @@ public class GenerateDeconvolutionDocAssets {
                 Ui.DEFAULT_FRAME_Y, 800, 700);
 
         GenerateDocAssetsCommon.boot();
+
+        Step.begin("Open Tasks Window",
+                "Before we shrink Fiji out of the way, we open the Tasks panel — "
+                        + "a click in the bottom-right corner of the Fiji main window. "
+                        + "We'll watch the OME-TIFF export progress here at the end.");
+        Step.say("Clicking the small Tasks indicator at the bottom-right of the Fiji status bar.");
+        Frame fijiFrame = Fiji.getFijiFrame();
+        Insets fijiInsets = fijiFrame.getInsets();
+        int tasksX = fijiFrame.getX() + fijiFrame.getWidth() - fijiInsets.right - 5;
+        int tasksY = fijiFrame.getY() + fijiFrame.getHeight() - fijiInsets.bottom - 5;
+        Ui.moveTo(tasksX, tasksY);
+        Ui.click();
+        Frame tasksFrame = Ui.waitForFrame("Tasks", Timings.FRAME_WAIT_TIMEOUT_MS);
+        Ui.placeFrame(tasksFrame, Ui.DEFAULT_FRAME_X, Ui.DEFAULT_FRAME_Y);
+        Ui.resizeFrame(tasksFrame, 450, 100);
+        Step.end();
+
         GenerateDocAssetsCommon.showBdvTreeDisplay(true);
 
         Step.begin("Open Hela Demo Dataset",
@@ -296,6 +325,57 @@ public class GenerateDeconvolutionDocAssets {
         // streams tiles — hold long enough that the final frame shows
         // both windows fully resolved before the clip ends.
         Ui.rawPause(90000);
+        Step.end();
+
+        Step.begin("Save Deconvolved Sources To OME-TIFF",
+                "We export timepoints 25 to 30 of the deconvolved sources as a "
+                        + "multi-resolution OME-TIFF — written straight to the desktop, "
+                        + "ready to be reopened in any OME-TIFF reader.");
+        // Close the sync window so the Tasks panel placed underneath becomes
+        // visible — we want the export progress in frame while it runs.
+        Ui.closeWithMouse(syncWindow);
+        Ui.rawPause(500);
+        Step.say("Right-clicking the \"Other Sources\" branch — walking to: "
+                + CommandExecutor.menuPath(KheopsExportSourcesCommand.class, 2));
+        CommandExecutor.of(KheopsExportSourcesCommand.class)
+                .arg("range_frames", "25:30",
+                        "Export only timepoints 25 to 30 — six frames around the mitosis event, fast enough to demo.")
+                .arg("file", exportFile,
+                        "Saving straight to the desktop.")
+                .arg("unit", "MICROMETER",
+                        "Coordinates in micrometers.")
+                .arg("vox_size_xy_um", 0.144)
+                .arg("vox_size_z_um", 0.4)
+                .arg("n_threads", 4,
+                        "Four writer threads so IO doesn't bottleneck the GPU pool.")
+                .sayOnDialog("Walking through the OME-TIFF export dialog — only the frame range and the output file really matter here.")
+                .viaTreePath("Other Sources",
+                        "We pick the deconvolved sources — they live under \"Other Sources\".")
+                .execute();
+        Step.say("Each block is computed by the GPU on demand and streamed straight to disk — "
+                + "the Tasks panel reports per-channel progress.");
+
+        // TREE-mode .execute() returns once OK is clicked; the export then
+        // runs on the SciJava worker thread. Poll the output file until its
+        // size has been stable for a few seconds (or hit the safety timeout)
+        // so the Tasks-panel progress bar runs to completion on video before
+        // we end the clip.
+        long stableSince = -1;
+        long lastSize = -1;
+        long deadline = System.currentTimeMillis() + 10 * 60_000L;
+        while (System.currentTimeMillis() < deadline) {
+            long size = exportFile.exists() ? exportFile.length() : 0L;
+            if (size > 0 && size == lastSize) {
+                if (stableSince < 0) stableSince = System.currentTimeMillis();
+                if (System.currentTimeMillis() - stableSince > 5000) break;
+            } else {
+                stableSince = -1;
+            }
+            lastSize = size;
+            Ui.rawPause(1000);
+        }
+        Step.say("Done — the OME-TIFF is ready on the desktop.");
+        Ui.rawPause(2000);
         Step.end();
 
         // Outro / closing-card metadata. The command list is harvested

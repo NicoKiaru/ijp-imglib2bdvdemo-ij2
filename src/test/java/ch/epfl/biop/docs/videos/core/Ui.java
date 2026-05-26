@@ -20,6 +20,7 @@ import java.awt.Window;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowEvent;
 import java.awt.geom.AffineTransform;
 
 /**
@@ -295,6 +296,34 @@ public class Ui {
         int titleBarHeight = Math.max(insets.top, 24);
         int buttonWidth = (int) (1.5 * titleBarHeight);
         int x = frame.getX() + frame.getWidth() - (int) (1.5 * buttonWidth);
+        int y = frame.getY() + titleBarHeight / 2;
+
+        moveTo(x, y);
+        pause(Timings.PAUSE_AFTER_MOVE_MS);
+        click();
+    }
+
+    /**
+     * Visibly moves the cursor to the close (X) button of the given frame's
+     * title bar (Windows-style: rightmost of the three top-right buttons) and
+     * clicks it. Mirrors {@link #minimizeWithMouse}, just shifted to the
+     * rightmost slot — close center at {@code right - 0.5 × buttonWidth}.
+     *
+     * In {@link #FAST_MODE}, dispatches a {@link WindowEvent#WINDOW_CLOSING}
+     * to the frame on the EDT so any installed close handler (e.g. the BDV
+     * Playground sync command's "stop synchronization" logic, which keys
+     * off the window being closed) still fires.
+     */
+    public static void closeWithMouse(Frame frame) {
+        if (FAST_MODE) {
+            runOnEdt(() -> Toolkit.getDefaultToolkit().getSystemEventQueue()
+                    .postEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING)));
+            return;
+        }
+        Insets insets = frame.getInsets();
+        int titleBarHeight = Math.max(insets.top, 24);
+        int buttonWidth = (int) (1.5 * titleBarHeight);
+        int x = frame.getX() + frame.getWidth() - (int) (0.5 * buttonWidth);
         int y = frame.getY() + titleBarHeight / 2;
 
         moveTo(x, y);
