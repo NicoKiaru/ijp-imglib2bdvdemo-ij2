@@ -123,6 +123,7 @@ public class Step {
         // when Timeline opens the matching step record.
         ScreenRecorder.start(name);
         Timeline.beginStep(name, narration);
+        GroovyScript.beginSection(name, narration);
     }
 
     /**
@@ -182,7 +183,31 @@ public class Step {
         ScreenRecorder.stop();
         // endStep runs after stop() so the clip's first-frame anchor is in.
         Timeline.endStep();
+        GroovyScript.endSection();
         currentName = null;
+    }
+
+    /**
+     * Record a free-form Groovy snippet on the currently-open step — appended
+     * verbatim to the {@code script.groovy} session transcript via
+     * {@link GroovyScript#addLine(String)}. Use this for steps the
+     * {@link ch.epfl.biop.docs.videos.CommandExecutor} auto-emitter can't
+     * cover (a custom loop, a manual {@code Bdv.*} tweak the demo wants to
+     * surface as code, …).
+     *
+     * <pre>
+     * Step.groovy("// switch to timepoint 30");
+     * Step.groovy("bdv.getViewerPanel().setTimepoint(30)");
+     * Bdv.setTimepoint(rawBdv, 30);
+     * </pre>
+     */
+    public static void groovy(String snippet) {
+        GroovyScript.addLine(snippet);
+    }
+
+    /** Convenience: add an import line to the generated {@code script.groovy} (dedupes). */
+    public static void groovyImport(String fqn) {
+        GroovyScript.addImport(fqn);
     }
 
     /** Take an extra screenshot mid-step, named {@code "<step>-<suffix>".png} (or just {@code suffix} outside a step). */

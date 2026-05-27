@@ -1,5 +1,6 @@
 package ch.epfl.biop.docs.videos;
 
+import ch.epfl.biop.docs.videos.core.GroovyScript;
 import ch.epfl.biop.docs.videos.core.Step;
 import ch.epfl.biop.docs.videos.core.Timings;
 import ch.epfl.biop.docs.videos.core.Ui;
@@ -7,6 +8,8 @@ import ch.epfl.biop.docs.videos.fiji.Fiji;
 import ch.epfl.biop.docs.videos.widgets.Harvester;
 import ch.epfl.biop.docs.videos.widgets.Popup;
 import ch.epfl.biop.docs.videos.widgets.Tree;
+
+import java.io.File;
 
 import org.scijava.MenuPath;
 import org.scijava.command.Command;
@@ -115,6 +118,14 @@ public class CommandExecutor {
      */
     private String treeClickNarration;
 
+    /**
+     * Set to {@code true} via {@link #skipInScript()} to suppress this
+     * executor's auto-emitted line in the generated {@code script.groovy}.
+     * Use it for visualization-only commands (showing sources in BDV, naming
+     * a viewer, view-sync) that don't belong in the headless transcript.
+     */
+    private boolean skipInScript;
+
     private CommandExecutor(Class<? extends Command> commandClass) {
         this.commandClass = commandClass;
     }
@@ -201,6 +212,18 @@ public class CommandExecutor {
     /** Pure programmatic launch via {@link CommandService} — no Robot, no dialog. (Default.) */
     public CommandExecutor programmatic() {
         this.mode = Mode.PROGRAMMATIC;
+        return this;
+    }
+
+    /**
+     * Suppress this command's auto-emitted line in the session-level
+     * {@code script.groovy} transcript. Use it for visualization-only
+     * commands (showing sources in BDV, naming a viewer, view-sync) that
+     * belong in the recorded video but not in the headless script a viewer
+     * runs after watching it.
+     */
+    public CommandExecutor skipInScript() {
+        this.skipInScript = true;
         return this;
     }
 
@@ -343,6 +366,7 @@ public class CommandExecutor {
      * (only valid in programmatic mode).
      */
     public void execute() {
+        emitGroovy();
         Mode effective = effectiveMode();
         switch (effective) {
             case PROGRAMMATIC:
@@ -440,7 +464,128 @@ public class CommandExecutor {
                             + "when the command is launched via " + effective + ". "
                             + "Use execute(), or call .programmatic() / set FORCE_PROGRAMMATIC = true.");
         }
+        emitGroovy();
         return runProgrammatic();
+    }
+
+    /**
+     * Emit this command's {@code cs.run(...)} equivalent into the session
+     * {@link GroovyScript} transcript without launching the command. Same
+     * effect the auto-emitter applies inside {@link #execute()}, but exposed
+     * so a dry-run pass can build a {@code script.groovy} without spinning
+     * up Fiji — useful for tests and CI lint of the generated script.
+     */
+    public void previewToScript() {
+        emitGroovy();
+    }
+
+    /**
+     * Emit this command's {@code cs.run(...)} equivalent into the session
+     * {@link GroovyScript} transcript. No-op when {@link #skipInScript} is
+     * set or when {@link GroovyScript#ENABLED} is off. The same set of
+     * inputs that {@link #programmaticArgs()} passes to
+     * {@link CommandService#run(Class, boolean, Object...)} is rendered, so
+     * the script preserves the tree-injected {@code "sources"} arg.
+     */
+    private void emitGroovy() {
+        if (skipInScript || !GroovyScript.ENABLED) return;
+        GroovyScript.addImport(commandClass.getName());
+        Object[] effective = programmaticArgs();
+        boolean needsFileImport = false;
+        int argCount = effective.length / 2;
+        StringBuilder sb = new StringBuilder();
+        sb.append("cs.run(").append(commandClass.getSimpleName()).append(".class, true");
+        if (argCount > 0) sb.append(",\n");
+        for (int i = 0; i < effective.length; i += 2) {
+            int idx = i / 2;
+            boolean isLast = (idx == argCount - 1);
+            String name = (String) effective[i];
+            Object value = effective[i + 1];
+            if (value instanceof File || value instanceof File[]) needsFileImport = true;
+            String narration = narrationFor(name);
+            // Order matters: comma must come before any `//` so it isn't
+            // swallowed by Groovy's end-of-line comment.
+            sb.append("    \"").append(name).append("\", ").append(renderGroovyLiteral(value));
+            if (!isLast) sb.append(",");
+            if (narration != null) sb.append("  // ").append(oneLine(narration));
+            sb.append("\n");
+        }
+        sb.append(").get()");
+        if (needsFileImport) GroovyScript.addImport("java.io.File");
+        GroovyScript.addLine(sb.toString());
+    }
+
+    /** Lookup the per-arg narration (if any) for emitting an inline {@code // comment}. */
+    private String narrationFor(String name) {
+        for (ArgEntry e : argList) {
+            if (name.equals(e.key)) return e.narration;
+        }
+        return null;
+    }
+
+    /** Collapse multi-line narration to a single line for inline comments. */
+    private static String oneLine(String s) {
+        return s.replace('\n', ' ').replace('\r', ' ').trim();
+    }
+
+    /**
+     * Render {@code value} as a Groovy literal suitable for splicing into a
+     * {@code cs.run(...)} call. Files are hoisted to top-level
+     * {@code #@File} params via {@link GroovyScript#fileParamFor(String)} so
+     * the same physical file becomes one editable parameter no matter how
+     * many commands reference it.
+     */
+    private static String renderGroovyLiteral(Object value) {
+        if (value == null) return "null";
+        if (value instanceof String) return "\"" + escape((String) value) + "\"";
+        if (value instanceof Boolean) return value.toString();
+        if (value instanceof Integer) return value.toString();
+        if (value instanceof Long) return value + "L";
+        if (value instanceof Float) return value + "f";
+        if (value instanceof Double) return value + "d";
+        if (value instanceof File) {
+            return GroovyScript.fileParamFor(((File) value).getAbsolutePath());
+        }
+        if (value instanceof File[]) {
+            File[] arr = (File[]) value;
+            StringBuilder sb = new StringBuilder("new File[]{");
+            for (int i = 0; i < arr.length; i++) {
+                if (i > 0) sb.append(", ");
+                sb.append(GroovyScript.fileParamFor(arr[i].getAbsolutePath()));
+            }
+            sb.append("}");
+            return sb.toString();
+        }
+        if (value instanceof String[]) {
+            String[] arr = (String[]) value;
+            StringBuilder sb = new StringBuilder("new String[]{");
+            for (int i = 0; i < arr.length; i++) {
+                if (i > 0) sb.append(", ");
+                sb.append("\"").append(escape(arr[i])).append("\"");
+            }
+            sb.append("}");
+            return sb.toString();
+        }
+        // Fallback: toString() with a TODO so a reader knows to revisit.
+        return value + " /* TODO: review unsupported type "
+                + value.getClass().getSimpleName() + " */";
+    }
+
+    private static String escape(String s) {
+        if (s == null) return "";
+        StringBuilder sb = new StringBuilder(s.length() + 2);
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '\\': sb.append("\\\\"); break;
+                case '"':  sb.append("\\\""); break;
+                case '\n': sb.append("\\n"); break;
+                case '\r': sb.append("\\r"); break;
+                case '\t': sb.append("\\t"); break;
+                default:   sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 
     private Mode effectiveMode() {

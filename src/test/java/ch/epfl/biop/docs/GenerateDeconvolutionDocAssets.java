@@ -10,6 +10,7 @@ import ch.epfl.biop.docs.videos.Demo;
 import ch.epfl.biop.docs.videos.GenerateDocAssetsCommon;
 import ch.epfl.biop.docs.videos.bdv.Bdv;
 import ch.epfl.biop.docs.videos.core.Assets;
+import ch.epfl.biop.docs.videos.core.GroovyScript;
 import ch.epfl.biop.docs.videos.core.Layout;
 import ch.epfl.biop.docs.videos.core.ScreenRecorder;
 import ch.epfl.biop.docs.videos.core.Screenshotter;
@@ -92,6 +93,14 @@ public class GenerateDeconvolutionDocAssets {
                     "Could not delete pre-existing export file: " + exportFile);
         }
 
+        // Name the File-typed inputs so the auto-generated script.groovy
+        // surfaces them as readable #@File params instead of the anonymous
+        // fileN fallback. The labels are what shows up in the SciJava
+        // script-editor widget when a viewer re-runs the script.
+        GroovyScript.nameFile(fileDataset, "datasetFile", "HeLa LLS7 dataset (CZI)");
+        GroovyScript.nameFile(filePSF,     "psfFile",     "400 nm point-spread function");
+        GroovyScript.nameFile(exportFile,  "exportFile",  "Output OME-TIFF");
+
         // Single placement area for the two BDV windows in this demo. The raw
         // window fills the whole area while it's alone, then we re-partition
         // into a 2×1 stack — raw on top, deconvolved beneath — so each pane
@@ -162,6 +171,7 @@ public class GenerateDeconvolutionDocAssets {
                 .sayOnDialog("Walking through the show-sources dialog.")
                 .viaTreePath(datasetName,
                         "We select the raw CZI sources for display.")
+                .skipInScript()
                 .execute();
 
         Frame bdvRaw = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
@@ -173,6 +183,7 @@ public class GenerateDeconvolutionDocAssets {
                         "Naming this window so the upcoming sync command can address it by title.")
                 .sayOnDialog("Setting the window title.")
                 .viaTreePath()
+                .skipInScript()
                 .execute();
         Step.end();
 
@@ -209,7 +220,7 @@ public class GenerateDeconvolutionDocAssets {
                 .arg("datasetname", psfName)
                 .arg("unit", "MICROMETER")
                 .arg("files", new File[]{filePSF},"Browsing to the 400 nm PSF which matches this dataset.")
-                .arg("split_rgb_channels", false, "Do need to modify the other parameters")
+                .arg("split_rgb_channels", false, "No need to modify the other parameters")
                 .arg("auto_pyramidize", true)
                 .arg("plane_origin_convention", "TOP LEFT")
                 .arg("disable_memo", false)
@@ -286,6 +297,7 @@ public class GenerateDeconvolutionDocAssets {
                 .sayOnDialog("Walking through the show-sources dialog again.")
                 .viaTreePath("Other Sources",
                         "We pick the deconvolved sources that just landed under \"Other Sources\".")
+                .skipInScript()
                 .execute();
 
         Frame bdvDeconvolved = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
@@ -297,6 +309,7 @@ public class GenerateDeconvolutionDocAssets {
                         "Naming this one so the sync command can pair the two windows by title.")
                 .sayOnDialog("Setting the window title.")
                 .viaTreePath()
+                .skipInScript()
                 .execute();
 
         Ui.rawPause(2000);
@@ -315,6 +328,7 @@ public class GenerateDeconvolutionDocAssets {
                         "Lock timepoints too — scrubbing one slider scrubs both.")
                 .sayOnDialog("Walking through the synchronize dialog.")
                 .viaTreePath()
+                .skipInScript()
                 .execute();
         Step.say("Holding the final frame while the deconvolved view streams in — "
                 + "GPU tiles fill in block by block, and the side-by-side reveals noise reduction and intensity gain.");
@@ -357,6 +371,7 @@ public class GenerateDeconvolutionDocAssets {
                 //.arg("vox_size_z_um", 0.4)
                 .arg("n_threads", 4,
                         "Four fetcher threads so IO doesn't bottleneck the GPU pool.")
+                .arg("compression", "LZW", "Let's use LZW lossless compression")
                 .sayOnDialog("Walking through the OME-TIFF export dialog.")
                 .viaTreePath("Other Sources",
                         "We pick the deconvolved sources — they live under \"Other Sources\".")
@@ -384,7 +399,7 @@ public class GenerateDeconvolutionDocAssets {
             Ui.rawPause(1000);
         }
         Step.say("Done — the OME-TIFF is ready on the desktop.");
-        Ui.rawPause(5000);
+        Ui.rawPause(15000);
         Step.end();
 
         // Outro / closing-card metadata. The command list is harvested

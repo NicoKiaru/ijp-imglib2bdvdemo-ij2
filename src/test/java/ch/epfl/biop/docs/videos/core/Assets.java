@@ -45,6 +45,7 @@ public class Assets {
         Screenshotter.resetCounter();
         ScreenRecorder.resetCounter();
         Timeline.onSessionStart();
+        GroovyScript.onSessionStart();
         return currentDir;
     }
 
