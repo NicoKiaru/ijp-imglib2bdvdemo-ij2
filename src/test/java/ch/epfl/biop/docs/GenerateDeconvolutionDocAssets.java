@@ -362,7 +362,7 @@ public class GenerateDeconvolutionDocAssets {
                         "We pick the deconvolved sources — they live under \"Other Sources\".")
                 .execute();
         Step.say("Each block is computed by the GPU on demand and streamed straight to disk — "
-                + "the Tasks panel reports per-channel progress.");
+                + "the Tasks panel reports Okprogress.");
 
         // TREE-mode .execute() returns once OK is clicked; the export then
         // runs on the SciJava worker thread. Poll the output file until its
