@@ -31,7 +31,7 @@ import java.util.List;
  * {@code description} is the chapter-title text; {@code comments[]} carries
  * the narration sub-steps (what {@code script.md} held). Event {@code type}
  * is namespaced ({@code mouse.*}) so other categories can be added later
- * without a format break — {@code version} is {@code 3} so a consumer can
+ * without a format break — {@code version} is {@code 4} so a consumer can
  * detect the format.</p>
  *
  * <p><b>Intro / outro.</b> Optional top-level {@code intro} (title, tagline,
@@ -40,6 +40,20 @@ import java.util.List;
  * blocks let the downstream pipeline render a title card and a closing card.
  * Set via {@link #setIntro} / {@link #setOutro} — the demo-side authoring
  * facade is {@code videos/Demo}, which also emits a {@code youtube-description.md}.</p>
+ *
+ * <p><b>Embedded script (v4).</b> The headless programmatic equivalent of
+ * the recorded demo lives structurally inside {@code timeline.json} rather
+ * than in a sibling Groovy file: a top-level {@code script} block carries
+ * {@code language} and a {@code preamble} string (hoisted {@code #@File}
+ * params, the {@code #@CommandService cs} declaration, imports), and every
+ * step carries a {@code script} field. Actionable steps emit
+ * {@code "script": {"body": "..."}} with the step's executable snippet;
+ * visualization-only steps (no headless equivalent) emit
+ * {@code "script": {"body": null, "note": "visualization-only — observe the viewers"}}
+ * so consumers can deliberately render the "no headless equivalent" state.
+ * {@code script.groovy} is now a derived artifact written by
+ * {@link GroovyScript#flush()} from the same in-memory model — see
+ * {@link GroovyScript#preamble()} and {@link GroovyScript#bodyForSlug(String)}.</p>
  *
  * <p><b>Coordinates.</b> {@code x}/{@code y} (and {@code endX}/{@code endY}
  * for drags) are absolute screen coordinates in logical AWT pixels — the
@@ -58,7 +72,17 @@ public class Timeline {
 
     public static String FILENAME = "timeline.json";
 
-    public static final int VERSION = 3;
+    public static final int VERSION = 4;
+
+    /**
+     * Label written to {@code script.note} when a step has no executable
+     * Groovy equivalent — e.g. the operator opening a viewer, dragging a
+     * window into place, or just looking at the result. Lets consumers
+     * render "no headless equivalent for this step" deliberately rather
+     * than inferring it from a missing field.
+     */
+    public static final String VISUALIZATION_ONLY_NOTE =
+            "visualization-only — observe the viewers";
 
     private static final List<StepRecord> steps = new ArrayList<>();
     private static StepRecord current;
@@ -339,6 +363,7 @@ public class Timeline {
         sb.append("{\n");
         sb.append("  \"version\": ").append(VERSION).append(",\n");
         sb.append("  \"session\": ").append(jsonStr(Assets.demoName())).append(",\n");
+        appendScript(sb);
         if (intro != null) appendIntro(sb);
         sb.append("  \"recordingBounds\": {\"x\":").append(b.x)
                 .append(",\"y\":").append(b.y)
@@ -371,6 +396,7 @@ public class Timeline {
         sb.append("      \"slug\": ").append(jsonStr(s.slug)).append(",\n");
         sb.append("      \"clip\": ").append(jsonStr(s.clip)).append(",\n");
         sb.append("      \"description\": ").append(jsonStr(s.description)).append(",\n");
+        appendStepScript(sb, s.slug);
         sb.append("      \"startedAt\": ")
                 .append(jsonStr(Instant.ofEpochMilli(s.startedAtWallMs).toString())).append(",\n");
 
@@ -419,6 +445,37 @@ public class Timeline {
         }
         sb.append(s.events.isEmpty() ? "]\n" : "\n      ]\n");
         sb.append("    }");
+    }
+
+    /**
+     * Emit the top-level {@code script} block (language + preamble). Always
+     * emitted in v4 so consumers can parse on shape rather than presence,
+     * even when the demo registered no {@code #@File} params and no
+     * imports — in that minimal case the preamble is just
+     * {@code "#@CommandService cs"}.
+     */
+    private static void appendScript(StringBuilder sb) {
+        sb.append("  \"script\": {\n");
+        sb.append("    \"language\": \"groovy\",\n");
+        sb.append("    \"preamble\": ").append(jsonStr(GroovyScript.preamble())).append("\n");
+        sb.append("  },\n");
+    }
+
+    /**
+     * Emit the per-step {@code script} field — either {@code {"body": "..."}}
+     * for an actionable step, or
+     * {@code {"body": null, "note": "visualization-only — observe the viewers"}}
+     * when the step has no headless equivalent.
+     */
+    private static void appendStepScript(StringBuilder sb, String slug) {
+        String body = GroovyScript.bodyForSlug(slug);
+        sb.append("      \"script\": ");
+        if (body == null) {
+            sb.append("{\"body\": null, \"note\": ")
+                    .append(jsonStr(VISUALIZATION_ONLY_NOTE)).append("},\n");
+        } else {
+            sb.append("{\"body\": ").append(jsonStr(body)).append("},\n");
+        }
     }
 
     private static void appendIntro(StringBuilder sb) {

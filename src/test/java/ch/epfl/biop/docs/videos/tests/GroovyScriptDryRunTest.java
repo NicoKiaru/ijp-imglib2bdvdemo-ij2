@@ -7,6 +7,7 @@ import ch.epfl.biop.docs.videos.core.Assets;
 import ch.epfl.biop.docs.videos.core.GroovyScript;
 import ch.epfl.biop.docs.videos.core.ScreenRecorder;
 import ch.epfl.biop.docs.videos.core.Screenshotter;
+import ch.epfl.biop.docs.videos.core.Step;
 import ch.epfl.biop.docs.videos.core.Timeline;
 import ch.epfl.biop.kheops.command.KheopsExportSourcesCommand;
 import org.junit.Test;
@@ -41,8 +42,8 @@ public class GroovyScriptDryRunTest {
         File exportFile = new File("C:\\Users\\Nicolas\\Desktop",
                 datasetName + "_deconvolved_t" + tIni + "-" + tEnd + ".ome.tiff");
 
-        GroovyScript.nameFile(fileDataset, "datasetFile", "HeLa LLS7 dataset (CZI)");
-        GroovyScript.nameFile(filePSF,     "psfFile",     "400 nm point-spread function");
+        GroovyScript.nameFile(fileDataset, "datasetFile", "Input dataset");
+        GroovyScript.nameFile(filePSF,     "psfFile",     "PSF");
         GroovyScript.nameFile(exportFile,  "exportFile",  "Output OME-TIFF");
 
         GroovyScript.beginSection("open-hela", "Open the raw HeLa CZI through Bio-Formats.");
@@ -117,10 +118,77 @@ public class GroovyScriptDryRunTest {
         assertTrue(content.contains("#@File"));
         assertTrue(!content.contains("new File(\"C:"));
         // Preferred names from nameFile(...) must replace the fileN fallback.
-        assertTrue("datasetFile param missing", content.contains("#@File (label=\"HeLa LLS7 dataset (CZI)\""));
+        assertTrue("datasetFile param missing", content.contains("#@File (label=\"Input dataset\""));
         assertTrue(content.contains(") datasetFile"));
         assertTrue(content.contains(") psfFile"));
         assertTrue(content.contains(") exportFile"));
         assertTrue("auto fallback file1 leaked", !content.contains(") file1\n"));
+    }
+
+    /**
+     * Smoke-test for {@code timeline.json} v4: drives a couple of steps via
+     * {@link Step#begin}/{@link Step#end} with the screen recorder and the
+     * screenshotter disabled, then asserts the resulting JSON carries the
+     * new {@code script.preamble} block at the top, a {@code script.body}
+     * for the actionable step, and a {@code script: {body: null, note: …}}
+     * for the visualization-only step.
+     */
+    @Test
+    public void emitTimelineV4() throws Exception {
+        ScreenRecorder.ENABLED = false;
+        Screenshotter.ENABLED = false;
+        Timeline.ENABLED = true;
+        boolean savedAutoSnapEnd = Step.AUTO_SNAP_END;
+        boolean savedAutoSnapMoments = Step.AUTO_SNAP_MOMENTS;
+        Step.AUTO_SNAP_END = false;
+        Step.AUTO_SNAP_MOMENTS = false;
+
+        try {
+            Assets.session("TimelineV4DryRun");
+
+            File fileDataset = new File("C:\\datasets\\ZeissLLS7Demo.czi");
+            GroovyScript.nameFile(fileDataset, "datasetFile", "Input dataset");
+
+            Step.begin("open-hela", "Open the raw HeLa CZI through Bio-Formats.");
+            CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
+                    .arg("datasetname", "ZeissLLS7Demo")
+                    .arg("files", new File[]{fileDataset})
+                    .viaTreePath()
+                    .previewToScript();
+            Step.end();
+
+            Step.begin("show-hela", "Visualization-only — open the dataset in BDV.");
+            Step.end();
+
+            File timeline = new File(Assets.dir(), Timeline.FILENAME);
+            assertTrue("timeline.json was not written: " + timeline, timeline.exists());
+            String json = new String(Files.readAllBytes(timeline.toPath()), StandardCharsets.UTF_8);
+            System.out.println("===== " + timeline.getAbsolutePath() + " =====");
+            System.out.println(json);
+
+            // v4 schema markers.
+            assertTrue("version should be 4", json.contains("\"version\": 4"));
+            // Top-level script block carries preamble.
+            assertTrue("missing top-level script block",
+                    json.contains("\"script\": {"));
+            assertTrue("missing language tag", json.contains("\"language\": \"groovy\""));
+            assertTrue("missing preamble", json.contains("\"preamble\":"));
+            assertTrue("preamble must carry #@CommandService cs",
+                    json.contains("#@CommandService cs"));
+            assertTrue("preamble must hoist the named #@File param",
+                    json.contains("#@File (label=\\\"Input dataset\\\""));
+            // Actionable step carries a body with cs.run(...).
+            assertTrue("actionable step missing script.body",
+                    json.contains("cs.run(DatasetFromBioFormatsCreateCommand.class"));
+            // Visualization-only step carries body:null + note.
+            assertTrue("viz-only script.body should be null",
+                    json.contains("\"body\": null"));
+            assertTrue("viz-only note missing",
+                    json.contains("\"note\": \"" + Timeline.VISUALIZATION_ONLY_NOTE + "\""));
+        } finally {
+            Step.AUTO_SNAP_END = savedAutoSnapEnd;
+            Step.AUTO_SNAP_MOMENTS = savedAutoSnapMoments;
+            Timeline.ENABLED = false;
+        }
     }
 }

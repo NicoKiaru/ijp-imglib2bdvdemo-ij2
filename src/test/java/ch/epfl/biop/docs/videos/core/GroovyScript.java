@@ -18,6 +18,14 @@ import java.util.Set;
  * {@code #@File} params hoisted at the top so a viewer of the recorded video
  * can re-run the same workflow headless in Fiji's script editor.
  *
+ * <p>As of {@code timeline.json} v4 this class is no longer the source of
+ * truth — the script is embedded structurally inside {@code timeline.json}
+ * (top-level {@code script.preamble} + per-step {@code script.body}), and
+ * {@code script.groovy} is rendered <em>from</em> that in-memory model as a
+ * derived artifact. {@link #preamble()} and {@link #bodyForSlug(String)}
+ * expose the same model to {@link Timeline}, which calls them at flush
+ * time.</p>
+ *
  * <p>Output: {@code script.groovy} in {@link Assets#dir()}, rewritten on
  * every {@link #flush()} (per {@link Step#end()} and via a JVM shutdown
  * hook).</p>
@@ -144,9 +152,21 @@ public class GroovyScript {
      *
      * <pre>
      * Assets.session("DeconvolutionVideoDemo");
-     * GroovyScript.nameFile(fileDataset, "datasetFile", "HeLa LLS7 dataset (CZI)");
-     * GroovyScript.nameFile(filePSF,     "psfFile",     "400 nm point-spread function");
+     * GroovyScript.nameFile(fileDataset, "datasetFile", "Input dataset");
+     * GroovyScript.nameFile(filePSF,     "psfFile",     "PSF");
      * </pre>
+     *
+     * <p>Pick a <em>role-shaped</em> label ({@code "Input dataset"},
+     * {@code "PSF"}, {@code "Output OME-TIFF"}) rather than one that names
+     * the specific physical file ({@code "HeLa LLS7 dataset (CZI)"}) —
+     * the label is what a viewer of the recording sees when re-running the
+     * script on their own machine, where they will almost certainly point
+     * the parameter at a different file.</p>
+     *
+     * <p>Labels are emitted inline inside the SciJava {@code #@File}
+     * directive ({@code #@File (label="…") foo}), which is a single-line
+     * declaration — newlines in {@code label} are stripped at registration
+     * time so they cannot break the directive.</p>
      *
      * <p>Registering the same path twice replaces the prior entry. Renaming
      * a file that was already auto-allocated is allowed — the entry is
@@ -160,11 +180,22 @@ public class GroovyScript {
     public static void nameFile(File file, String paramName, String label) {
         if (!ENABLED || file == null) return;
         String path = file.getAbsolutePath();
-        FileParam p = new FileParam(paramName, path, label);
+        FileParam p = new FileParam(paramName, path, sanitizeLabel(label));
         preferredNames.put(path, p);
         if (fileParams.containsKey(path)) {
             fileParams.put(path, p);
         }
+    }
+
+    /**
+     * Strip newlines and surrounding whitespace from a label so it always
+     * fits on a single line — a multi-line label would break the
+     * {@code #@File} directive and make the script unparseable. Collapses
+     * any internal CR/LF runs to a single space.
+     */
+    private static String sanitizeLabel(String label) {
+        if (label == null) return null;
+        return label.replaceAll("[\\r\\n]+", " ").trim();
     }
 
     /** Shortcut: same as {@link #nameFile(File, String, String)} with label = paramName. */
@@ -172,28 +203,69 @@ public class GroovyScript {
         nameFile(file, paramName, null);
     }
 
-    /** Rewrite {@code script.groovy} from the current in-memory state. */
+    /**
+     * The script's preamble: hoisted {@code #@File} params, the
+     * {@code #@CommandService cs} declaration, and the sorted {@code import}
+     * lines — i.e. setup that doesn't belong to any single step. Embedded
+     * verbatim as {@code script.preamble} in {@code timeline.json} v4, and
+     * prepended to {@code script.groovy} on every {@link #flush()}. No
+     * trailing newline so callers control their own separator.
+     */
+    public static String preamble() {
+        StringBuilder sb = new StringBuilder();
+        for (FileParam p : fileParams.values()) {
+            sb.append("#@File (label=\"").append(escapeAnnotation(p.label))
+                    .append("\", value=\"").append(escapePath(p.path)).append("\") ")
+                    .append(p.name).append("\n");
+        }
+        sb.append("#@CommandService cs");
+        if (!imports.isEmpty()) {
+            sb.append("\n\n");
+            List<String> sortedImports = new ArrayList<>(imports);
+            Collections.sort(sortedImports);
+            for (int i = 0; i < sortedImports.size(); i++) {
+                if (i > 0) sb.append("\n");
+                sb.append("import ").append(sortedImports.get(i));
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Body of the step's script — its accumulated {@link #addLine lines}
+     * joined by {@code "\n"}, with no leading / trailing blank lines, and no
+     * {@code // === slug ===} header. Returns {@code null} when the step has
+     * no executable lines (visualization-only). Used by {@link Timeline} to
+     * fill the per-step {@code script.body} in {@code timeline.json} v4.
+     */
+    public static String bodyForSlug(String slug) {
+        if (slug == null) return null;
+        for (Section s : sections) {
+            if (slug.equals(s.slug)) {
+                if (s.lines.isEmpty()) return null;
+                return String.join("\n", s.lines);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Rewrite {@code script.groovy} from the current in-memory state. As of
+     * {@code timeline.json} v4 this is a derived artifact: the same model
+     * that feeds {@link Timeline}'s {@code script.preamble} and per-step
+     * {@code script.body} is rendered back to Groovy form, with a
+     * {@code // === <slug> ===} header and the step's description as a
+     * comment block before each body.
+     */
     public static void flush() {
         if (!ENABLED) return;
         File out = new File(Assets.dir(), FILENAME);
         StringBuilder sb = new StringBuilder();
         sb.append("// Auto-generated from ").append(Assets.demoName()).append("\n");
         sb.append("// Headless programmatic equivalent of the recorded demo.\n");
-        sb.append("// Visualization-only steps are omitted.\n\n");
+        sb.append("// Derived from timeline.json — visualization-only steps are omitted.\n\n");
 
-        for (FileParam p : fileParams.values()) {
-            sb.append("#@File (label=\"").append(escapeAnnotation(p.label))
-                    .append("\", value=\"").append(escapePath(p.path)).append("\") ")
-                    .append(p.name).append("\n");
-        }
-        sb.append("#@CommandService cs\n\n");
-
-        List<String> sortedImports = new ArrayList<>(imports);
-        Collections.sort(sortedImports);
-        for (String imp : sortedImports) {
-            sb.append("import ").append(imp).append("\n");
-        }
-        if (!imports.isEmpty()) sb.append("\n");
+        sb.append(preamble()).append("\n\n");
 
         for (Section s : sections) {
             if (s.lines.isEmpty()) continue;

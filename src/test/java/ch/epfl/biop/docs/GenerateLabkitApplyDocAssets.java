@@ -97,8 +97,8 @@ public class GenerateLabkitApplyDocAssets {
         // Hoisted #@File params for the auto-generated script.groovy — so a
         // viewer of the recording can re-run the headless equivalent from the
         // Fiji script editor without editing paths inline.
-        GroovyScript.nameFile(fileDataset,                "datasetFile",    "HeLa LLS7 dataset (CZI)");
-        GroovyScript.nameFile(LabkitDoc.CLASSIFIER_FILE,  "classifierFile", "Pre-trained Labkit classifier");
+        GroovyScript.nameFile(fileDataset,                "datasetFile",    "Input dataset");
+        GroovyScript.nameFile(LabkitDoc.CLASSIFIER_FILE,  "classifierFile", "Labkit classifier");
         GroovyScript.nameFile(exportFile,                 "exportFile",     "Output OME-TIFF");
 
         Layout bdvArea = Layout.area(Ui.DEFAULT_FRAME_X + 450,

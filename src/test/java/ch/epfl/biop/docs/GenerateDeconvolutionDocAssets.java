@@ -97,8 +97,11 @@ public class GenerateDeconvolutionDocAssets {
         // surfaces them as readable #@File params instead of the anonymous
         // fileN fallback. The labels are what shows up in the SciJava
         // script-editor widget when a viewer re-runs the script.
-        GroovyScript.nameFile(fileDataset, "datasetFile", "HeLa LLS7 dataset (CZI)");
-        GroovyScript.nameFile(filePSF,     "psfFile",     "400 nm point-spread function");
+        // Labels describe the role, not the specific instance — a viewer
+        // re-running the script may point datasetFile at a completely
+        // different file.
+        GroovyScript.nameFile(fileDataset, "datasetFile", "Input dataset");
+        GroovyScript.nameFile(filePSF,     "psfFile",     "PSF");
         GroovyScript.nameFile(exportFile,  "exportFile",  "Output OME-TIFF");
 
         // Single placement area for the two BDV windows in this demo. The raw

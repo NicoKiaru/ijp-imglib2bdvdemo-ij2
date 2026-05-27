@@ -78,8 +78,7 @@ public class GenerateSourceResamplingDocAssets {
         String datasetName = "Slide_03";
         String resampledName = "Overview_Resampled_Like_Fluo";
 
-        GroovyScript.nameFile(fileDataset, "datasetFile",
-                "Brain-slides whole-slide image (VSI)");
+        GroovyScript.nameFile(fileDataset, "datasetFile", "Input dataset");
 
         // Single placement area for the three BDV windows. The first window
         // fills the area on its own, then we re-partition into a 2×2 grid —
