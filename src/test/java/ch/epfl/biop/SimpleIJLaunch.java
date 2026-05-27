@@ -6,6 +6,7 @@ import io.scif.codec.JPEG2000Codec;
 import net.imagej.ImageJ;
 import net.imagej.patcher.LegacyInjector;
 import sc.fiji.bdvpg.scijava.service.SourcePopupMenu;
+import sc.fiji.bdvpg.scijava.service.SourceService;
 import sc.fiji.bdvpg.service.SourceServices;
 
 import javax.imageio.ImageIO;
@@ -27,9 +28,9 @@ public class SimpleIJLaunch {
 
         Consumer<SourceAndConverter<?>[]> action = SourceServices.getSourceService().getAction("Source - Resample Source");
 
-        System.out.println(action);
+        System.out.println("--------------------------------"+action);
 
-        System.out.println("JPEG2000 available: " +
+        /*System.out.println("JPEG2000 available: " +
                 Arrays.asList(ImageIO.getReaderFormatNames()).contains("jpeg2000"));
 
         try {
@@ -53,12 +54,13 @@ public class SimpleIJLaunch {
             } catch (Throwable t) {
                 System.err.println("JAIIIOService failed: " + t.getMessage());
                 t.printStackTrace();
-            }
+            }*/
 
             SourcePopupMenu spm;
-        } catch (Throwable t) {
+        SourceService ss;
+        /*} catch (Throwable t) {
             t.printStackTrace();
-        }
+        }*/
 
 
     }

@@ -343,11 +343,18 @@ public class Harvester {
         return null;
     }
 
+    /**
+     * Case-insensitive label match: SciJava's harvester sometimes auto-capitalises
+     * the first letter of a parameter label even when the {@code @Parameter}
+     * declares it lowercase (e.g. {@code label = "width"} → "Width" in the GUI),
+     * which makes a strict {@code equals} miss the row. Case-insensitive is
+     * safe because SciJava labels are unique within a single harvester panel.
+     */
     private static JLabel findLabel(Container root, String text) {
         for (Component c : root.getComponents()) {
             if (c instanceof JLabel) {
                 JLabel l = (JLabel) c;
-                if (text.equals(l.getText())) return l;
+                if (text.equalsIgnoreCase(l.getText())) return l;
             }
             if (c instanceof Container) {
                 JLabel found = findLabel((Container) c, text);
