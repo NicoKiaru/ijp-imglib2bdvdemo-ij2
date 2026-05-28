@@ -69,12 +69,12 @@ public class GenerateLabkitApplyDocAssets {
         ScreenRecorder.ENABLED = true;
         Screenshotter.ENABLED = true;
 
-        Demo.intro("Applying a Labkit Classifier Lazily in Fiji",
-                "Re-apply a pre-trained Labkit classifier to a multi-channel LLS7 light-sheet "
+        Demo.intro("Applying a Labkit Classifier Lazily with BigDataViewer-Playground",
+                "Re-apply a pre-trained Labkit classifier to a multi-channel "
                         + "dataset — tile by tile through BigDataViewer — then export the result to OME-TIFF.",
                 "Saved classifier re-applies lazily — only tiles in view get classified",
                 "Side-by-side BDV viewers, synchronized in pan / zoom / timepoint",
-                "Final classified volume streamed straight to a multi-resolution OME-TIFF");
+                "Final classified volume streamed straight to OME-TIFF");
 
         if (!LabkitDoc.CLASSIFIER_FILE.exists()) {
             throw new IllegalStateException(
@@ -188,8 +188,7 @@ public class GenerateLabkitApplyDocAssets {
         Step.begin("Apply The Classifier",
                 "We apply the pre-trained classifier to the raw sources — lazy, so each tile "
                         + "is classified on demand as it comes into view.");
-        Step.say("Right-clicking the dataset — this is the heavy step; everything else "
-                + "has been setup for this. Walking to: "
+        Step.say("Right-clicking the dataset. Walking to: "
                 + CommandExecutor.menuPath(SourcesLabkitClassifyCommand.class, 2));
         CommandExecutor.of(SourcesLabkitClassifyCommand.class)
                 .arg("classifier_file", LabkitDoc.CLASSIFIER_FILE,
@@ -199,7 +198,7 @@ public class GenerateLabkitApplyDocAssets {
                 .arg("suffix", "_classified",
                         "Suffix appended to each new source name so the two sets stay distinguishable.")
                 .arg("use_gpu", true,
-                        "GPU acceleration on for the dense feature pass.")
+                        "GPU acceleration (needs CLIJ update sites).")
                 .sayOnDialog("Walking through the classify dialog — the parameters that shape the result.")
                 .viaTreePath(fileDataset.getName(),
                         "We pick the raw sources as input to the classifier.")
@@ -218,7 +217,7 @@ public class GenerateLabkitApplyDocAssets {
         SourceTree sourceTree = bss.tree();
         JTree jtree = sourceTree.getJTree();
 
-        Step.say("Let's double click the \"Other Sources\" node to expand it and display the generated source.");
+        Step.say("Let's double click the \"Other Sources\" node to expand it and reveal the generated source.");
         Tree.doubleClickPath(jtree, "Other Sources");
 
         bdvArea.place(bdvRaw, 1, 2, 0, 0);
@@ -247,7 +246,7 @@ public class GenerateLabkitApplyDocAssets {
         bdvArea.place(bdvClassified, 1, 2, 0, 1);
 
         CommandExecutor.of(BdvTitleSetCommand.class)
-                .arg("title", "BDV - Classified Sources",
+                .arg("title", "BDV - Classified Source",
                         "Naming this one so the sync command can pair the two windows by title.")
                 .sayOnDialog("Setting the window title.")
                 .viaTreePath()
@@ -276,7 +275,7 @@ public class GenerateLabkitApplyDocAssets {
         Step.say("Right-clicking the Sources root — walking to: "
                 + CommandExecutor.menuPath(ViewSynchronizeCommand.class, 2));
         CommandExecutor.of(ViewSynchronizeCommand.class)
-                .arg("bdvhs", new String[]{"BDV - Raw Sources", "BDV - Classified Sources"},
+                .arg("bdvhs", new String[]{"BDV - Raw Sources", "BDV - Classified Source"},
                         "Selecting both BDV windows we just named — the two viewers that will share state.")
                 .arg("bvvhs", null)
                 .arg("synchronizetime", true,
@@ -294,7 +293,7 @@ public class GenerateLabkitApplyDocAssets {
             Ui.dragFrame(syncWindow, Ui.DEFAULT_FRAME_X, Ui.DEFAULT_FRAME_Y);
         }
 
-        Ui.rawPause(45000);
+        Ui.rawPause(20000);
         Step.end();
 
         Step.begin("Save Classified Sources To OME-TIFF",
@@ -307,6 +306,9 @@ public class GenerateLabkitApplyDocAssets {
         Step.say("Right-clicking the \"Other Sources\" branch — walking to: "
                 + CommandExecutor.menuPath(KheopsExportSourcesCommand.class, 2));
         CommandExecutor.of(KheopsExportSourcesCommand.class)
+                .arg("range_channels","", "We leave the first fields empty to collect all C,Z and T")
+                .arg("range_slices","")
+                .arg("range_frames","")
                 .arg("file", exportFile,
                         "Saving straight to the desktop.")
                 .arg("unit", "MICROMETER",
@@ -314,7 +316,7 @@ public class GenerateLabkitApplyDocAssets {
                 .arg("override_voxel_size", false,
                         "No need to override the voxel sizes — they carry over from the raw sources.")
                 .arg("n_resolution_levels", 1,
-                        "Single resolution level — the dataset is small enough.")
+                        "Single resolution level — it's not a good idea to linearly interpolate labels.")
                 .arg("tile_size_x", 512,
                         "Pretty standard block saving size: 512 x 512 pixels.")
                 .arg("tile_size_y", 512)
