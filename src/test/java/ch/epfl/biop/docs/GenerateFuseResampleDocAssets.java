@@ -8,6 +8,7 @@ import ch.epfl.biop.docs.videos.CommandExecutor;
 import ch.epfl.biop.docs.videos.Demo;
 import ch.epfl.biop.docs.videos.GenerateDocAssetsCommon;
 import ch.epfl.biop.docs.videos.core.Assets;
+import ch.epfl.biop.docs.videos.core.GroovyScript;
 import ch.epfl.biop.docs.videos.core.Layout;
 import ch.epfl.biop.docs.videos.core.ScreenRecorder;
 import ch.epfl.biop.docs.videos.core.Screenshotter;
@@ -15,13 +16,17 @@ import ch.epfl.biop.docs.videos.core.Step;
 import ch.epfl.biop.docs.videos.core.Timings;
 import ch.epfl.biop.docs.videos.core.Ui;
 import ch.epfl.biop.docs.videos.fiji.BdvPlayground;
+import ch.epfl.biop.docs.videos.fiji.Fiji;
+import ch.epfl.biop.kheops.command.KheopsExportSourcesCommand;
 import net.imagej.patcher.LegacyInjector;
+import org.apache.commons.io.FilenameUtils;
 import sc.fiji.bdvpg.command.display.ViewSynchronizeCommand;
 import sc.fiji.bdvpg.command.display.bdv.SingleBdvSourcesShowCommand;
 import sc.fiji.bdvpg.command.display.bdv.settings.BdvTitleSetCommand;
 import sc.fiji.bdvpg.command.process.transform.SourceSimpleTransformCommand;
 
 import java.awt.Frame;
+import java.awt.Insets;
 import java.io.File;
 
 /**
@@ -35,7 +40,7 @@ import java.io.File;
  *
  * <p>Workflow (each step a separate clip + script line + auto-screenshot):
  * <ol>
- *   <li>boot Fiji and open the BDV Playground tree;</li>
+ *   <li>boot Fiji, open the Tasks panel and the BDV Playground tree;</li>
  *   <li>load the tiled .lif via Bio-Formats;</li>
  *   <li>apply Rot270 around Z to each tile so they read upright;</li>
  *   <li>show every tile in BDV — "BDV - Raw Tiles";</li>
@@ -47,7 +52,8 @@ import java.io.File;
  *   <li>show both fused channels in a second BDV — "BDV - Fused";</li>
  *   <li>pyramidize the two fused sources;</li>
  *   <li>show the pyramidized sources in a third BDV — "BDV - Pyramidized";</li>
- *   <li>synchronise all three BDV views.</li>
+ *   <li>synchronise all three BDV views;</li>
+ *   <li>export one fused channel as a 4-level OME-TIFF pyramid (downscale 2).</li>
  * </ol>
  *
  * <p>All three BDV windows share a single {@link Layout} area to the right
@@ -81,14 +87,37 @@ public class GenerateFuseResampleDocAssets {
         // Lands in timeline.json's intro block and the youtube-description.md.
         Demo.intro("Tile Fusion And Resampling in Fiji",
                 "Stitch a tiled brain-section .lif, fuse each channel onto a unified grid, "
-                        + "and watch raw / fused / pyramidized views stay in sync — all without "
-                        + "writing the fused mosaic to disk.",
+                        + "watch raw / fused / pyramidized views stay in sync, then export one "
+                        + "fused channel as a multi-resolution OME-TIFF.",
                 "Lazy fusion — fused tiles are computed only when viewed",
                 "Pyramid wrapper adds downsampled levels for smooth zoom-out",
-                "Three BDV viewers — raw, flat-fused, pyramidized — synchronized side by side");
+                "Three BDV viewers — raw, flat-fused, pyramidized — synchronized side by side",
+                "Export to a 4-level OME-TIFF pyramid straight from the fused source");
 
         File fileDataset = ch.epfl.biop.DatasetHelper.getDataset(
                 "https://zenodo.org/records/19062791/files/BrainSection-Tiles.lif");
+        String datasetName = FilenameUtils.removeExtension(fileDataset.getName());
+
+        // OME-TIFF export target — desktop, channel encoded in the name so a
+        // viewer of the resulting file knows what's inside. Wiped at start so
+        // the export step always runs against a clean slate (otherwise
+        // OMETiffWriter throws when the target exists).
+        File exportFile = new File("C:\\Users\\Nicolas\\Desktop",
+                datasetName + "_fused_ch0.ome.tiff");
+        if (exportFile.exists() && !exportFile.delete()) {
+            throw new IllegalStateException(
+                    "Could not delete pre-existing export file: " + exportFile);
+        }
+
+        // Name the File-typed inputs so the auto-generated script.groovy
+        // surfaces them as readable #@File params instead of the anonymous
+        // fileN fallback. The labels are what shows up in the SciJava
+        // script-editor widget when a viewer re-runs the script.
+        // Labels describe the role, not the specific instance — a viewer
+        // re-running the script may point datasetFile at a completely
+        // different file.
+        GroovyScript.nameFile(fileDataset, "datasetFile", "Input tiled dataset");
+        GroovyScript.nameFile(exportFile,  "exportFile",  "Output OME-TIFF");
 
         // Single placement area for every BDV window in this demo. Each phase
         // re-partitions it into a different grid: 1×1 (Raw Tiles full area)
@@ -97,6 +126,23 @@ public class GenerateFuseResampleDocAssets {
                 Ui.DEFAULT_FRAME_Y + 150, 900, 600);
 
         GenerateDocAssetsCommon.boot();
+
+        Step.begin("Open Tasks Window",
+                "Before we shrink Fiji out of the way, we open the Tasks panel — "
+                        + "a click in the bottom-right corner of the Fiji main window. "
+                        + "We'll watch the OME-TIFF export progress here at the end of the video.");
+        Step.say("Clicking the small Tasks indicator at the bottom-right of the Fiji status bar.");
+        Frame fijiFrame = Fiji.getFijiFrame();
+        Insets fijiInsets = fijiFrame.getInsets();
+        int tasksX = fijiFrame.getX() + fijiFrame.getWidth() - fijiInsets.right - 5;
+        int tasksY = fijiFrame.getY() + fijiFrame.getHeight() - fijiInsets.bottom - 5;
+        Ui.moveTo(tasksX, tasksY);
+        Ui.click();
+        Frame tasksFrame = Ui.waitForFrame("Tasks", Timings.FRAME_WAIT_TIMEOUT_MS);
+        Ui.placeFrame(tasksFrame, Ui.DEFAULT_FRAME_X, Ui.DEFAULT_FRAME_Y);
+        Ui.resizeFrame(tasksFrame, 450, 100);
+        Step.end();
+
         GenerateDocAssetsCommon.showBdvTreeDisplay(true);
 
         Step.begin("Open Brain Tile Dataset",
@@ -147,6 +193,7 @@ public class GenerateFuseResampleDocAssets {
                 .sayOnDialog("Walking through the show-sources dialog.")
                 .viaTreePath(fileDataset.getName(),
                         "We select the raw tiled dataset for display.")
+                .skipInScript()
                 .execute();
 
         Frame bdvTiles = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
@@ -158,6 +205,7 @@ public class GenerateFuseResampleDocAssets {
                         "Naming this window so the upcoming sync command can address it by title.")
                 .sayOnDialog("Setting the window title.")
                 .viaTreePath()
+                .skipInScript()
                 .execute();
         Step.end();
 
@@ -324,6 +372,7 @@ public class GenerateFuseResampleDocAssets {
                 .sayOnDialog("Walking through the show-sources dialog for both fused channels.")
                 .viaTreePaths(new String[]{"Other Sources>fused_ch0", "Other Sources>fused_ch1"},
                         "We pick both fused channels — Ctrl+click adds ch1 to the ch0 selection.")
+                .skipInScript()
                 .execute();
 
         Frame bdvFused = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
@@ -336,6 +385,7 @@ public class GenerateFuseResampleDocAssets {
                         "Naming the new viewer so the later sync command can pair it by title.")
                 .sayOnDialog("Setting the window title.")
                 .viaTreePath()
+                .skipInScript()
                 .execute();
 
         Ui.rawPause(2000);
@@ -380,6 +430,7 @@ public class GenerateFuseResampleDocAssets {
                                 "Other Sources>fused_ch0_pyramid",
                                 "Other Sources>fused_ch1_pyramid"},
                         "We pick both pyramidized channels at once.")
+                .skipInScript()
                 .execute();
 
         Frame bdvPyr = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
@@ -391,6 +442,7 @@ public class GenerateFuseResampleDocAssets {
                         "Naming this third viewer so the sync command can pair all three by title.")
                 .sayOnDialog("Setting the window title.")
                 .viaTreePath()
+                .skipInScript()
                 .execute();
 
         Ui.rawPause(2000);
@@ -410,10 +462,87 @@ public class GenerateFuseResampleDocAssets {
                         "No timepoint sync needed — this dataset is a single volume.")
                 .sayOnDialog("Walking through the synchronize dialog.")
                 .viaTreePath()
+                .skipInScript()
                 .execute();
         Step.say("Holding the final frame for ~15 s while every viewer streams its current view — "
                 + "zoom out on any window and the pyramid's downsampled levels keep the overview crisp.");
+
+        // Stash the sync window beside the Tasks panel so it can be closed in
+        // the export step — closing it then reveals the Tasks panel underneath
+        // for live progress.
+        Frame syncWindow = Ui.waitForFrame("Close window to stop synchronization", 6000);
+        if (syncWindow != null) {
+            Ui.resizeFrame(syncWindow, 450, 100);
+            Ui.dragFrame(syncWindow, Ui.DEFAULT_FRAME_X, Ui.DEFAULT_FRAME_Y);
+        }
+
         // Hold long enough for all three views to fill in at the synced view.
+        Ui.rawPause(15000);
+        Step.end();
+
+        Step.begin("Save One Fused Channel To OME-TIFF",
+                "We export one fused channel as a multi-resolution OME-TIFF — "
+                        + "4 pyramid levels with a 2× downscale between each, "
+                        + "written straight to the desktop.");
+        // Close the sync window so the Tasks panel placed underneath becomes
+        // visible — we want the export progress in frame while it runs.
+        if (syncWindow != null) {
+            Ui.closeWithMouse(syncWindow);
+            Ui.rawPause(500);
+        }
+        Step.say("Right-clicking the \"Other Sources\" branch — walking to: "
+                + CommandExecutor.menuPath(KheopsExportSourcesCommand.class, 2));
+        CommandExecutor.of(KheopsExportSourcesCommand.class)
+                .arg("range_channels", "",
+                        "Single-source selection — no channel sub-range needed.")
+                .arg("range_slices", "",
+                        "All slices.")
+                .arg("range_frames", "",
+                        "Single timepoint — nothing to sub-range.")
+                .arg("file", exportFile,
+                        "Saving straight to the desktop.")
+                .arg("unit", "MICROMETER",
+                        "Coordinates in micrometers.")
+                .arg("override_voxel_size", false,
+                        "No need to override the voxel sizes — they carry over from the fused source.")
+                .arg("n_resolution_levels", 4,
+                        "Four resolution levels in the output pyramid.")
+                .arg("downscaling", 2,
+                        "Each level is 2× smaller than the previous one.")
+                .arg("tile_size_x", 512,
+                        "Pretty standard block saving size: 512 × 512 pixels.")
+                .arg("tile_size_y", 512)
+                .arg("n_threads", 4,
+                        "Four fetcher threads so IO doesn't bottleneck the fuse compute.")
+                .arg("compression", "LZW",
+                        "LZW lossless compression.")
+                .sayOnDialog("Walking through the OME-TIFF export dialog.")
+                .viaTreePath("Other Sources>fused_ch0_pyramid",
+                        "We pick one pyramidized fused channel as the export source.")
+                .execute();
+        Step.say("Each block of the fused channel is computed on demand and streamed straight to disk — "
+                + "the Tasks panel reports progress.");
+
+        // TREE-mode .execute() returns once OK is clicked; the export then
+        // runs on the SciJava worker thread. Poll the output file until its
+        // size has been stable for a few seconds (or hit the safety timeout)
+        // so the export progress runs to completion on video before we end
+        // the clip.
+        long stableSince = -1;
+        long lastSize = -1;
+        long deadline = System.currentTimeMillis() + 10 * 60_000L;
+        while (System.currentTimeMillis() < deadline) {
+            long size = exportFile.exists() ? exportFile.length() : 0L;
+            if (size > 0 && size == lastSize) {
+                if (stableSince < 0) stableSince = System.currentTimeMillis();
+                if (System.currentTimeMillis() - stableSince > 5000) break;
+            } else {
+                stableSince = -1;
+            }
+            lastSize = size;
+            Ui.rawPause(1000);
+        }
+        Step.say("Done — the OME-TIFF is ready on the desktop.");
         Ui.rawPause(15000);
         Step.end();
 
@@ -421,9 +550,9 @@ public class GenerateFuseResampleDocAssets {
         // automatically from every Fiji command this demo invoked, so it
         // lands in timeline.json's outro block and in youtube-description.md.
         Demo.outro("You've seen tiled stitching end to end — from raw Bio-Formats tiles, through "
-                        + "per-tile and global transforms, a resampling grid, fused channels and a lazy "
-                        + "pyramid wrapper, into three synchronized BDV viewers — without ever materializing "
-                        + "the fused mosaic to disk.",
+                        + "per-tile and global transforms, a resampling grid, fused channels, a lazy "
+                        + "pyramid wrapper, three synchronized BDV viewers and a multi-resolution OME-TIFF "
+                        + "written straight to the desktop.",
                 "Plugin & source: https://github.com/BIOP/ijp-imglib2bdvdemo-ij2",
                 "BIOP — EPFL: https://www.epfl.ch/research/facilities/ptbiop/",
                 "Sample brain-section tiles: https://zenodo.org/records/19062791");
