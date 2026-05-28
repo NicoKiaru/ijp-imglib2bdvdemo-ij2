@@ -59,10 +59,12 @@ import java.util.List;
  * point count so the consumer can tell a click-with-jitter
  * (~5 points) from a Labkit scribble (~thousands). A drag is only
  * promoted from a click-with-jitter when the cumulative distance from the
- * press exceeds {@link #DRAG_THRESHOLD_PX} on either axis. Per-pixel
- * polyline capture is gated behind {@link #CAPTURE_DRAG_PATH} for a
- * future overlay feature; on by default would swamp {@code timeline.json}
- * (a Labkit scribble = thousands of points).</p>
+ * press exceeds {@link #DRAG_THRESHOLD_PX} on either axis. When
+ * {@link #CAPTURE_DRAG_PATH} is on (the default), the intermediate
+ * {@code MOUSE_DRAGGED} samples are also captured as a downsampled
+ * polyline (see {@link #PATH_MIN_INTERVAL_MS} /
+ * {@link #PATH_MIN_DISTANCE_PX}) so the downstream pipeline can render
+ * an honest scribble trail.</p>
  *
  * <p><b>Lifecycle.</b> {@link #enable()} installs the listener exactly
  * once and is idempotent. {@link ScreenRecorder#start} auto-arms it when
@@ -82,16 +84,39 @@ public class EventRecorder {
     public static boolean ENABLED = true;
 
     /**
-     * Future flag for per-pixel drag-path capture. When true, the listener
-     * would store every intermediate {@code MOUSE_DRAGGED} point so the
-     * downstream pipeline could render a polyline overlay (handy for
-     * Labkit scribble visualisation). Off by default — a single Labkit
-     * scribble can be thousands of points, which would swamp
-     * {@code timeline.json}. Currently only the {@code points} count is
-     * carried in the event payload; the per-pixel path is reserved for a
-     * future {@code timeline.json} schema bump.
+     * Capture the per-pixel polyline of every drag — the intermediate
+     * {@code MOUSE_DRAGGED} samples between press and release — so the
+     * downstream pipeline can render an honest scribble trail (Labkit
+     * class scribbles, paint strokes) instead of a generic blob between
+     * the endpoints. The endpoints themselves ({@code x}/{@code y} and
+     * {@code endX}/{@code endY}) are <em>not</em> repeated in
+     * {@code path}; it carries only the intermediate samples.
+     *
+     * <p>Capture-time downsampling keeps {@code timeline.json} bounded:
+     * a sample is kept only when it's both {@link #PATH_MIN_INTERVAL_MS}
+     * ms <em>and</em> {@link #PATH_MIN_DISTANCE_PX} px away from the
+     * previously kept sample (or from the press position, for the first
+     * one). The {@code points} field stays as the raw {@code MOUSE_DRAGGED}
+     * count so consumers still have a "how much motion" signal —
+     * {@code path.size()} is typically smaller.</p>
      */
-    public static boolean CAPTURE_DRAG_PATH = false;
+    public static boolean CAPTURE_DRAG_PATH = true;
+
+    /**
+     * Minimum interval (ms) between consecutive samples kept in the drag
+     * {@code path}. A {@code MOUSE_DRAGGED} event closer in time than
+     * this to the previously kept sample is dropped. See
+     * {@link #CAPTURE_DRAG_PATH}.
+     */
+    public static int PATH_MIN_INTERVAL_MS = 25;
+
+    /**
+     * Minimum Euclidean distance (screen pixels) between consecutive
+     * samples kept in the drag {@code path}. A {@code MOUSE_DRAGGED}
+     * event closer than this to the previously kept sample is dropped.
+     * See {@link #CAPTURE_DRAG_PATH}.
+     */
+    public static int PATH_MIN_DISTANCE_PX = 3;
 
     /**
      * Minimum cumulative motion from the press position (on either axis,
@@ -126,6 +151,12 @@ public class EventRecorder {
     private static int pressX, pressY;
     private static boolean dragging;
     private static int dragPoints;
+    // Per-pixel path state — non-null only between PRESSED and RELEASED
+    // when CAPTURE_DRAG_PATH is on. lastSample* tracks the most recently
+    // kept point so downsampling thresholds are measured from it.
+    private static List<int[]> dragPath;
+    private static long lastSampleMs;
+    private static int lastSampleX, lastSampleY;
 
     /**
      * Install the global AWT listener. Idempotent — safe to call from
@@ -184,26 +215,53 @@ public class EventRecorder {
                 pressY = e.getYOnScreen();
                 dragging = false;
                 dragPoints = 0;
+                if (CAPTURE_DRAG_PATH) {
+                    dragPath = new ArrayList<>();
+                    lastSampleMs = e.getWhen();
+                    lastSampleX = pressX;
+                    lastSampleY = pressY;
+                } else {
+                    dragPath = null;
+                }
                 break;
             case MouseEvent.MOUSE_DRAGGED:
                 if (pressActive) {
-                    int dx = Math.abs(e.getXOnScreen() - pressX);
-                    int dy = Math.abs(e.getYOnScreen() - pressY);
+                    int xs = e.getXOnScreen();
+                    int ys = e.getYOnScreen();
+                    int dx = Math.abs(xs - pressX);
+                    int dy = Math.abs(ys - pressY);
                     if (dx >= DRAG_THRESHOLD_PX || dy >= DRAG_THRESHOLD_PX) {
                         dragging = true;
                     }
                     dragPoints++;
+                    if (dragPath != null) {
+                        long when = e.getWhen();
+                        int ddx = xs - lastSampleX;
+                        int ddy = ys - lastSampleY;
+                        // Squared compare to avoid sqrt — equivalent to
+                        // sqrt(ddx² + ddy²) >= PATH_MIN_DISTANCE_PX.
+                        if ((when - lastSampleMs) >= PATH_MIN_INTERVAL_MS
+                                && (ddx * ddx + ddy * ddy)
+                                        >= PATH_MIN_DISTANCE_PX * PATH_MIN_DISTANCE_PX) {
+                            dragPath.add(new int[]{xs, ys});
+                            lastSampleMs = when;
+                            lastSampleX = xs;
+                            lastSampleY = ys;
+                        }
+                    }
                 }
                 break;
             case MouseEvent.MOUSE_RELEASED:
                 if (pressActive && dragging) {
                     Timeline.mouseDragAt(pressX, pressY,
                             e.getXOnScreen(), e.getYOnScreen(),
-                            dragPoints, decodeModifiers(e.getModifiersEx()));
+                            dragPoints, decodeModifiers(e.getModifiersEx()),
+                            dragPath);
                 }
                 pressActive = false;
                 dragging = false;
                 dragPoints = 0;
+                dragPath = null;
                 break;
             case MouseEvent.MOUSE_CLICKED:
                 emitClick(e);

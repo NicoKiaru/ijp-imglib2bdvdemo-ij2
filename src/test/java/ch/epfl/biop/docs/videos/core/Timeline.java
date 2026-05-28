@@ -32,7 +32,9 @@ import java.util.List;
  * the narration sub-steps (what {@code script.md} held). Event {@code type}
  * is namespaced ({@code mouse.*}) so other categories can be added later
  * without a format break — {@code version} is {@code 4} so a consumer can
- * detect the format.</p>
+ * detect the format. Drag events may carry an optional {@code path} array
+ * of downsampled intermediate samples (see
+ * {@link EventRecorder#CAPTURE_DRAG_PATH}).</p>
  *
  * <p><b>Intro / outro.</b> Optional top-level {@code intro} (title, tagline,
  * {@code highlights[]}) and {@code outro} (closing line, {@code commands[]}
@@ -56,8 +58,9 @@ import java.util.List;
  * {@link GroovyScript#preamble()} and {@link GroovyScript#bodyForSlug(String)}.</p>
  *
  * <p><b>Coordinates.</b> {@code x}/{@code y} (and {@code endX}/{@code endY}
- * for drags) are absolute screen coordinates in logical AWT pixels — the
- * space Java's {@code Robot} dispatches in. The top-level
+ * for drags, and the {@code [x,y]} pairs inside a drag's optional
+ * {@code path[][]}) are absolute screen coordinates in logical AWT pixels —
+ * the space Java's {@code Robot} dispatches in. The top-level
  * {@code recordingBounds} block gives the logical bounds of the captured
  * area, so a click maps to recording-local coordinates by subtracting
  * {@code recordingBounds.x} / {@code .y}.</p>
@@ -134,6 +137,10 @@ public class Timeline {
      * {@code notches} for the wheel, {@code points} for the count of
      * {@code MOUSE_DRAGGED} samples captured between press and release
      * (only set by {@link EventRecorder}, not by the Robot-driven path).
+     * {@code path} is the optional downsampled polyline of those samples
+     * — also only populated by {@link EventRecorder}, gated on
+     * {@link EventRecorder#CAPTURE_DRAG_PATH}; endpoints are excluded
+     * (they're already in {@code x}/{@code y} / {@code endX}/{@code endY}).
      * {@code modifiers} is the list of keyboard modifiers held at event
      * time — empty / {@code null} for the Robot-driven path, populated by
      * {@link EventRecorder} from {@link java.awt.event.InputEvent#getModifiersEx()}.
@@ -148,9 +155,10 @@ public class Timeline {
         final Integer endX, endY, notches, points;
         final List<String> modifiers;
         final String key;
+        final List<int[]> path;
         Evt(String type, long wallMs, int x, int y,
             Integer endX, Integer endY, Integer notches, Integer points,
-            List<String> modifiers, String key) {
+            List<String> modifiers, String key, List<int[]> path) {
             this.type = type;
             this.wallMs = wallMs;
             this.x = x;
@@ -161,6 +169,7 @@ public class Timeline {
             this.points = points;
             this.modifiers = modifiers;
             this.key = key;
+            this.path = path;
         }
     }
 
@@ -304,8 +313,10 @@ public class Timeline {
     }
 
     static void mouseDragAt(int startX, int startY, int endX, int endY,
-                            int points, List<String> modifiers) {
-        addEvent("mouse.drag", startX, startY, endX, endY, null, points, modifiers);
+                            int points, List<String> modifiers,
+                            List<int[]> path) {
+        addEvent("mouse.drag", startX, startY, endX, endY, null, points,
+                modifiers, null, path);
     }
 
     /**
@@ -330,15 +341,22 @@ public class Timeline {
     private static void addEvent(String type, int x, int y,
                                  Integer endX, Integer endY, Integer notches,
                                  Integer points, List<String> modifiers) {
-        addEvent(type, x, y, endX, endY, notches, points, modifiers, null);
+        addEvent(type, x, y, endX, endY, notches, points, modifiers, null, null);
     }
 
     private static void addEvent(String type, int x, int y,
                                  Integer endX, Integer endY, Integer notches,
                                  Integer points, List<String> modifiers, String key) {
+        addEvent(type, x, y, endX, endY, notches, points, modifiers, key, null);
+    }
+
+    private static void addEvent(String type, int x, int y,
+                                 Integer endX, Integer endY, Integer notches,
+                                 Integer points, List<String> modifiers, String key,
+                                 List<int[]> path) {
         if (!ENABLED || current == null) return;
         current.events.add(new Evt(type, System.currentTimeMillis(),
-                x, y, endX, endY, notches, points, modifiers, key));
+                x, y, endX, endY, notches, points, modifiers, key, path));
     }
 
     private static void flushPending(long endWallMs) {
@@ -429,6 +447,15 @@ public class Timeline {
             }
             if (ev.points != null) {
                 sb.append(",\"points\":").append(ev.points);
+            }
+            if (ev.path != null && !ev.path.isEmpty()) {
+                sb.append(",\"path\":[");
+                for (int p = 0; p < ev.path.size(); p++) {
+                    int[] pt = ev.path.get(p);
+                    if (p > 0) sb.append(",");
+                    sb.append("[").append(pt[0]).append(",").append(pt[1]).append("]");
+                }
+                sb.append("]");
             }
             if (ev.key != null) {
                 sb.append(",\"key\":").append(jsonStr(ev.key));
