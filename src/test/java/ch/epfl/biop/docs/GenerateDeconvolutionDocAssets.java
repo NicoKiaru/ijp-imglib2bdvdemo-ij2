@@ -399,7 +399,7 @@ public class GenerateDeconvolutionDocAssets {
                 stableSince = -1;
             }
             lastSize = size;
-            Ui.rawPause(1000);
+            Ui.rawPause(10000);
         }
         Step.say("Done — the OME-TIFF is ready on the desktop.");
         Ui.rawPause(15000);
