@@ -73,7 +73,7 @@ public class GenerateLabkitApplyDocAssets {
                 "Re-apply a pre-trained Labkit classifier to a multi-channel "
                         + "dataset — tile by tile through BigDataViewer — then export the result to OME-TIFF.",
                 "Saved classifier re-applies lazily — only tiles in view get classified",
-                "Side-by-side BDV viewers, synchronized in pan / zoom / timepoint",
+                "Side-by-side synchronized viewers",
                 "Final classified volume streamed straight to OME-TIFF");
 
         if (!LabkitDoc.CLASSIFIER_FILE.exists()) {
@@ -107,7 +107,7 @@ public class GenerateLabkitApplyDocAssets {
         GenerateDocAssetsCommon.boot();
 
         Step.begin("Open Tasks Window",
-                "Before we shrink Fiji out of the way, we open the Tasks panel — "
+                "Before we shrink Fiji window, we open the Tasks panel — "
                         + "we'll watch the OME-TIFF export progress here at the end of the video.");
         Step.say("Clicking the small Tasks indicator at the bottom-right of the Fiji status bar.");
         Frame fijiFrame = Fiji.getFijiFrame();
@@ -124,8 +124,8 @@ public class GenerateLabkitApplyDocAssets {
         GenerateDocAssetsCommon.showBdvTreeDisplay(true);
 
         Step.begin("Open Hela Demo Dataset",
-                "We open the raw LLS7 HeLa Kyoto dataset through Bio-Formats — "
-                        + "this is pure setup, so we run the import programmatically "
+                "We open the raw LLS7 Kyoto dataset through Bio-Formats — "
+                        + "in this video we run the import programmatically "
                         + "(no dialog walk). The new node simply appears under the Sources tree.");
         Step.say("Running the Bio-Formats importer programmatically — no Robot, no dialog. "
                 + "The script.groovy transcript still gets the equivalent cs.run(...) line.");
@@ -174,6 +174,9 @@ public class GenerateLabkitApplyDocAssets {
         Frame bdvRaw = Ui.waitForFrame("BigDataViewer", Timings.FRAME_WAIT_TIMEOUT_MS);
         Ui.pause(1500);
         bdvArea.place(bdvRaw, 1, 2, 0, 0);
+
+        Step.say("Right-clicking the CZI node — walking to: "
+                + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class, 2));
 
         CommandExecutor.of(BdvTitleSetCommand.class)
                 .arg("title", "BDV - Raw Sources",

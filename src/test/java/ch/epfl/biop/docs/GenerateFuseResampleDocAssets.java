@@ -24,6 +24,7 @@ import sc.fiji.bdvpg.command.display.ViewSynchronizeCommand;
 import sc.fiji.bdvpg.command.display.bdv.SingleBdvSourcesShowCommand;
 import sc.fiji.bdvpg.command.display.bdv.settings.BdvTitleSetCommand;
 import sc.fiji.bdvpg.command.process.transform.SourceSimpleTransformCommand;
+import sc.fiji.bdvpg.command.workspace.tree.SourceInspectCommand;
 
 import java.awt.Frame;
 import java.awt.Insets;
@@ -46,6 +47,7 @@ import java.io.File;
  *   <li>show every tile in BDV — "BDV - Raw Tiles";</li>
  *   <li>apply Rot90 globally so the brain section sits in its anatomical orientation;</li>
  *   <li>re-frame the active BDV onto the mosaic;</li>
+ *   <li>inspect one raw tile to read its voxel size (justifies the grid choice);</li>
  *   <li>define a resampling grid spanning all tiles;</li>
  *   <li>fuse channel 0 onto the grid;</li>
  *   <li>fuse channel 1 onto the grid;</li>
@@ -53,7 +55,9 @@ import java.io.File;
  *   <li>pyramidize the two fused sources;</li>
  *   <li>show the pyramidized sources in a third BDV — "BDV - Pyramidized";</li>
  *   <li>synchronise all three BDV views;</li>
- *   <li>export one fused channel as a 4-level OME-TIFF pyramid (downscale 2).</li>
+ *   <li>inspect the pyramidized source to show its full provenance hierarchy;</li>
+ *   <li>export one fused channel as a 4-level OME-TIFF pyramid (downscale 2),
+ *       every fifth Z slice only to keep the demo short.</li>
  * </ol>
  *
  * <p>All three BDV windows share a single {@link Layout} area to the right
@@ -85,7 +89,7 @@ public class GenerateFuseResampleDocAssets {
 
         // Intro / title-card metadata — the "why should I watch this" hook.
         // Lands in timeline.json's intro block and the youtube-description.md.
-        Demo.intro("Tile Fusion And Resampling in Fiji",
+        Demo.intro("Tile Fusion (And Resampling) in Fiji",
                 "Stitch a tiled brain-section .lif, fuse each channel onto a unified grid, "
                         + "watch raw / fused / pyramidized views stay in sync, then export one "
                         + "fused channel as a multi-resolution OME-TIFF.",
@@ -152,7 +156,7 @@ public class GenerateFuseResampleDocAssets {
                 + "we'll walk it to the Bio-Formats importer: "
                 + CommandExecutor.menuPath(DatasetFromBioFormatsCreateCommand.class, 2));
         CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
-                .arg("datasetname", fileDataset.getName(),
+                .arg("datasetname", datasetName,
                         "We name the dataset after the file itself — keeps the source tree readable.")
                 .arg("unit", "MICROMETER",
                         "Coordinates in microns.")
@@ -162,11 +166,11 @@ public class GenerateFuseResampleDocAssets {
                         "RGB is irrelevant for this dataset.")
                 .arg("auto_pyramidize", true,
                         "Auto-pyramidize so tile previews stay smooth at low zoom.")
-                .arg("disable_memo", false,
-                        "We keep memoization — fast file opening on subsequent runs.")
                 .arg("plane_origin_convention", "TOP LEFT",
                         "Top-left origin convention — matters here because the .lif has many tiles "
                                 + "that need to land on the same mosaic frame.")
+                .arg("disable_memo", false,
+                        "We keep memoization — fast file opening on subsequent runs.")
                 .sayOnDialog("Walking through the Bio-Formats importer dialog.")
                 .viaTreePath()
                 .execute();
@@ -182,16 +186,16 @@ public class GenerateFuseResampleDocAssets {
         Step.say("Right-clicking the dataset node — walking to: "
                 + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class, 2));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
-                .arg("adjust_view", true,
-                        "Re-centering the view on the loaded tiles.")
                 .arg("auto_contrast", true,
                         "Auto-contrast so the mosaic reads at a glance.")
-                .arg("interpolate", false,
-                        "No interpolation — voxel-precise tile rendering, so tile borders stay visible.")
+                .arg("adjust_view", true,
+                        "Re-centering the view on the loaded tiles.")
                 .arg("make_new_window", true,
                         "Open a fresh BDV window — leave any existing viewers untouched.")
+                .arg("interpolate", false,
+                        "No interpolation — voxel-precise tile rendering, so tile borders stay visible.")
                 .sayOnDialog("Walking through the show-sources dialog.")
-                .viaTreePath(fileDataset.getName(),
+                .viaTreePath(datasetName,
                         "We select the raw tiled dataset for display.")
                 .skipInScript()
                 .execute();
@@ -227,13 +231,13 @@ public class GenerateFuseResampleDocAssets {
                         "Per-tile transform — each tile rotates around its own centre, "
                                 + "so the mosaic layout is preserved.")
                 .sayOnDialog("Walking through the transform dialog.")
-                .viaTreePath(fileDataset.getName(),
+                .viaTreePath(datasetName,
                         "We pick the tiled dataset whose tiles we want to flip.")
                 .execute();
         Step.end();
 
 
-        Step.begin("Rotate The Whole Mosaic",
+        /*Step.begin("Rotate The Whole Mosaic",
                 "Now Rot90 around Z applied globally — the whole mosaic rotates as one, "
                         + "so the brain section reads in its anatomical orientation.");
         CommandExecutor.of(SourceSimpleTransformCommand.class)
@@ -250,7 +254,7 @@ public class GenerateFuseResampleDocAssets {
                 .viaTreePath(fileDataset.getName(),
                         "Same dataset — but the transform now applies to the whole mosaic.")
                 .execute();
-        Step.end();
+        Step.end();*/
 
         Step.begin("Reframe View On The Mosaic",
                 "The rotation moved the tiles out of the current viewport — "
@@ -258,19 +262,36 @@ public class GenerateFuseResampleDocAssets {
                         + "the active BDV onto every source beneath it.");
         Step.say("Double-clicking the dataset in the BDV Sources tree — BDV computes the bounding "
                 + "box of every source beneath the node and zooms the view to fit.");
-        BdvPlayground.adjustViewOnSource(fileDataset.getName());
+        BdvPlayground.adjustViewOnSource(datasetName);
         Step.end();
 
 
+        Step.begin("Inspect One Raw Tile",
+                "Before sizing the resampling grid, we inspect a single raw tile to read off its "
+                        + "dimensions and voxel size — the numbers that justify the grid we're about to define.");
+        Step.say("Right-clicking one tile under Channel > ch_0 > All Sources — walking to: "
+                + CommandExecutor.menuPath(SourceInspectCommand.class, 2));
+        CommandExecutor.of(SourceInspectCommand.class)
+                .sayOnDialog("Walking through the inspect dialog.")
+                .viaTreePath(datasetName + ">Channel>ch_0>All Sources>Tilescan 1-ch_0",
+                        "We pick a single tile — every tile and channel in this dataset shares the same calibration.")
+                .skipInScript()
+                .execute();
+        Step.say("Each tile is 512 × 512 × 90 voxels at 0.241 × 0.241 × 0.4 µm.");
+        Step.waitForUser("Expand the new \"Inspect Results [Tilescan 1-ch_0]\" node and "
+                + "multi-select the Dimensions and Voxel Size lines, then click Continue.");
+        Step.end();
+
         Step.begin("Define A Resampling Grid",
-                "We define a resampling grid spanning every tile at 0.25 µm in XY and 0.4 µm in Z — "
+                "Now we define the resampling grid: 0.25 µm in XY (slightly undersampled "
+                        + "vs the 0.241 µm raw tiles we just inspected) and 0.4 µm in Z — "
                         + "the model source the fused output will sample onto.");
         Step.say("Right-clicking the dataset — walking to: "
                 + CommandExecutor.menuPath(SourcesGridModelMakeCommand.class, 2));
         CommandExecutor.of(SourcesGridModelMakeCommand.class)
                 .arg("vox_size_x", 0.25,
-                        "0.25 µm in X — slightly oversampled relative to the raw tiles, "
-                                + "so the fuse step doesn't lose detail at tile borders.")
+                        "0.25 µm in X — slightly undersampled relative to the 0.241 µm raw tiles, "
+                                + "but close enough to preserve detail at tile borders.")
                 .arg("vox_size_y", 0.25,
                         "Same 0.25 µm in Y — isotropic in-plane.")
                 .arg("vox_size_z", 0.4,
@@ -286,7 +307,7 @@ public class GenerateFuseResampleDocAssets {
                 .arg("name", "grid_model",
                         "Lands as a \"grid_model\" empty source under Other Sources.")
                 .sayOnDialog("Walking through the grid-model dialog — the parameters that define the resampling target.")
-                .viaTreePath(fileDataset.getName(),
+                .viaTreePath(datasetName,
                         "We pick the tiled dataset — the grid is sized to span every tile in it.")
                 .execute();
         Step.end();
@@ -296,7 +317,7 @@ public class GenerateFuseResampleDocAssets {
         Step.say("Right-clicking the Sources root — walking to: "
                 + CommandExecutor.menuPath(SourcesFuseAndResampleCommand.class, 2));
         CommandExecutor.of(SourcesFuseAndResampleCommand.class)
-                .arg("sources", fileDataset.getName() + ">Channel>ch_0",
+                .arg("sources", datasetName + ">Channel>ch_0",
                         "Picking channel 0 of the tiled dataset as the input to fuse.")
                 .arg("model", "Other Sources>grid_model",
                         "Use the grid_model we just defined as the resampling target.")
@@ -314,8 +335,8 @@ public class GenerateFuseResampleDocAssets {
                 .arg("cache_z", 1)
                 .arg("cache_bounds", -1,
                         "Unbounded cache — the LRU eviction is enough.")
-                .arg("n_threads", 4,
-                        "Four threads to fuse in parallel.")
+                .arg("n_threads", 12,
+                        "12 threads to fuse in parallel.")
                 .arg("name", "fused_ch0",
                         "Output source name — lands under Other Sources.")
                 .arg("blending_mode", "AVERAGE",
@@ -328,7 +349,7 @@ public class GenerateFuseResampleDocAssets {
         Step.begin("Fuse Channel 1 Onto The Grid",
                 "Same fuse pass for channel 1 — a second fused source on the same grid.");
         CommandExecutor.of(SourcesFuseAndResampleCommand.class)
-                .arg("sources", fileDataset.getName() + ">Channel>ch_1",
+                .arg("sources", datasetName + ">Channel>ch_1",
                         "Picking channel 1 this time — same dataset, second channel.")
                 .arg("model", "Other Sources>grid_model",
                         "Same grid_model target — the two fused channels stay aligned.")
@@ -340,7 +361,7 @@ public class GenerateFuseResampleDocAssets {
                 .arg("cache_y", 512)
                 .arg("cache_z", 1)
                 .arg("cache_bounds", -1)
-                .arg("n_threads", 4)
+                .arg("n_threads", 12)
                 .arg("name", "fused_ch1",
                         "Output source name — sits beside fused_ch0 under Other Sources.")
                 .arg("blending_mode", "AVERAGE",
@@ -360,15 +381,14 @@ public class GenerateFuseResampleDocAssets {
         Step.say("Click fused_ch0, Ctrl+click fused_ch1, then walk: "
                 + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class, 2));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
-                .arg("adjust_view", true,
-                        "Re-centering on the fused mosaic.")
                 .arg("auto_contrast", true,
                         "Auto-contrast each channel independently.")
-                .arg("interpolate", true,
-                        "Linear interpolation — the fused source is one continuous mosaic now, "
-                                + "smoother reads better than voxel-edge crunch.")
+                .arg("adjust_view", true,
+                        "Re-centering on the fused mosaic.")
                 .arg("make_new_window", true,
                         "Fresh BDV dedicated to the fused output, separate from the Raw Tiles viewer.")
+                .arg("interpolate", false,
+                        "No interpolation.")
                 .sayOnDialog("Walking through the show-sources dialog for both fused channels.")
                 .viaTreePaths(new String[]{"Other Sources>fused_ch0", "Other Sources>fused_ch1"},
                         "We pick both fused channels — Ctrl+click adds ch1 to the ch0 selection.")
@@ -417,14 +437,13 @@ public class GenerateFuseResampleDocAssets {
         Step.say("Click fused_ch0_pyramid, Ctrl+click fused_ch1_pyramid, then walk: "
                 + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class, 2));
         CommandExecutor.of(SingleBdvSourcesShowCommand.class)
+                .arg("auto_contrast", false,
+                        "No auto contrast: carry over display values from the original sources.")
                 .arg("adjust_view", true,
                         "Re-centering on the pyramidized mosaic.")
-                .arg("auto_contrast", true,
-                        "Auto-contrast each channel independently.")
-                .arg("interpolate", true,
-                        "Linear interpolation — same look as the Fused viewer for a fair comparison.")
                 .arg("make_new_window", true,
                         "Third BDV so we can watch the pyramid path against the raw and the flat-fused views.")
+                .arg("interpolate", false)
                 .sayOnDialog("Walking through the show-sources dialog for both pyramidized channels.")
                 .viaTreePaths(new String[]{
                                 "Other Sources>fused_ch0_pyramid",
@@ -480,10 +499,28 @@ public class GenerateFuseResampleDocAssets {
         Ui.rawPause(15000);
         Step.end();
 
+        Step.begin("Inspect The Pyramidized Source",
+                "Before exporting, we inspect the pyramidized source — the tree reveals its "
+                        + "full provenance: a pyramid wrapper over the fused source, which itself "
+                        + "is built from all 84 raw tiles.");
+        Step.say("Right-clicking the pyramidized source — walking to: "
+                + CommandExecutor.menuPath(SourceInspectCommand.class, 2));
+        CommandExecutor.of(SourceInspectCommand.class)
+                .sayOnDialog("Walking through the inspect dialog.")
+                .viaTreePath("Other Sources>fused_ch0_pyramid",
+                        "We pick the pyramidized fused channel 0.")
+                .skipInScript()
+                .execute();
+        Step.say("The hierarchy reads pyramid → fused → 84 tiles — the full provenance is recoverable from the source itself.");
+        Step.waitForUser("Expand the new \"Inspect Results [fused_ch0_pyramid]\" node and "
+                + "highlight the hierarchy lines on camera, then click Continue.");
+        Step.end();
+
         Step.begin("Save One Fused Channel To OME-TIFF",
                 "We export one fused channel as a multi-resolution OME-TIFF — "
                         + "4 pyramid levels with a 2× downscale between each, "
-                        + "written straight to the desktop.");
+                        + "written straight to the desktop. To keep the demo short, "
+                        + "we only export every fifth slice (0:5:-1).");
         // Close the sync window so the Tasks panel placed underneath becomes
         // visible — we want the export progress in frame while it runs.
         if (syncWindow != null) {
@@ -495,8 +532,13 @@ public class GenerateFuseResampleDocAssets {
         CommandExecutor.of(KheopsExportSourcesCommand.class)
                 .arg("range_channels", "",
                         "Single-source selection — no channel sub-range needed.")
-                .arg("range_slices", "",
-                        "All slices.")
+                // TODO: check whether the voxel size is correctly carried over
+                //  when range_slices selects a subset like 0:5:-1 — gut feeling
+                //  is that the Z calibration of the exported OME-TIFF will NOT
+                //  be multiplied by 5 to compensate, which would make the
+                //  written file under-report its true Z extent.
+                .arg("range_slices", "0:5:-1",
+                        "Every fifth slice (start:step:end, -1 = last) — keeps the demo short.")
                 .arg("range_frames", "",
                         "Single timepoint — nothing to sub-range.")
                 .arg("file", exportFile,
@@ -512,10 +554,10 @@ public class GenerateFuseResampleDocAssets {
                 .arg("tile_size_x", 512,
                         "Pretty standard block saving size: 512 × 512 pixels.")
                 .arg("tile_size_y", 512)
-                .arg("n_threads", 4,
-                        "Four fetcher threads so IO doesn't bottleneck the fuse compute.")
-                .arg("compression", "LZW",
-                        "LZW lossless compression.")
+                .arg("n_threads", 15,
+                        "15 fetcher threads (= #core in this computer -1).")
+                .arg("compression", "Uncompressed",
+                        "Uncompressed.")
                 .sayOnDialog("Walking through the OME-TIFF export dialog.")
                 .viaTreePath("Other Sources>fused_ch0_pyramid",
                         "We pick one pyramidized fused channel as the export source.")
@@ -530,7 +572,7 @@ public class GenerateFuseResampleDocAssets {
         // the clip.
         long stableSince = -1;
         long lastSize = -1;
-        long deadline = System.currentTimeMillis() + 10 * 60_000L;
+        long deadline = System.currentTimeMillis() + 10 * 60_000_000L;
         while (System.currentTimeMillis() < deadline) {
             long size = exportFile.exists() ? exportFile.length() : 0L;
             if (size > 0 && size == lastSize) {
@@ -540,7 +582,7 @@ public class GenerateFuseResampleDocAssets {
                 stableSince = -1;
             }
             lastSize = size;
-            Ui.rawPause(1000);
+            Ui.rawPause(10000);
         }
         Step.say("Done — the OME-TIFF is ready on the desktop.");
         Ui.rawPause(15000);
