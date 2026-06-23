@@ -421,7 +421,10 @@ public class CommandExecutor {
         // tMs in timeline.json lines up with the gesture itself. The right-
         // click on a specific node is the "sources" parameter assignment in
         // TREE mode — there is no harvester widget to attach narration to.
-        if (treeClickNarration != null) Step.say(treeClickNarration);
+        if (treeClickNarration != null) {
+            Step.say(treeClickNarration);
+            Ui.rawPause(1000);
+        }
         if (treePaths != null) {
             Tree.rightClickPaths(jtree, treePaths);
         } else {

@@ -72,7 +72,7 @@ public class GenerateLabkitApplyDocAssets {
         Demo.intro("Applying a Labkit Classifier Lazily with BigDataViewer-Playground",
                 "Re-apply a pre-trained Labkit classifier to a multi-channel "
                         + "dataset — tile by tile through BigDataViewer — then export the result to OME-TIFF.",
-                "Saved classifier re-applies lazily — only tiles in view get classified",
+                "Classifier re-applies lazily — only tiles in view get classified",
                 "Side-by-side synchronized viewers",
                 "Final classified volume streamed straight to OME-TIFF");
 
@@ -124,11 +124,9 @@ public class GenerateLabkitApplyDocAssets {
         GenerateDocAssetsCommon.showBdvTreeDisplay(true);
 
         Step.begin("Open Hela Demo Dataset",
-                "We open the raw LLS7 Kyoto dataset through Bio-Formats — "
-                        + "in this video we run the import programmatically "
-                        + "(no dialog walk). The new node simply appears under the Sources tree.");
-        Step.say("Running the Bio-Formats importer programmatically — no Robot, no dialog. "
-                + "The script.groovy transcript still gets the equivalent cs.run(...) line.");
+                "We open the Hela Kyoto dataset through Bio-Formats — "
+                        + "(the import is ran programmatically, see the other video for the dialog walk). The new node simply appears under the Sources tree.");
+        Step.say("Running the Bio-Formats importer programmatically.");
         CommandExecutor.of(DatasetFromBioFormatsCreateCommand.class)
                 .arg("datasetname", fileDataset.getName(),
                         "We name the dataset after the file itself — keeps the source tree readable.")
@@ -148,11 +146,11 @@ public class GenerateLabkitApplyDocAssets {
                 .execute();
         Step.say("Both channels show up under the dataset node in the Sources tree, "
                 + "ready to feed the classifier.");
-        Ui.rawPause(1500);
+        Ui.rawPause(5000);
         Step.end();
 
         Step.begin("Show Hela Dataset",
-                "We display the raw dataset in a BigDataViewer window — "
+                "We display the dataset in a BigDataViewer window — "
                         + "we'll set its title to 'BDV - Raw Sources'.");
         Step.say("Right-clicking the CZI node — walking to: "
                 + CommandExecutor.menuPath(SingleBdvSourcesShowCommand.class, 2));

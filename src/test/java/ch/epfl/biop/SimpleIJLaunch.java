@@ -3,6 +3,7 @@ package ch.epfl.biop;
 import bdv.viewer.SourceAndConverter;
 import ch.epfl.biop.demos.DemoHelper;
 import io.scif.codec.JPEG2000Codec;
+import loci.common.DebugTools;
 import net.imagej.ImageJ;
 import net.imagej.patcher.LegacyInjector;
 import sc.fiji.bdvpg.scijava.service.SourcePopupMenu;
@@ -21,7 +22,7 @@ public class SimpleIJLaunch {
 
     public static void main(final String... args) {
         // create the ImageJ application context with all available services
-
+        DebugTools.setRootLevel("OFF");
         ImageJ ij = new ImageJ();
         DemoHelper.startFiji(ij);
         DemoHelper.expandTreeView(ij);
