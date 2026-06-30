@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:github.com)",
-      "Bash(echo \"---EXIT $?---\")"
+      "Bash(echo \"---EXIT $?---\")",
+      "Read(//c/Users/Nicolas/Dropbox/BIOP/scijava-ui-robot/**)",
+      "Bash(mvn -B test-compile)"
     ]
   }
 }
