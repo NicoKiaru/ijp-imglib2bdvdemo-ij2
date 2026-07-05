@@ -4,7 +4,9 @@
       "WebFetch(domain:github.com)",
       "Bash(echo \"---EXIT $?---\")",
       "Read(//c/Users/Nicolas/Dropbox/BIOP/scijava-ui-robot/**)",
-      "Bash(mvn -B test-compile)"
+      "Bash(mvn -B test-compile)",
+      "Read(//c/Users/Nicolas/.m2/repository/ch/unige/biochem/fiji-robot/**)",
+      "Read(//c/Users/Nicolas/.m2/repository/ch/unige/biochem/fiji-robot/0.1.0-SNAPSHOT/**)"
     ]
   }
 }

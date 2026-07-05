@@ -235,6 +235,18 @@
 			<version>${clij2-fft_.version}</version>
 		</dependency>
 
+		<!-- Tutorial-video automation toolkit, extracted from this repo's
+		     src/test/java/ch/epfl/biop/docs/videos/. Test-scoped: only the
+		     Generate*DocAssets demos use it. The bdv/ij1 bindings it carries
+		     resolve against the bigdataviewer-playground / imagej-legacy this
+		     project already declares directly (nearest-wins). -->
+		<dependency>
+			<groupId>ch.unige.biochem</groupId>
+			<artifactId>fiji-robot</artifactId>
+			<version>0.1.0-SNAPSHOT</version>
+			<scope>test</scope>
+		</dependency>
+
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
