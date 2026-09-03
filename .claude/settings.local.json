@@ -6,7 +6,10 @@
       "Read(//c/Users/Nicolas/Dropbox/BIOP/scijava-ui-robot/**)",
       "Bash(mvn -B test-compile)",
       "Read(//c/Users/Nicolas/.m2/repository/ch/unige/biochem/fiji-robot/**)",
-      "Read(//c/Users/Nicolas/.m2/repository/ch/unige/biochem/fiji-robot/0.1.0-SNAPSHOT/**)"
+      "Read(//c/Users/Nicolas/.m2/repository/ch/unige/biochem/fiji-robot/0.1.0-SNAPSHOT/**)",
+      "Read(//c/Users/Nicolas/.m2/repository/ch/epfl/biop/ijp-bdv-deconvolution/0.1.0-SNAPSHOT/**)",
+      "Bash(unzip -l ijp-bdv-deconvolution-0.1.0-SNAPSHOT-sources.jar)",
+      "Bash(unzip -p ijp-bdv-deconvolution-0.1.0-SNAPSHOT-sources.jar \"ch/epfl/biop/command/process/deconvolve/SourcesDeconvolveCommand.java\")"
     ]
   }
 }
